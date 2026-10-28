@@ -8,6 +8,8 @@
 - Configured default branch: `main`
 - Initial remote state: empty; no branches or commits
 - Workspace before setup: `D:\Workspace\IDL\ACLAIS-1` had no `.git` directory, local branch/history, staged changes, remote, or tracking configuration. Its root contained the nine supplied specification files under `docs/`.
+- Local baseline: commit `0752747004fc689e07f8e55435964bf4d267fd12` on `main`, containing the specification pack, workflow documents, agent instructions, and ignore rules.
+- Current branch: `aclais-prototype`, created from that baseline; upstream tracking is pending the first push.
 
 These facts were verified through the authenticated GitHub repository list and metadata, GitHub's branches endpoint, and `git ls-remote --heads`. No credentials are recorded here.
 
@@ -15,7 +17,7 @@ Before Git changes, inspect the root and complete working tree, current branch a
 
 ## Branch selection
 
-The verified repository is empty, so first create a documentation-only baseline on local `main`, the configured default branch. Then create `aclais-prototype` from that baseline. The remote default branch had no prior history to alter. Keep ACLAIS, the receiver, and Document Tools together in this repository.
+The verified repository was empty, so a documentation-only baseline was committed on local `main`, the configured default branch. Then `aclais-prototype` was created from that baseline. The remote default branch had no prior history to alter. Push only the working branch for this checkpoint. Keep ACLAIS, the receiver, and Document Tools together in this repository.
 
 ## Checkpoint procedure
 
