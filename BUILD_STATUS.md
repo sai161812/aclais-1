@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0 is complete. A1 foundation code and local portable checks are implemented; the A1 workflow result is pending the required push. No Windows enforcement or later production component has been implemented.
+As of 2026-10-29. A0 and A1 are complete. The A1 foundation and portable checks passed locally and in GitHub Actions. No Windows enforcement or later production component has been implemented.
 
 ## Current state
 
@@ -27,7 +27,7 @@ As of 2026-10-29. A0 is complete. A1 foundation code and local portable checks a
 | Checkpoint | Status | Evidence / prerequisite |
 |---|---|---|
 | A0 — readiness and specification | PASS | All nine specs reconciled, environment reviewed, decisions recorded, plan created; no application changes. |
-| A1 — project foundation | NOT_RUN | Local checks passed; required GitHub Actions run awaits the A1 push. |
+| A1 — project foundation | PASS | Local portable checks passed; GitHub Actions run 1 passed for the A1 implementation commit. Windows enforcement remains `NOT_RUN`. |
 | A2 — protected fixtures and worker identity | NOT_STARTED | Requires A1 PASS and explicit one-time elevation. |
 | A3 — launcher and containment | NOT_STARTED | Requires A2 PASS. |
 | A4 — persistence and contracts | NOT_STARTED | Requires A3 PASS. |
@@ -42,16 +42,17 @@ As of 2026-10-29. A0 is complete. A1 foundation code and local portable checks a
 
 - A0 checks run: all nine specs read in order; repository/working-tree/branch/remote inspection; authenticated GitHub repository metadata; OS/filesystem/runtime/browser/worker-account/elevation and installed-package inventory; current working branch and remote tracking inspected. `npm --version` succeeded; `npm list -g --depth=0` could not enumerate packages because its configured user prefix directory is absent. Cross-spec consistency reviewed; all local Markdown targets resolve; A0–A10 headings and required fields are present; obsolete-path/host/receiver-test wording search is clear; `git diff --check` passed.
 - A1 local portable checks: `scripts/check.ps1` passed; Ruff passed; pytest passed (19 portable tests); generated OpenAPI matched backend models; generated TypeScript matched the schema; TypeScript typecheck, ESLint and Vite production build passed. `npm ci` installed from lockfile and reported 0 vulnerabilities. Runtime smoke check passed for direct API health, same-origin Vite proxy and frontend shell HTTP 200; health reports `protection_ready:false` and G1 protection `unknown` as intended.
-- A1 GitHub Actions: workflow added with separate portable backend/frontend jobs; run for the implementation commit is pending push. Windows enforcement lane: NOT_RUN; no Windows enforcement tests or implementation were added in A1.
+- A1 GitHub Actions: [run 1](https://github.com/sai161812/aclais-1/actions/runs/40747054105) passed for implementation commit `786bdca742d0b41ed8c37bd9c82d49068dc78e3c`; both portable backend and frontend jobs completed successfully. Windows enforcement lane: NOT_RUN; no Windows enforcement tests or implementation were added in A1.
 - G1/Windows enforcement tests: NOT_RUN; A1 only adds portable foundation and tests. No enforcement result is claimed.
 - Windows security enforcement: NOT_RUN; no enforcement implementation exists.
 - Evidence artifacts: none; environment output and source review are recorded in this status/decision log.
 - Baseline commit: `0752747004fc689e07f8e55435964bf4d267fd12` on local `main` and in the working-branch history.
 - G0 workflow commit: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`.
 - A0 checkpoint commit: `536b02cdf05fb50f6109f010fbec2507f6f9c932`.
+- A1 implementation commit: `786bdca742d0b41ed8c37bd9c82d49068dc78e3c` on `aclais-prototype`; its remote head matched after push and its portable CI run passed.
 - Synchronization: the A0 checkpoint commit was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the commit and GitHub's branch API confirmed the working branch. A final status-only commit records this verification.
-- CI history: the A0 commit had no workflow because `.github/workflows` did not yet exist. GitHub reported no workflow runs or commit status checks for that A0 revision. A1 adds the portable workflow; its A1 run is pending push.
+- CI history: the A0 commit had no workflow because `.github/workflows` did not yet exist. GitHub reported no workflow runs or commit status checks for that A0 revision. A1 adds the portable workflow; its run passed as recorded above.
 
 ## Next step
 
-G0 and A0 are complete. A1 remains NOT_RUN until the pushed revision's portable CI checks are inspected. A2 setup requires explicit elevation to create the non-administrator `AclaisWorker` account and `C:\ACLAIS-Lab`; neither exists yet. Windows automation and demonstration-machine enforcement acceptance remain future work.
+G0, A0 and A1 are complete. A2 setup requires explicit elevation to create the non-administrator `AclaisWorker` account and `C:\ACLAIS-Lab`; neither exists yet. Windows automation and demonstration-machine enforcement acceptance remain future work.
