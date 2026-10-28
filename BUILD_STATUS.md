@@ -45,8 +45,9 @@ As of 2026-10-28. A0 completes readiness and specification reconciliation only; 
 - Evidence artifacts: none; environment output and source review are recorded in this status/decision log.
 - Baseline commit: `0752747004fc689e07f8e55435964bf4d267fd12` on local `main` and in the working-branch history.
 - G0 workflow commit: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`.
-- Synchronization: PUSHED and verified at `origin/aclais-prototype`; the upstream ref matched local HEAD after the final status push.
-- CI: no `.github/workflows` directory exists in the pushed tree.
+- A0 checkpoint commit: `536b02cdf05fb50f6109f010fbec2507f6f9c932`.
+- Synchronization: the A0 checkpoint commit was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the commit and GitHub's branch API confirmed the working branch. A final status-only commit records this verification.
+- CI: no `.github/workflows` directory exists; GitHub reported no workflow runs or commit status checks for the A0 checkpoint commit.
 
 ## Next step
 
