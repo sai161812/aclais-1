@@ -5,13 +5,17 @@
 - Verified repository: `sai161812/aclais-1`
 - Remote: `origin` → `https://github.com/sai161812/aclais-1.git`
 - Visibility: public
-- Configured default branch: `main`
+- Default branch before the first push: `main`
+- Current default branch reported by GitHub: `aclais-prototype` (after the first branch was pushed to the empty repository)
 - Initial remote state: empty; no branches or commits
 - Workspace before setup: `D:\Workspace\IDL\ACLAIS-1` had no `.git` directory, local branch/history, staged changes, remote, or tracking configuration. Its root contained the nine supplied specification files under `docs/`.
 - Local baseline: commit `0752747004fc689e07f8e55435964bf4d267fd12` on `main`, containing the specification pack, workflow documents, agent instructions, and ignore rules.
-- Current branch: `aclais-prototype`, created from that baseline; upstream tracking is pending the first push.
+- Current branch: `aclais-prototype`, created from that baseline; it tracks `origin/aclais-prototype`.
+- Remote branch head: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`; the GitHub branch API and `git ls-remote --heads` agree.
+- Local `main` retains the baseline commit and has no upstream. The baseline is present in the pushed working-branch history.
+- No `.github/workflows` directory exists in the pushed tree.
 
-These facts were verified through the authenticated GitHub repository list and metadata, GitHub's branches endpoint, and `git ls-remote --heads`. No credentials are recorded here.
+Initial repository facts were verified through the authenticated GitHub repository list and metadata, GitHub's branches endpoint, and `git ls-remote --heads`. The working branch and current default branch were checked again after push. No repository settings API was used, and no credentials are recorded here.
 
 Before Git changes, inspect the root and complete working tree, current branch and history, all remotes, upstream/tracking configuration, and staged and unstaged diffs. Preserve existing changes and history. Verify the supplied remote's owner, repository name, public/private visibility, and configured default branch using authenticated GitHub tooling. Do not guess, create a repository, change visibility, or replace a remote.
 
