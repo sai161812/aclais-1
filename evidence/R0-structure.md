@@ -1,10 +1,11 @@
 # R0 repository-structure checkpoint evidence
 
-- Result: PASS for local portable and demonstration-machine acceptance; hosted CI is pending the push for this revision.
+- Result: PASS for local portable checks, demonstration-machine enforcement checks, and hosted portable CI on the implementation commit.
 - Date: 2026-10-29.
 - Repository/branch: `sai161812/aclais-1`, `aclais-prototype`; one Git worktree with no component submodules or nested repositories.
 - Remote metadata: public repository, default branch `aclais-prototype`; authenticated metadata matched `origin` at `https://github.com/sai161812/aclais-1.git`.
 - Runtime data and worker credentials remain under the existing owner-protected `C:\ACLAIS-Lab` location, outside Git.
+- R0 implementation commit: `c86471821274697c3819dfe534ff811380874326` (`chore: organize component source structure`), pushed to `origin/aclais-prototype`.
 
 ## Resulting source layout
 
@@ -27,9 +28,12 @@ The tracked project moves preserve Git rename history where practical: the forme
 - Portable workflow configuration parsed successfully; both backend/frontend jobs are present and `contents` permission remains read-only. The workflow uses no deployment credentials or self-hosted runners.
 - Windows parser: all 31 component PowerShell scripts parsed with 0 syntax errors.
 - A2 actual worker probe: the ordinary, non-elevated owner launched `LAPTOP-FMQ8RARQ\AclaisWorker`, SID `S-1-5-21-2514999450-3486617813-2191310599-1006`; the worker was not an administrator. All 57 checks passed. Selected-copy, temporary-output, protected originals, state, source, evidence, and integrity results were observed inside the actual worker. The owner confirmed fixture/source hashes remained unchanged, evidence was not created or modified, and cleanup completed. No credential value was recorded.
+- A2 was rerun after the R0 implementation push: 57/57 actual worker checks passed, and the protected installation manifest hash remained stable through probe and repair. The sanitized access summary records this later run; runtime credential values and contents remain absent.
 - A2 path-hiding result: application-source read/write returned Win32 3 because traversal to the protected subtree was denied. The owner verified the source file existed and its before/after SHA-256 matched; this is the documented path-hidden denial condition. The private probe source and protected installation manifest matched by SHA-256.
 - A3 actual Windows launcher test: `aclais/scripts/check_a3_windows.ps1` exited 0; pytest reported 1 passed. The test verified actual worker identity, suspended creation and Job Object assignment before resume, fixed entrypoint, argument/environment/cwd controls, task configuration, bounded dual-pipe capture, normal/child/cancel/timeout/shutdown/crash cleanup, fail-closed identity/assignment/credential conditions, and survival of an unrelated owner process.
 - Post-test process inspection found 0 candidate processes owned by the worker SID.
-- Hosted GitHub Actions: NOT_RUN for the R0 revision pending push; inspect both portable jobs for the exact pushed commit before finalizing synchronization status.
+- Post-commit runtime deployment identified source revision `c86471821274697c3819dfe534ff811380874326`; the post-commit A3 Windows test passed (1 passed), and process inspection again found 0 worker-owned processes.
+- [GitHub Actions run 7](https://github.com/sai161812/aclais-1/actions/runs/40765960340) completed successfully for exact revision `c86471821274697c3819dfe534ff811380874326`. The Portable backend job passed all steps; the Portable frontend job passed all steps. These jobs do not execute Windows enforcement.
+- Synchronization: `git ls-remote --heads origin aclais-prototype` matched the local branch at `c86471821274697c3819dfe534ff811380874326`; the working tree was clean after the implementation push. CI for the documentation-only evidence commit is reported separately from implementation and Windows enforcement results.
 
 This checkpoint changes source organization and verification-path handling only. It adds no A4 persistence/contracts, receiver service, Document Tools site, or hostile production worker.

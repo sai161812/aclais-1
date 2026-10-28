@@ -955,9 +955,9 @@
                                 },
     "installation_manifest_integrity":  {
                                             "passed":  true,
-                                            "before_sha256":  "fc7a694f739104d6490474cf526ac63a738aa3f7362db695be74fd348405b172",
-                                            "after_probe_sha256":  "fc7a694f739104d6490474cf526ac63a738aa3f7362db695be74fd348405b172",
-                                            "after_repair_sha256":  "fc7a694f739104d6490474cf526ac63a738aa3f7362db695be74fd348405b172"
+                                            "before_sha256":  "46db0390acb92601ad68fee3f2c6726705a1c80615fd37a3c3ae1fddfc12a923",
+                                            "after_probe_sha256":  "46db0390acb92601ad68fee3f2c6726705a1c80615fd37a3c3ae1fddfc12a923",
+                                            "after_repair_sha256":  "46db0390acb92601ad68fee3f2c6726705a1c80615fd37a3c3ae1fddfc12a923"
                                         },
     "sentinel_integrity":  {
                                "passed":  true,

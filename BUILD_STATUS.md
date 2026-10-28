@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0 through A3 remain complete. Repository-structure checkpoint R0 has passed its local portable checks and real A2/A3 demonstration-machine checks after relocation; hosted CI for the moved paths will be inspected after the R0 push. A4 has not started. Later production controller components remain unimplemented.
+As of 2026-10-29. A0 through A3 and repository-structure checkpoint R0 are complete. R0 passed local portable and actual Windows A2/A3 checks after relocation; GitHub Actions run 7 passed for the R0 implementation commit. The documentation-only status commit's CI result is reported separately. A4 has not started. Later production controller components remain unimplemented.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
@@ -9,7 +9,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - All nine specification files in `docs/` have been reviewed in the prescribed order and reconciled for consistent implementation.
 - The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` as the default before the first push and now reports `aclais-prototype` after the first branch was pushed to the empty repository.
 - The working branch remains `aclais-prototype`, tracking `origin/aclais-prototype`; A3 implementation and evidence commits were pushed, the remote head matched `115c3489a25c59063cfcb62d6ff1442de6d783d2`, and run 5 passed for that revision.
-- Current source is organized under `aclais/`, `receiver/`, and `document-tools/`; root `tests/` is cross-component only, root `scripts/` is orchestration only, and `shared/` holds schemas/minimal protocol notes. Receiver and Document Tools contain reservation notes only. The existing `docs/` arrangement and protected `C:\ACLAIS-Lab` runtime location were retained. A2/A3 Windows checks were rerun after the move; portable CI for the moved paths remains pending the R0 push.
+- Current source is organized under `aclais/`, `receiver/`, and `document-tools/`; root `tests/` is cross-component only, root `scripts/` is orchestration only, and `shared/` holds schemas/minimal protocol notes. Receiver and Document Tools contain reservation notes only. The existing `docs/` arrangement and protected `C:\ACLAIS-Lab` runtime location were retained. A2/A3 Windows checks were rerun after the move; both portable CI jobs passed on the R0 implementation commit.
 - A3 now provides the fixed private Windows probe launcher, Credential Manager retrieval, suspended alternate-user creation, pre-resume Job Object assignment, bounded output capture and scoped deadline/shutdown cleanup. Its real target-machine checks pass; portable checks remain a separate lane. This checkpoint does not complete G1.
 - The remote was genuinely empty: GitHub reported repository size 0 and no branches, its refs endpoint reported an empty repository, and `git ls-remote --heads` returned no refs. A documentation-only baseline was committed to local `main` as `0752747004fc689e07f8e55435964bf4d267fd12`; working branch `aclais-prototype` was created from it. Only `aclais-prototype` was pushed; it tracks `origin/aclais-prototype`, and the local and GitHub branch heads matched after the final status push.
 - Initial A0 environment inventory: Windows 11 Home Single Language 10.0.26200, 64-bit; C: and D: are NTFS. Python 3.12.10/pip 25.0.1, Node.js v24.19.0/npm 11.17.0, Git 2.55.0.windows.4. Chrome 156.0.8078.48 and Edge 156.0.4314.50 are installed. Globally visible Python packages: FastAPI 0.115.0, Pydantic 2.9.2 and pytest 8.3.3; pywin32 is absent. The shell is not elevated. `C:\ACLAIS-Lab` and local account `AclaisWorker` are absent. At that inventory, no project source, project virtual environment or lockfile existed; A1 now establishes the isolated backend/frontend sources, environments and locks below. Global npm package inventory failed because `%APPDATA%\npm` does not exist; `npm --version` succeeds. Provisioning capability has not been tested.
@@ -45,7 +45,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 
 ## R0 repository-structure checkpoint
 
-- Status: PASS for local and Windows acceptance; hosted portable CI is pending inspection for the pushed revision.
+- Status: PASS for local portable, actual Windows acceptance, and hosted portable CI on the implementation commit.
 - Component files now live in their assigned folders; ACLAIS source/tests/scripts are in `aclais/`, receiver and Document Tools are reserved with structure notes only, `shared/` contains the OpenAPI contract and scope note, root `tests/` is integration-only, and root `scripts/check.ps1` resolves and runs from outside the repository.
 - The moved backend virtual environment contained stale executable launchers, so it was refreshed with `uv sync --locked --reinstall` at `aclais/backend/.venv`. The frontend's moved dependencies were refreshed with `npm ci`; both paths remain ignored.
 - Post-move portable acceptance: root `scripts/check.ps1`, invoked from `C:\Windows\Temp`, passed Ruff, 23 backend tests, OpenAPI and TypeScript generation checks, frontend typecheck/lint/build, and npm audit (0 vulnerabilities). Portable checks do not claim Windows enforcement.
@@ -53,7 +53,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - Post-move A2: `aclais/scripts/deploy_a2_probe.ps1` refreshed only the fixed private probe and protected installation inventory; actual `AclaisWorker` SID `S-1-5-21-2514999450-3486617813-2191310599-1006`, non-administrator; 57/57 actual worker checks passed. Source/evidence access denials and owner-side hash/integrity checks passed. No credential values were recorded.
 - Post-move A3: `aclais/scripts/check_a3_windows.ps1` exited 0 and the actual Windows test passed (1 passed). It reran the fixed entrypoint, real worker SID, suspended/job assignment, bounded stdout/stderr, child cleanup, cancellation, timeout, controller shutdown/crash, and fail-closed identity/job/credential checks. No worker identity processes remained afterward.
 - Sanitized structure record: `evidence/R0-structure.md`. A2 and A3 enforcement results ran on the demonstration machine and are separate from the portable lane.
-- Synchronization/CI: awaiting the R0 commit and push. Do not report GitHub backup or a CI result until the branch head and workflow run are verified.
+- Implementation commit: `c86471821274697c3819dfe534ff811380874326` (`chore: organize component source structure`) was pushed to `origin/aclais-prototype`; `git ls-remote --heads origin aclais-prototype` matched the local head. [GitHub Actions run 7](https://github.com/sai161812/aclais-1/actions/runs/40765960340) passed for that exact revision; both portable jobs succeeded. Windows enforcement evidence remains separate from CI.
 
 ## Checks and evidence
 
@@ -97,4 +97,4 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 
 ## Next step
 
-A3 is complete. A4 persistence and strict contracts are next and require A3 PASS. Do not begin A4 as part of this checkpoint.
+R0 is complete. A4 persistence and strict contracts are next and require A3 and R0 PASS. Do not begin A4 as part of this checkpoint.
