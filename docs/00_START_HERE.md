@@ -1,8 +1,10 @@
 # ACLAIS — coding-agent build pack
-Version 1.0 • 28 October 2026 • specification, not implemented software
+Version 1.1 • 28 October 2026 • specification, not implemented software
 
 ## Read first
 Build a small, real Windows security prototype with two natural document workflows. There must be no attack button, demo tab, fake telemetry, or cosmetic enforcement. Real file operations must be attempted and denied by independently testable boundaries.
+
+Use [`IMPLEMENTATION_CHECKPOINTS.md`](../IMPLEMENTATION_CHECKPOINTS.md) to sequence readiness A0 and implementation checkpoints A1–A10. This plan does not change the component order or permit later components to begin before their specified gate.
 
 Three deliverable components:
 1. ACLAIS: controller, broker, Windows worker launcher, protected store, evidence, premium dashboard.
@@ -28,9 +30,9 @@ Backend: Python with FastAPI/Pydantic, SQLite, pytest; Windows API bindings thro
 
 Inputs: seeded UTF-8 Markdown and CSV only. Use a real deterministic formatter and real CSV extraction. Small supported input scope is deliberate.
 
-Suggested repository: backend/aclais, backend/receiver, workers, frontend/aclais, frontend/tools, shared, scripts, tests, docs, evidence. Copy this pack into docs/spec. Put a root AGENTS.md pointing to it; this pack itself is not an installed skill.
+Suggested repository: backend/aclais, backend/receiver, workers, frontend/aclais, frontend/tools, shared, scripts, tests, docs, evidence. Keep the supplied specification pack in its existing `docs/` arrangement; do not move it into `docs/spec/`. Root `AGENTS.md` points to `docs/00_START_HERE.md`; this pack itself is not an installed skill.
 
-Required tracking files: BUILD_STATUS.md, DECISIONS.md, RUNBOOK.md. Start every gate as NOT_STARTED. Distinguish PASS, FAIL, BLOCKED, NOT_RUN. Never mark Windows enforcement PASS from Linux tests or mocked API calls.
+Required tracking files: BUILD_STATUS.md, DECISIONS.md, IMPLEMENTATION_CHECKPOINTS.md, RUNBOOK.md. Start every gate as NOT_STARTED. Distinguish PASS, FAIL, BLOCKED, NOT_RUN. Never mark Windows enforcement PASS from Linux tests or mocked API calls.
 
 ## Execution rule
 Within a component, proceed autonomously through its steps and fixes. Advance only after its gate has a dated evidence report and every mandatory check passes. Do not repeatedly ask permission for routine work already requested. If the environment cannot execute a mandatory check, report BLOCKED with the exact missing prerequisite; do not silently replace security with UI simulation.

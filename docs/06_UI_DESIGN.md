@@ -41,6 +41,22 @@ Motion 160–220ms opacity/transform, honor prefers-reduced-motion. No security 
 
 Sanitize or escape untrusted output; prefer plain-text Markdown preview for v1. Never dangerouslySetInnerHTML on tool output. Limit rendered event lengths. Copy IDs/hashes with explicit feedback; hide secrets entirely. Dates localize to Asia/Kolkata.
 
+## Screen-to-API mapping
+The UI is connected to the strict response models in `02_SHARED_CONTRACTS.md`. Show loading only while a request is pending; show explicit empty, disconnected, unavailable and verification-incomplete states from actual responses. Do not fill a screen with sample incidents or last-known green values.
+
+| Screen/state | API requests and actions | Rendered data and rules |
+|---|---|---|
+| Workspace initial load | `GET /api/health`, `GET /api/documents`, `GET /api/tasks?limit=20` | Health controls the protection indicator. Documents come from `DocumentListResponse`; recent task cards come from `TaskSummary`. A network/health failure is disconnected or protection unavailable, never cached healthy. |
+| Activity | `GET /api/tasks?limit=50`; on selection `GET /api/tasks/{task_id}` | Sort/order is server-provided newest first. Use `TaskSummary` fields for the list and `TaskDetailResponse` for the selected task. No invented counts. |
+| Approval | Top-level, side-effect-free ACLAIS `GET /approve?tool_id=...&launch_source_claim=document_tools`; then `GET /api/documents`; on explicit approval `POST /api/tasks` with `schema_version`, `tool_id`, `selected_document_id`, and `launch_source_claim` plus CSRF header | Approval fields come from the route claim and `DocumentListResponse`. No task is created on page load or cancel. Only a successful `POST` enters the task view; a 409/503 displays the actual conflict or preflight reason. |
+| Running task | `GET /api/tasks/{id}` and `GET /api/tasks/{id}/events?after_seq=N`, every 500 ms while active | Use persisted status, output metadata and ordered `Event` values. Advance `after_seq` only to the returned `last_seq`; do not duplicate or synthesize events. |
+| Completed task/result | `GET /api/tasks/{id}`, then `GET /api/outputs/{output_id}` for an available output | Render inert text/JSON only. The output is available only after journal/file verification. Display the actual task terminal state and output hash. |
+| Incident drawer | `GET /api/tasks/{id}`, `GET /api/tasks/{id}/events?after_seq=N`, `GET /api/tasks/{id}/evidence` | Distinguish broker/controller/verifier records from `worker_reported`. Verification text comes only from `Incident` and `EvidenceReport` statuses. A pending/unknown/fail report never becomes green success. |
+| Cancel action | `POST /api/tasks/{id}/cancel` with owner session, CSRF header and exact ACLAIS Origin; refresh task/events afterward | Show the returned terminal/current status. A cancel cannot overwrite an already committed policy, timeout, shutdown or terminal cause. |
+| Disconnected / protection unavailable | `GET /api/health` failure or response with unavailable preflight check | Remove any green protection state and show a useful recorded check/error. Retry according to current UI polling state; never infer that no incident or no leakage occurred. |
+
+All owner API calls go to the ACLAIS origin only. Document Tools runs at `http://localhost:8766`, ACLAIS at `http://127.0.0.1:8765`; the browser must not attach the ACLAIS host-only cookie to Document Tools. The cross-host approval link is a safe top-level GET; only ACLAIS mutation calls use the owner cookie, CSRF header and exact Origin.
+
 ## Visual acceptance
 Capture Workspace, Approval, Running, Incident verified, Verification incomplete, and Disconnected at 1366×768 and 1920×1080. Inspect for clipping, illegible glass, inconsistent padding, excessive empty space, broken icons, focus loss and fake placeholder data. Test keyboard path: select tool → approve → inspect result → open/close incident. Capture at least one reduced-motion run. Production bundle must have no runtime font/CDN requests.
 

@@ -7,9 +7,13 @@ Receive a stolen seeded payload if a hostile utility actually obtains it. Supply
 ## Implementation
 Use a small Python/FastAPI service at 127.0.0.1:8767. Implement /health, /ingest and the /admin routes from 02. Resolve every run by a trusted precreated run record. Ingest credential must be bound to its run. Store only a hash of the credential. Reject unknown runs, wrong credentials, malformed base64, payloads over 1 MiB, wrong run IDs for the supplied credential, and unknown fields. Task IDs remain client attribution per 02; do not add an undocumented task registration API.
 
-On ingestion compute receipt UUID, UTC time, decoded byte count, SHA-256 and whether the exact registered canary bytes are present. Persist before returning 201. Do not trust a client-supplied hash, byte count or marker-match flag. Preserve run ID and claimed task ID; the task field is client attribution, not proof of process identity. Gate tests use known task IDs.
+On ingestion compute receipt UUID, UTC time, decoded byte count, SHA-256 and whether the exact registered canary bytes are present. Do not trust a client-supplied hash, byte count or marker-match flag. Preserve run ID and claimed task ID; the task field is client attribution, not proof of process identity. Gate tests use known task IDs.
 
-Store raw dummy payloads only in the receiver-owned evidence directory, never as an executable filename; use receipt UUID filenames and .bin. Apply owner-only access. Cap total run storage at 10 MiB and return 429 on exhaustion. No arbitrary file path or external forwarding feature.
+Store raw dummy payloads only in the receiver-owned evidence directory, never as an executable filename; use receipt UUID filenames and `.bin`. Apply owner-only access. Cap total run storage at 10 MiB and return 429 on exhaustion. No arbitrary file path or external forwarding feature.
+
+The receiver database and payload file are separate stores, so use the receipt journal and crash-recovery protocol in `02_SHARED_CONTRACTS.md`. Reserve `(run_id,request_id)` and the canonical body hash in a DB transaction before writing. Create an exclusive same-volume staging file, write/flush/hash it, move it to its unique receipt name without replacement, then commit the receipt row before returning 201. The receipt query returns only committed rows whose file size/hash match. On restart reconcile pending rows before serving requests; a valid renamed file can be committed once, a partial staging file is removed/quarantined, and missing/mismatched committed payloads make the run unknown/error rather than empty. Never return success before both the payload and receipt row are durable.
+
+Ingest retries must include the same client-generated `request_id`: identical validated body returns the original receipt without adding a second file/row; changed body with the same ID returns 409 `REQUEST_CONFLICT`. Authenticate the run-bound token before replay lookup. A retry after receiver restart follows the same rule and never trusts a caller-supplied receipt ID.
 
 Receiver admin secret is distinct from ingest. No unauthenticated list/reset/receipt endpoints. There is no product-facing reset button. Operator reset is offline CLI, verifies ownership/sentinel, requires no active associated task and archives prior receipts before deletion. Startup does not silently wipe history.
 
@@ -24,9 +28,11 @@ GET receipts returns {run_id,receipts:[{receipt_id,task_id,received_at,decoded_b
 - Empty fresh run returns zero receipts and marker_received=false.
 - Submit known dummy canary bytes; independent hash/count/match are correct.
 - Submit nonmatching bytes; receipt exists but marker_match=false.
+- Retry the same request ID/body before and after restart; the same single receipt is returned. Reuse that request ID with a changed body; 409 and no new file/receipt.
 - Wrong ingest token, cross-run token, invalid base64 and oversized payload are rejected with no stored receipt.
 - Ingest token cannot access admin routes or clear evidence.
 - Restart preserves receipts; failed persistence cannot return success.
+- Inject failures before staging, after file flush, after rename and before DB commit; recovery yields one committed matching receipt or an explicit unknown/error, never duplicate receipts or a false empty run.
 - Listener is loopback-only; no payload/secret appears in routine logs.
 - ACLAIS receiver adapter distinguishes healthy empty, positive receipt, unknown run and receiver outage.
 
