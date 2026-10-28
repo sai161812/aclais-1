@@ -38,4 +38,6 @@ Keep one Git repository and one working branch for all components. The canonical
 
 For the repository-structure checkpoint, stage the moves and all import, script, worker-registration, frontend, CI, spec, permission-assumption, and documentation updates together. Rerun affected checks after relocation; historical PASS records do not replace checks invalidated by a source-path or ACL change.
 
+R0 follow-up startup commands use root `scripts/start.ps1 -Service Backend|Frontend` and delegate component details to `aclais/scripts/start.ps1`. Verify startup and Ctrl+C shutdown from an unrelated directory, strict occupied-port failure without replacing an existing owner, and the implemented portable checks before committing the orchestration change. This follow-up does not start A4 or invalidate unchanged worker-runtime/ACL paths.
+
 Never force-push, destructively reset, rewrite shared history, change repository settings, merge, or deploy without a separate instruction. Use `.gitignore` for local secrets/environments, runtime databases and raw receipts, generated confidential fixtures, unsanitized logs, and build output; retain synthetic fixture templates and sanitized summaries.

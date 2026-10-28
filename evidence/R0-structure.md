@@ -37,3 +37,19 @@ The tracked project moves preserve Git rename history where practical: the forme
 - Synchronization: `git ls-remote --heads origin aclais-prototype` matched the local branch at `c86471821274697c3819dfe534ff811380874326`; the working tree was clean after the implementation push. CI for the documentation-only evidence commit is reported separately from implementation and Windows enforcement results.
 
 This checkpoint changes source organization and verification-path handling only. It adds no A4 persistence/contracts, receiver service, Document Tools site, or hostile production worker.
+
+## R0 follow-up: root startup gap (2026-10-29)
+
+The review found that root portable checks worked but the runbook still required manual component-directory changes to start the development servers. Root `scripts/start.ps1 -Service Backend|Frontend` now delegates to component-owned `aclais/scripts/start.ps1`. It passes explicit component directories to the installed uv/npm commands, keeps each service in the foreground and reports startup failures. Dependency-only instructions use explicit uv directory/npm prefix arguments as well. No application code, worker registration, protected installation, fixture data or A4 deliverable was changed.
+
+Actual development-machine checks, from `C:\Windows\Temp`:
+
+- `& '<repository-root>\scripts\start.ps1' -Service Backend`: started the configured API on `127.0.0.1:8765`; direct health returned HTTP 200 and `protection_ready:false`.
+- `& '<repository-root>\scripts\start.ps1' -Service Frontend`: started Vite on `127.0.0.1:5173`; shell returned HTTP 200 and the proxied `/api/health` body matched the direct API response.
+- While those two listeners were active, duplicate backend and frontend starts threw failure. The original listener process identities remained unchanged, and the caller's location remained `C:\Windows\Temp`.
+- A reserved `Receiver` service choice failed parameter validation before launch. With PATH temporarily empty in the validation shell, both service choices returned the documented missing-runtime error before launch; PATH was restored afterward.
+- Sent Ctrl+C to each foreground terminal. The API logged completed application shutdown; both terminal sessions ended with interruption exit code 1. Final checks observed no listener on either development port and no project uv/python/node process remaining. An initial broad project-process query during concurrent portable checks was inconclusive; the server-command query and the repeated post-suite query found no remaining development process.
+- Root `scripts/check.ps1`: exit 0; Ruff PASS; 23 portable backend tests PASS; OpenAPI/type generation checks PASS; frontend typecheck/lint/build PASS; npm audit 0 vulnerabilities. These portable checks do not execute Windows enforcement.
+- All 15 project-owned PowerShell scripts, including both new startup scripts, parsed without errors. All local links in the 28 tracked Markdown files resolved; `git diff --check` passed. Existing worker source/runtime paths and permissions were unchanged; A2/A3 enforcement was not rerun for this startup-only follow-up, and no new enforcement PASS is claimed.
+
+Before this follow-up, implementation/status commits `c86471821274697c3819dfe534ff811380874326` and `3e9aa5889e3285ab59ed65385016fd94a08d4ef1` were synchronized. [Run 8](https://github.com/sai161812/aclais-1/actions/runs/40766363869) passed both portable jobs for `3e9aa5889e3285ab59ed65385016fd94a08d4ef1`. Record synchronization and CI for the follow-up revision after committing and pushing it. A4 remains unstarted.

@@ -22,34 +22,29 @@ From any PowerShell working directory, use the repository-root orchestration com
 For dependency installation only, from the repository root:
 
 ```powershell
-Push-Location .\aclais\backend
-uv sync --locked
-Pop-Location
-
-Push-Location .\aclais\frontend
-npm ci
-Pop-Location
+uv --directory .\aclais\backend sync --locked
+npm --prefix .\aclais\frontend ci
 ```
 
 The backend virtual environment is `aclais/backend/.venv` and is ignored by Git. Frontend packages are installed under `aclais/frontend/node_modules`, also ignored.
 
 ## Start the ACLAIS shell
 
-Use two PowerShell terminals. The commands below work from the repository root; the scripts and app resolve component paths from their own locations.
+Use two PowerShell terminals. Run these repository-root commands; they resolve component locations from the scripts themselves and leave the caller's working directory unchanged.
 
 Backend terminal:
 
 ```powershell
-Push-Location .\aclais\backend
-uv run --locked python -m aclais
+.\scripts\start.ps1 -Service Backend
 ```
 
 Frontend terminal:
 
 ```powershell
-Push-Location .\aclais\frontend
-npm run dev
+.\scripts\start.ps1 -Service Frontend
 ```
+
+From any other directory use `& '<repository-root>\scripts\start.ps1' -Service Backend` or `-Service Frontend`. Install the locked dependencies with the root check command first. Each command runs in the foreground with live output; stop it with Ctrl+C in its terminal. A startup error returns failure; an occupied port is reported without terminating its existing owner. Frontend uses strict port 5173 and does not silently choose a different port.
 
 Open `http://127.0.0.1:5173`. Vite proxies same-origin `/api` requests to the API at `http://127.0.0.1:8765`. The direct health URL is `http://127.0.0.1:8765/api/health`. An unavailable protection state is expected until its implementation checkpoint passes. No receiver or Document Tools service starts early.
 
