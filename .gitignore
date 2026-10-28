@@ -42,6 +42,9 @@ receiver/data/
 **/receiver/evidence/**/*.bin
 **/fixtures/generated/
 **/Personnel_Private.csv
+**/store/originals/
+**/store/verified-output/
+**/baseline/generated/
 
 # Unsanitized runtime logs and local evidence dumps
 *.log
@@ -49,6 +52,8 @@ receiver/data/
 **/logs/raw/
 **/unsanitized/
 evidence/raw/
+evidence/.a2-worker-access-probe.tmp
+evidence/worker-created-evidence.txt
 
 # Build, coverage, and browser-test output
 dist/

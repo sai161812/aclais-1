@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0 and A1 are complete. The A1 foundation and portable checks passed locally and in GitHub Actions. No Windows enforcement or later production component has been implemented.
+As of 2026-10-29. A0, A1 and A2 are complete. A1 portable checks passed locally and in GitHub Actions; A2 scoped Windows worker isolation passed on the demonstration machine. A3 launcher/job containment and later production components remain unimplemented.
 
 ## Current state
 
@@ -28,7 +28,7 @@ As of 2026-10-29. A0 and A1 are complete. The A1 foundation and portable checks 
 |---|---|---|
 | A0 — readiness and specification | PASS | All nine specs reconciled, environment reviewed, decisions recorded, plan created; no application changes. |
 | A1 — project foundation | PASS | Local portable checks passed; GitHub Actions run 1 passed for the A1 implementation commit. Windows enforcement remains `NOT_RUN`. |
-| A2 — protected fixtures and worker identity | NOT_STARTED | Requires A1 PASS and explicit one-time elevation. |
+| A2 — protected fixtures and worker identity | PASS | Demonstration-machine private worker probe passed 57/57 checks; sanitized evidence is tracked under `evidence/`. |
 | A3 — launcher and containment | NOT_STARTED | Requires A2 PASS. |
 | A4 — persistence and contracts | NOT_STARTED | Requires A3 PASS. |
 | A5 — broker and publication | NOT_STARTED | Requires A2–A4 PASS. |
@@ -44,8 +44,8 @@ As of 2026-10-29. A0 and A1 are complete. The A1 foundation and portable checks 
 - A1 local portable checks: `scripts/check.ps1` passed; Ruff passed; pytest passed (19 portable tests); generated OpenAPI matched backend models; generated TypeScript matched the schema; TypeScript typecheck, ESLint and Vite production build passed. `npm ci` installed from lockfile and reported 0 vulnerabilities. Runtime smoke check passed for direct API health, same-origin Vite proxy and frontend shell HTTP 200; health reports `protection_ready:false` and G1 protection `unknown` as intended.
 - A1 GitHub Actions: [run 1](https://github.com/sai161812/aclais-1/actions/runs/40747054105) passed for implementation commit `786bdca742d0b41ed8c37bd9c82d49068dc78e3c`; both portable backend and frontend jobs completed successfully. Windows enforcement lane: NOT_RUN; no Windows enforcement tests or implementation were added in A1.
 - G1/Windows enforcement tests: NOT_RUN; A1 only adds portable foundation and tests. No enforcement result is claimed.
-- Windows security enforcement: NOT_RUN; no enforcement implementation exists.
-- Evidence artifacts: none; environment output and source review are recorded in this status/decision log.
+- A2 Windows demonstration-machine enforcement: PASS for the scoped fixture, credential, runtime-code and checkout source/evidence boundary. Automated Windows enforcement CI and A3 Job Object checks: NOT_RUN.
+- Evidence artifacts: `evidence/A2.md` and `evidence/a2-access-summary.json` contain sanitized results only; runtime fixtures, credentials, installation state and raw process capture remain outside Git under `C:\ACLAIS-Lab`.
 - Baseline commit: `0752747004fc689e07f8e55435964bf4d267fd12` on local `main` and in the working-branch history.
 - G0 workflow commit: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`.
 - A0 checkpoint commit: `536b02cdf05fb50f6109f010fbec2507f6f9c932`.
@@ -53,6 +53,19 @@ As of 2026-10-29. A0 and A1 are complete. The A1 foundation and portable checks 
 - Synchronization: the A0 checkpoint commit was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the commit and GitHub's branch API confirmed the working branch. A final status-only commit records this verification.
 - CI history: the A0 commit had no workflow because `.github/workflows` did not yet exist. GitHub reported no workflow runs or commit status checks for that A0 revision. A1 adds the portable workflow; its run passed as recorded above.
 
+## A2 checkpoint
+
+- Status: PASS on the designated Windows demonstration machine. Provisioning for the local worker and owner Credential Manager entry was established during the elevated setup; the private access probe ran later from the ordinary owner session.
+- Provisioning evidence: the local worker/root/credential state was already established by the elevated setup. The new worker-specific repository source/evidence rules were applied to the owner-owned subtrees with the updated native DACL helper and then verified inside the actual worker probe; the A2 probe was not run elevated.
+- Environment: Windows 11 Home Single Language, build 26200; C: NTFS; owner SID `S-1-5-21-2514999450-3486617813-2191310599-1001`; worker `LAPTOP-FMQ8RARQ\AclaisWorker`, SID `S-1-5-21-2514999450-3486617813-2191310599-1006`, verified non-administrator.
+- Actual worker results: process exited; 57 checks, 0 failures; worker stderr 0 bytes; 8 owned-root guard checks passed; owner-side Credential Manager read passed without recording the secret; the worker could not read that credential (Win32 1168). Six owner read checks passed.
+- Effective access: selected input read passed; temporary output create/write/delete passed; original read/write/delete/rename/replace denied; protected trusted state, evidence, sentinel and runtime-code modifications denied; the worker could not read/write checkout application source or read/write/create checkout evidence. The `C:\ACLAIS-Lab` parent traversal and child-creation checks passed. Path-not-found rename results were paired with intact owner-side hashes.
+- Integrity: 11/11 seeded fixture hashes unchanged; 530/530 protected runtime-code files unchanged; trusted state, installation manifest, sentinel and repository source/evidence marker unchanged. Runtime ACLAIS import passed. The synthetic repository marker and worker-created-child target were absent after cleanup.
+- Private probe evidence: `evidence/A2.md`, `evidence/a2-access-summary.json`. These are actual demonstration-machine results, not portable CI output.
+- Portable checks rerun: `scripts/check.ps1` passed (19 backend tests, Ruff, schema/type generation checks, frontend typecheck/lint/build); all seven PowerShell scripts parsed; owned-root guard passed 8/8, including a known Windows profile junction rejection.
+- Verification lanes: portable CI is reported separately and does not establish Windows enforcement. The automated Windows CI lane and all A3 launcher/Job Object tests remain `NOT_RUN`.
+- Remaining issues: implement A3 only after this A2 checkpoint is committed and synchronized; A2 does not claim a full machine sandbox, network isolation, or A3 process containment.
+
 ## Next step
 
-G0, A0 and A1 are complete. A2 setup requires explicit elevation to create the non-administrator `AclaisWorker` account and `C:\ACLAIS-Lab`; neither exists yet. Windows automation and demonstration-machine enforcement acceptance remain future work.
+A2 is complete. A3 launcher and process containment are the next checkpoint and require A2 PASS. The automated Windows enforcement lane remains NOT_RUN until its checks are implemented and executed.

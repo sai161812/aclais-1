@@ -57,6 +57,24 @@ $env:ACLAIS_LOG_LEVEL = 'INFO'
 
 Logs are one-line JSON records on stderr. Structured fields with names containing authorization, cookie, token, password, secret, credential, canary, payload, private, or API key are replaced with `[REDACTED]`; common bearer and `key=value`/header patterns in messages are also redacted. Exception text and tracebacks are omitted. Do not log request bodies, headers, credentials, canary values, private document contents, or arbitrary user input. The redactor is defense in depth and does not make unsafe logging of arbitrary strings acceptable.
 
+## A2 demonstration-machine provisioning and probe
+
+From the repository root, provision only on the designated Windows demonstration machine. This setup creates or refreshes the non-administrator account, writes a newly generated secret directly to the owner's Credential Manager, seeds synthetic files under `C:\ACLAIS-Lab`, and applies its owned NTFS permissions. It requires one-time elevation and refuses to run while an AclaisWorker process is active:
+
+```powershell
+Start-Process PowerShell -Verb RunAs -Wait -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File .\scripts\provision_a2.ps1'
+```
+
+Run the private access probe from the ordinary, non-elevated owner session after provisioning:
+
+```powershell
+.\scripts\run_a2_access_probe.ps1
+```
+
+The harness retrieves the credential from the current owner's Credential Manager and passes it through the process credential API. It records no password, passes no secret in argv/environment, and writes sanitized evidence to `evidence/A2.md` and `evidence/a2-access-summary.json`. The actual fixture data, installation manifest and raw process capture remain under the ignored owner-protected `C:\ACLAIS-Lab` tree. Review both reports; a successful provisioning command alone is not A2 evidence.
+
+The A2 private probe is not a production tool or UI route. Its real Windows result is separate from portable CI and from future automated Windows enforcement checks.
+
 ## Checks and verification lanes
 
 Run the implemented portable checks from the repository root:
@@ -67,7 +85,7 @@ Run the implemented portable checks from the repository root:
 
 The script syncs the locked Python environment, runs Ruff and `pytest -m portable`, checks OpenAPI generation, installs from the npm lockfile, verifies generated TypeScript, typechecks and lints the frontend, and builds the production bundle. GitHub Actions runs the same backend and frontend checks in separate portable jobs. The marker filter keeps later Windows-enforcement tests out of the portable job.
 
-Portable checks do not run Windows enforcement tests. A1 has no Windows enforcement implementation/tests; that lane is `NOT_RUN`. Later enforcement checks must use the actual Windows account, NTFS, Credential Manager, and Job Object as required by `docs/03_BUILD_ACLAIS.md` and `docs/07_VERIFICATION_AND_HANDOFF.md`.
+Portable checks do not run Windows enforcement tests. The A2 private demonstration-machine ACL probe passed as recorded in `evidence/A2.md`; the automated Windows enforcement lane and A3 Credential Manager/job-launcher checks remain `NOT_RUN`. Later enforcement checks must use the actual Windows account, NTFS, Credential Manager, and Job Object as required by `docs/03_BUILD_ACLAIS.md` and `docs/07_VERIFICATION_AND_HANDOFF.md`.
 
 Regenerate API artifacts after changing backend models:
 

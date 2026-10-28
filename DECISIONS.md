@@ -1,6 +1,6 @@
 # Decisions
 
-This log records the workflow/specification decisions for A0 and the foundation choices for A1. G1 enforcement and later production components remain unimplemented.
+This log records the A0 specification decisions, A1 foundation choices, and A2 protected-fixture decisions. A3 launcher/job containment and later production components remain unimplemented.
 
 ## D-001 — Preserve the supplied specification pack
 
@@ -69,3 +69,11 @@ Validate only the supported `ACLAIS_` configuration keys and bind the API to `12
 ## D-017 — Keep portable CI separate and read-only
 
 Run real backend lint/tests and frontend API-type check, typecheck, lint and build in separate GitHub-hosted Ubuntu jobs. Grant only `contents: read`, pin each action to a verified full commit SHA, bound job timeouts, disable persisted checkout credentials, and provide no deployment credentials. Use ordinary `pull_request`, never a privileged pull-request event. These jobs establish portable checks only; Windows enforcement remains its own real-target lane.
+
+## D-018 — Protect checkout source and evidence with a worker-specific deny
+
+The demonstration checkout is on a volume whose inherited `Authenticated Users` permissions include Modify. Apply an explicit deny only to the `AclaisWorker` SID on the backend/frontend application source and committed evidence subtrees, where the owner can still read and update files. Do not change the repository root, volume/ancestor ACLs, or a group containing the owner. Keep the separate `C:\ACLAIS-Lab` runtime code ACL allowlist as the primary worker-visible code boundary.
+
+## D-019 — Require integrity evidence for path-hidden rename failures
+
+Windows may return file/path-not-found when traversal to a protected parent is denied. A private probe may count Win32 2/3 as a denied rename only when the owner verifies the seeded target exists and matches its trusted manifest hash before launch, then confirms it remains present and unchanged after the probe. Other denials require the observed access-denied result; command success or an exception alone is not proof.

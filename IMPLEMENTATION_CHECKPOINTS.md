@@ -28,11 +28,11 @@ For each checkpoint, verify only its listed tests and acceptance criteria, updat
 
 **Dependencies:** A1 PASS; one-time explicit elevation available for provisioning.
 
-**Deliverables:** Owner-scoped `C:\ACLAIS-Lab` sentinel and fixed owned directories; deterministic synthetic fixtures; provisioned non-administrator `AclaisWorker`; owner-only Credential Manager entry for its logon secret; least-privilege NTFS ACLs for originals, selected copies, output, state, evidence and code. Record SID and install manifest only.
+**Deliverables:** Owner-scoped `C:\ACLAIS-Lab` sentinel and fixed owned directories; deterministic synthetic fixtures; provisioned non-administrator `AclaisWorker`; owner-only Credential Manager entry for its logon secret; exact allowlist NTFS ACLs for originals, selected copies, output, state, evidence and protected runtime code. Grant only traverse on the lab root plus `store` and `work` parents. Apply worker-SID-specific protection to checkout application source/evidence when volume inheritance grants broader rights. Keep private probes out of production tools and UI. Record SID and install manifest only.
 
-**Tests:** On Windows, independently evaluate the actual worker SID's effective read/write/delete/rename/`DELETE_CHILD`/DACL access, including parent rights and reparse-point rejection; verify owner/system access and that the worker cannot alter trusted state. Exercise missing sentinel/root/ownership refusal.
+**Tests:** On the demonstration machine, launch the private probe under the actual worker SID. Verify selected-copy read and temporary-output create/write/delete; denied original read/write/delete/rename/replace and parent child creation; denied trusted-state/evidence/code/DACL/owner changes; Credential Manager isolation; repository source/evidence denial; post-probe fixture/code/source integrity; and missing sentinel/root/ownership refusal. Record automated Windows checks separately.
 
-**Observable acceptance:** Actual worker SID differs from the ordinary controller and is not an administrator; selected copy is readable, output scratch is writable, originals/confidential fixture/trusted state are inaccessible as specified; every ACL result is inspected as effective access, not inferred from command exit code.
+**Observable acceptance:** Actual worker SID differs from the ordinary controller and is not an administrator; selected copy is readable, output scratch is writable, originals/confidential fixture/trusted state/owner credentials are inaccessible as specified, and protected code/evidence are not modifiable. Every ACL result is observed inside the worker process and confirmed by owner-side integrity checks.
 
 ## A3 — Launcher and containment
 
