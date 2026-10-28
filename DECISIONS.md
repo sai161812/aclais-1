@@ -1,6 +1,6 @@
 # Decisions
 
-This log records the A0 specification decisions, A1 foundation choices, and A2 protected-fixture decisions. A3 launcher/job containment and later production components remain unimplemented.
+This log records the A0 specification decisions, A1 foundation choices, A2 protected-fixture decisions and A3 launcher choices. Later production controller components remain unimplemented.
 
 ## D-001 — Preserve the supplied specification pack
 
@@ -77,3 +77,19 @@ The demonstration checkout is on a volume whose inherited `Authenticated Users` 
 ## D-019 — Require integrity evidence for path-hidden rename failures
 
 Windows may return file/path-not-found when traversal to a protected parent is denied. A private probe may count Win32 2/3 as a denied rename only when the owner verifies the seeded target exists and matches its trusted manifest hash before launch, then confirms it remains present and unchanged after the probe. Other denials require the observed access-denied result; command success or an exception alone is not proof.
+
+## D-020 — Keep the A3 entrypoint fixed and task configuration owner-protected
+
+A3 launches only the controller-owned private probe through a fixed absolute interpreter and script path; callers cannot select an executable, script, working directory or environment. Until production task routing arrives, the private probe is test-only and is not registered, exposed by an API or included in the dashboard. The controller writes a nonsensitive per-task configuration in the worker-read-only selected directory, verifies its hash after cleanup, and removes it. Production task entrypoints and their validated configuration schemas are later checkpoint work.
+
+## D-021 — Use the pinned embedded Python runtime for the worker
+
+The demo worker interpreter lives in the owner-protected `C:\ACLAIS-Lab\code\python-runtime` directory and is provisioned from the official Python 3.12.10 Windows embeddable package whose SHA-256 is pinned in the deployment script. This avoids the controller user's profile-specific interpreter path when a separate account launches the worker and keeps its code inventory under the existing A2 protection boundary. The runtime remains offline and contains no pip-installed application packages.
+
+## D-022 — Transfer pipe and job ownership only after a successful launch
+
+After resume, the returned worker handle owns the process, primary thread, job, read-pipe handles and concurrent drain threads. Setup cleanup joins/closes these resources only before ownership transfer; post-launch completion first terminates any remaining child processes through the scoped job, then drains pipes and closes all retained handles. This avoids blocking setup on a child that inherited stdout/stderr and prevents cleanup from touching processes outside that job.
+
+## D-023 — Serialize launch admission with controller shutdown
+
+Hold the controller lifecycle lock across private task configuration creation, suspended process setup and active-handle registration. Shutdown takes the same lock before snapshotting active handles. This prevents a process from being created after shutdown snapshots the job set but before a new handle is registered. The demonstration-machine harness pauses immediately before `ResumeThread` and races shutdown against launch to check this boundary.

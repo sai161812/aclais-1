@@ -1,11 +1,13 @@
 # Build status
 
-As of 2026-10-29. A0, A1 and A2 are complete. A1 portable checks passed locally and in GitHub Actions; A2 scoped Windows worker isolation passed on the demonstration machine. A3 launcher/job containment and later production components remain unimplemented.
+As of 2026-10-29. A0 through A3 implementation and local acceptance checks are complete. A1 portable CI passed; A2 fixture isolation and A3 launcher/job containment passed on the demonstration machine. A3 GitHub CI is pending the working-branch push. Later production controller components remain unimplemented.
 
 ## Current state
 
 - All nine specification files in `docs/` have been reviewed in the prescribed order and reconciled for consistent implementation.
 - The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` as the default before the first push and now reports `aclais-prototype` after the first branch was pushed to the empty repository.
+- The working branch remains `aclais-prototype`, tracking `origin/aclais-prototype`; A3 commits and CI synchronization are recorded below.
+- A3 now provides the fixed private Windows probe launcher, Credential Manager retrieval, suspended alternate-user creation, pre-resume Job Object assignment, bounded output capture and scoped deadline/shutdown cleanup. Its real target-machine checks pass; portable checks remain a separate lane. This checkpoint does not complete G1.
 - The remote was genuinely empty: GitHub reported repository size 0 and no branches, its refs endpoint reported an empty repository, and `git ls-remote --heads` returned no refs. A documentation-only baseline was committed to local `main` as `0752747004fc689e07f8e55435964bf4d267fd12`; working branch `aclais-prototype` was created from it. Only `aclais-prototype` was pushed; it tracks `origin/aclais-prototype`, and the local and GitHub branch heads matched after the final status push.
 - Initial A0 environment inventory: Windows 11 Home Single Language 10.0.26200, 64-bit; C: and D: are NTFS. Python 3.12.10/pip 25.0.1, Node.js v24.19.0/npm 11.17.0, Git 2.55.0.windows.4. Chrome 156.0.8078.48 and Edge 156.0.4314.50 are installed. Globally visible Python packages: FastAPI 0.115.0, Pydantic 2.9.2 and pytest 8.3.3; pywin32 is absent. The shell is not elevated. `C:\ACLAIS-Lab` and local account `AclaisWorker` are absent. At that inventory, no project source, project virtual environment or lockfile existed; A1 now establishes the isolated backend/frontend sources, environments and locks below. Global npm package inventory failed because `%APPDATA%\npm` does not exist; `npm --version` succeeds. Provisioning capability has not been tested.
 - A1 toolchain: Python 3.12.10 with `uv` 0.12.15; Node.js 24.19.0 with npm 11.17.0. Isolated locked backend versions: FastAPI 0.162.0, Pydantic 2.14.1, Uvicorn 0.54.0, pytest 9.2.0, Ruff 0.17.3 and httpx2 2.16.0. Frontend versions: React/React DOM 19.3.1, Vite 8.3.5, TypeScript 5.9.3, ESLint 10.13.0 and openapi-typescript 7.13.0. `npm ci` reported zero vulnerabilities in the installed lockfile.
@@ -29,7 +31,7 @@ As of 2026-10-29. A0, A1 and A2 are complete. A1 portable checks passed locally 
 | A0 — readiness and specification | PASS | All nine specs reconciled, environment reviewed, decisions recorded, plan created; no application changes. |
 | A1 — project foundation | PASS | Local portable checks passed; GitHub Actions run 1 passed for the A1 implementation commit. Windows enforcement remains `NOT_RUN`. |
 | A2 — protected fixtures and worker identity | PASS | Demonstration-machine private worker probe passed 57/57 checks; sanitized evidence is tracked under `evidence/`. |
-| A3 — launcher and containment | NOT_STARTED | Requires A2 PASS. |
+| A3 — launcher and containment | PASS | Actual Windows demonstration-machine launcher checks and local portable checks passed; sanitized evidence is in `evidence/A3.md` and `evidence/a3-launcher-summary.json`. GitHub CI is portable only. |
 | A4 — persistence and contracts | NOT_STARTED | Requires A3 PASS. |
 | A5 — broker and publication | NOT_STARTED | Requires A2–A4 PASS. |
 | A6 — lifecycle and recovery | NOT_STARTED | Requires A3–A5 PASS. |
@@ -43,8 +45,8 @@ As of 2026-10-29. A0, A1 and A2 are complete. A1 portable checks passed locally 
 - A0 checks run: all nine specs read in order; repository/working-tree/branch/remote inspection; authenticated GitHub repository metadata; OS/filesystem/runtime/browser/worker-account/elevation and installed-package inventory; current working branch and remote tracking inspected. `npm --version` succeeded; `npm list -g --depth=0` could not enumerate packages because its configured user prefix directory is absent. Cross-spec consistency reviewed; all local Markdown targets resolve; A0–A10 headings and required fields are present; obsolete-path/host/receiver-test wording search is clear; `git diff --check` passed.
 - A1 local portable checks: `scripts/check.ps1` passed; Ruff passed; pytest passed (19 portable tests); generated OpenAPI matched backend models; generated TypeScript matched the schema; TypeScript typecheck, ESLint and Vite production build passed. `npm ci` installed from lockfile and reported 0 vulnerabilities. Runtime smoke check passed for direct API health, same-origin Vite proxy and frontend shell HTTP 200; health reports `protection_ready:false` and G1 protection `unknown` as intended.
 - A1 GitHub Actions: [run 1](https://github.com/sai161812/aclais-1/actions/runs/40747054105) passed for implementation commit `786bdca742d0b41ed8c37bd9c82d49068dc78e3c`; both portable backend and frontend jobs completed successfully. Windows enforcement lane: NOT_RUN; no Windows enforcement tests or implementation were added in A1.
-- G1/Windows enforcement tests: NOT_RUN; A1 only adds portable foundation and tests. No enforcement result is claimed.
-- A2 Windows demonstration-machine enforcement: PASS for the scoped fixture, credential, runtime-code and checkout source/evidence boundary. Automated Windows enforcement CI and A3 Job Object checks: NOT_RUN.
+- A1 did not run Windows enforcement. A3 launcher enforcement now passes on the demonstration machine; other G1 requirements remain incomplete and are not claimed as passed.
+- A2 checkpoint record: the scoped fixture, credential, runtime-code and checkout source/evidence boundary passed on the demonstration machine. At that checkpoint's completion, A3 Job Object checks and an automated Windows CI runner had not run; A3 evidence is recorded in its own section below.
 - Evidence artifacts: `evidence/A2.md` and `evidence/a2-access-summary.json` contain sanitized results only; runtime fixtures, credentials, installation state and raw process capture remain outside Git under `C:\ACLAIS-Lab`.
 - Baseline commit: `0752747004fc689e07f8e55435964bf4d267fd12` on local `main` and in the working-branch history.
 - G0 workflow commit: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`.
@@ -52,6 +54,16 @@ As of 2026-10-29. A0, A1 and A2 are complete. A1 portable checks passed locally 
 - A1 implementation commit: `786bdca742d0b41ed8c37bd9c82d49068dc78e3c` on `aclais-prototype`; its remote head matched after push and its portable CI run passed.
 - Synchronization: the A0 checkpoint commit was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the commit and GitHub's branch API confirmed the working branch. A final status-only commit records this verification.
 - CI history: the A0 commit had no workflow because `.github/workflows` did not yet exist. GitHub reported no workflow runs or commit status checks for that A0 revision. A1 adds the portable workflow; its run passed as recorded above.
+
+## A3 checkpoint
+
+- Status: PASS. The implementation uses the actual owner Credential Manager entry and `AclaisWorker` identity, a pinned offline Python runtime, a fixed test-only probe, owner-protected per-task configuration, a minimal environment, bounded separate output pipes, and a kill-on-close Job Object assigned before the worker is resumed.
+- Windows demonstration-machine command: `scripts/check_a3_windows.ps1`, exit 0; actual Windows test `1 passed`. It verified real worker SID/non-admin status, Job Object assignment before resume, protected task configuration, argument quoting and redaction, exact environment/cwd, >1 MB per output stream with configured capture bounds, normal/child/cancel/timeout/shutdown/crash cleanup, unrelated-process survival, and fail-closed identity/assignment/credential cases.
+- Local portable command: `scripts/check.ps1`, exit 0; Ruff, 23 backend tests, OpenAPI/type generation consistency, frontend typecheck/lint/build passed; npm audit reported zero vulnerabilities. The portable script expressly does not run Windows enforcement. The two new PowerShell scripts parsed successfully.
+- Sanitized demonstration-machine report: `evidence/A3.md`, `evidence/a3-launcher-summary.json`. No credential values, runtime fixture contents, process IDs or raw worker logs are tracked.
+- The initial Windows execution found a pipe-reader setup cleanup bug when a child inherited the worker output handles. Ownership now transfers to the active handle, which kills remaining job processes before draining; the complete Windows test reran and passed.
+- G1 remains incomplete. Broker admission, durable publication, lifecycle persistence, owner authentication, dashboard connection, receiver integration and remaining G1 audit checks are later work. A3's private probe is not a production tool.
+- GitHub CI result and exact pushed revision are added after the A3 branch push. No Windows runner is configured; the actual Windows test above ran on the demonstration machine.
 
 ## A2 checkpoint
 
@@ -65,9 +77,9 @@ As of 2026-10-29. A0, A1 and A2 are complete. A1 portable checks passed locally 
 - Portable checks rerun: `scripts/check.ps1` passed (19 backend tests, Ruff, schema/type generation checks, frontend typecheck/lint/build); all seven PowerShell scripts parsed; owned-root guard passed 8/8, including a known Windows profile junction rejection.
 - A2 GitHub Actions: [run 3](https://github.com/sai161812/aclais-1/actions/runs/40757642281) passed for `854ba2159369bc2235940fd2fe19239056193d0f`; the portable backend and frontend jobs completed successfully. This CI run did not execute Windows enforcement.
 - A2 synchronization: implementation commit `854ba2159369bc2235940fd2fe19239056193d0f` was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the commit and the local working tree was clean.
-- Verification lanes: portable CI is reported separately and does not establish Windows enforcement. The automated Windows CI lane and all A3 launcher/Job Object tests remain `NOT_RUN`.
+- Verification lanes at A2 completion: portable CI did not establish Windows enforcement. The A3 launcher/Job Object tests had not yet run; their later result is tracked in the A3 section.
 - Remaining issues: A3 launcher/job containment is next; A2 does not claim a full machine sandbox, network isolation, or A3 process containment.
 
 ## Next step
 
-A2 is complete. A3 launcher and process containment are the next checkpoint and require A2 PASS. The automated Windows enforcement lane remains NOT_RUN until its checks are implemented and executed.
+A3 is complete. A4 persistence and strict contracts are next and require A3 PASS. Do not begin A4 as part of this checkpoint.

@@ -75,6 +75,24 @@ The harness retrieves the credential from the current owner's Credential Manager
 
 The A2 private probe is not a production tool or UI route. Its real Windows result is separate from portable CI and from future automated Windows enforcement checks.
 
+## A3 actual Windows launcher checks
+
+Run these commands on the provisioned demonstration machine from the ordinary, non-elevated owner session. The deployment step verifies the protected runtime inventory and refreshes the fixed private probe; it does not print or export the Credential Manager value:
+
+```powershell
+.\scripts\check_a3_windows.ps1
+```
+
+This runs the actual `AclaisWorker` logon and Job Object checks. It covers protected task configuration, safe argument passing, minimal environment, stdout/stderr draining and caps, normal exit, child cleanup, forced cancellation, deadline timeout, orderly shutdown, abrupt controller-process exit, identity mismatch and assignment failure. The harness verifies worker and child exit using process handles and confirms a separate owner process survives. Sanitized results are recorded in `evidence/A3.md` and `evidence/a3-launcher-summary.json`; no password, runtime fixture content, PID or raw worker log belongs in those files.
+
+The portable command remains separate:
+
+```powershell
+.\scripts\check.ps1
+```
+
+It runs portable backend tests/lint plus frontend type checking/lint/build but does not run the Windows enforcement test. GitHub-hosted CI runs only the portable jobs; no self-hosted Windows runner is configured. A2 reprovisioning may replace the protected runtime manifest, so rerun `check_a3_windows.ps1` to deploy and verify the A3 probe/runtime again. Fail the checkpoint if the Windows script is skipped, run elevated against the wrong owner credential store, or cannot observe process-tree cleanup.
+
 ## Checks and verification lanes
 
 Run the implemented portable checks from the repository root:
