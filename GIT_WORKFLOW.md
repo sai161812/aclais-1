@@ -13,7 +13,7 @@
 - Current branch: `aclais-prototype`, created from that baseline; it tracks `origin/aclais-prototype`.
 - First push head: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`. The final status push was verified separately by comparing local HEAD, `origin/aclais-prototype`, `git ls-remote --heads`, and the GitHub branch API.
 - Local `main` retains the baseline commit and has no upstream. The baseline is present in the pushed working-branch history.
-- No `.github/workflows` directory exists in the pushed tree.
+- The initial G0 tree had no `.github/workflows` directory. A1 adds `.github/workflows/portable-checks.yml`; record each pushed revision's portable CI result in `BUILD_STATUS.md`.
 
 Initial repository facts were verified through the authenticated GitHub repository list and metadata, GitHub's branches endpoint, and `git ls-remote --heads`. The working branch and current default branch were checked again after push. No repository settings API was used, and no credentials are recorded here.
 

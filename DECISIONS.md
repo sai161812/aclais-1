@@ -1,6 +1,6 @@
 # Decisions
 
-This log records the workflow and specification decisions for A0. No application features have been implemented.
+This log records the workflow/specification decisions for A0 and the foundation choices for A1. G1 enforcement and later production components remain unimplemented.
 
 ## D-001 — Preserve the supplied specification pack
 
@@ -12,7 +12,7 @@ The user supplied `https://github.com/sai161812/aclais-1.git`. Authenticated Git
 
 ## D-003 — Keep this checkpoint documentation-only
 
-The current work is limited to A0 readiness and specification reconciliation, including affected specs, decisions, build status, and the A0–A10 plan. Application features and enforcement code remain unstarted until their mandatory prerequisites are met.
+A0 was limited to readiness and specification reconciliation, including affected specs, decisions, build status, and the A0–A10 plan; it implemented no application code. Later checkpoints follow the sequence in `IMPLEMENTATION_CHECKPOINTS.md` and require their listed prerequisites.
 
 ## D-004 — Track safe templates and summaries; ignore sensitive runtime material
 
@@ -53,3 +53,19 @@ Report portable CI, Windows-specific automated checks and mandatory demonstratio
 ## D-013 — Keep the specification pack in its supplied folder layout
 
 Retain all nine specifications under `docs/`. Root documentation must link to `docs/00_START_HERE.md`; do not move the pack to `docs/spec/`. Build sequence is defined in root `IMPLEMENTATION_CHECKPOINTS.md` and does not change the three-component scope or G1→G2→G3 order.
+
+## D-014 — Use locked project-local development environments
+
+Keep the Python controller project in `backend/aclais` with its PEP 621 `pyproject.toml` and committed `uv.lock`; keep the React/TypeScript dashboard in `frontend/aclais` with exact package versions and committed `package-lock.json`. Use Python 3.12 and the observed Node 24/npm environment. Keep virtual environments and installed packages ignored and local to their component directories.
+
+## D-015 — Generate shared API artifacts from backend models
+
+Backend Pydantic response models are the A1 schema source. Generate the tracked `shared/openapi.json` artifact from FastAPI OpenAPI, then generate frontend TypeScript declarations from that shared document. Check both generation steps for stale committed output. Extend this source as API contracts are implemented; do not maintain a second handwritten copy.
+
+## D-016 — Keep A1 readiness and logs truthful
+
+Validate only the supported `ACLAIS_` configuration keys and bind the API to `127.0.0.1` with an exact Host allowlist. The minimal health response may report that the API process responds, while G1 protection remains `unknown` and `protection_ready` is false. Emit structured JSON logs with key-based field redaction, full cookie-header and common token-pattern redaction, omit exception text, and never log request bodies or secrets.
+
+## D-017 — Keep portable CI separate and read-only
+
+Run real backend lint/tests and frontend API-type check, typecheck, lint and build in separate GitHub-hosted Ubuntu jobs. Grant only `contents: read`, pin each action to a verified full commit SHA, bound job timeouts, disable persisted checkout credentials, and provide no deployment credentials. Use ordinary `pull_request`, never a privileged pull-request event. These jobs establish portable checks only; Windows enforcement remains its own real-target lane.

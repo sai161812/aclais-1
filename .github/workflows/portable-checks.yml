@@ -1,0 +1,86 @@
+name: Portable checks
+
+on:
+  push:
+    branches: [aclais-prototype]
+  pull_request:
+    branches: [aclais-prototype]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Portable backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12.10"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.15"
+          enable-cache: false
+
+      - name: Sync locked backend environment
+        working-directory: backend/aclais
+        run: uv sync --locked
+
+      - name: Backend lint
+        working-directory: backend/aclais
+        run: uv run --locked ruff check .
+
+      - name: Portable backend tests
+        working-directory: backend/aclais
+        run: uv run --locked pytest -m portable
+
+      - name: Check generated OpenAPI
+        working-directory: backend/aclais
+        run: uv run --locked python ../../scripts/export_openapi.py --check
+
+  frontend:
+    name: Portable frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/aclais/.nvmrc
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend/aclais
+        run: npm ci
+
+      - name: Generate API types
+        working-directory: frontend/aclais
+        run: npm run api:generate
+
+      - name: Verify generated API types
+        run: git diff --exit-code -- frontend/aclais/src/generated/api.ts
+
+      - name: Frontend type checking
+        working-directory: frontend/aclais
+        run: npm run typecheck
+
+      - name: Frontend lint
+        working-directory: frontend/aclais
+        run: npm run lint
+
+      - name: Frontend build
+        working-directory: frontend/aclais
+        run: npm run build

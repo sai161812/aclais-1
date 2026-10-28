@@ -1,0 +1,160 @@
+:root {
+  font-family: Inter, "Segoe UI", sans-serif;
+  color: #172b2a;
+  background: #f3f5f2;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  --ink: #172b2a;
+  --muted: #687775;
+  --line: #dfe5df;
+  --accent: #337c68;
+  --surface: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button, a { font: inherit; }
+a { color: inherit; }
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  padding: 28px clamp(20px, 5vw, 72px) 22px;
+}
+
+.topbar, .footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-decoration: none;
+}
+
+.wordmark-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #9cb9ad;
+  border-radius: 9px;
+  color: var(--accent);
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.environment-label, .panel-kicker, .note-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.status-panel {
+  width: min(100%, 720px);
+  margin: auto;
+  padding: clamp(28px, 5vw, 56px) 0;
+}
+
+h1 {
+  max-width: 620px;
+  margin: 18px 0 12px;
+  font-size: clamp(38px, 7vw, 64px);
+  font-weight: 560;
+  letter-spacing: -0.055em;
+  line-height: 1.05;
+}
+
+.lead {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(15px, 2vw, 17px);
+  line-height: 1.7;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 38px;
+  padding: 20px 21px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 12px 36px rgb(29 54 45 / 5%);
+}
+
+.status-indicator {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #c5a34a;
+  box-shadow: 0 0 0 5px #f7f1df;
+}
+
+.status-indicator.is-ready {
+  background: #38856b;
+  box-shadow: 0 0 0 5px #e6f2ec;
+}
+
+.status-copy { flex: 1; }
+.status-title { margin: 0 0 5px; font-size: 14px; font-weight: 680; }
+.status-detail { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+.status-tag {
+  padding: 7px 9px;
+  border: 1px solid #eadfbf;
+  border-radius: 999px;
+  color: #806629;
+  background: #fbf8ef;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.readiness-note {
+  display: flex;
+  gap: 16px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.note-label { flex: 0 0 112px; font-size: 9px; }
+.footer { color: #87928f; font-size: 11px; }
+
+:focus-visible { outline: 3px solid #77a996; outline-offset: 4px; }
+
+@media (max-width: 540px) {
+  .app-shell { padding: 20px 18px 18px; }
+  .status-card { align-items: flex-start; gap: 13px; padding: 17px 15px; }
+  .status-tag { padding: 6px 7px; font-size: 8px; }
+  .readiness-note { flex-direction: column; gap: 4px; }
+  .note-label { flex-basis: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+}
