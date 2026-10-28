@@ -63,8 +63,10 @@ As of 2026-10-29. A0, A1 and A2 are complete. A1 portable checks passed locally 
 - Integrity: 11/11 seeded fixture hashes unchanged; 530/530 protected runtime-code files unchanged; trusted state, installation manifest, sentinel and repository source/evidence marker unchanged. Runtime ACLAIS import passed. The synthetic repository marker and worker-created-child target were absent after cleanup.
 - Private probe evidence: `evidence/A2.md`, `evidence/a2-access-summary.json`. These are actual demonstration-machine results, not portable CI output.
 - Portable checks rerun: `scripts/check.ps1` passed (19 backend tests, Ruff, schema/type generation checks, frontend typecheck/lint/build); all seven PowerShell scripts parsed; owned-root guard passed 8/8, including a known Windows profile junction rejection.
+- A2 GitHub Actions: [run 3](https://github.com/sai161812/aclais-1/actions/runs/40757642281) passed for `854ba2159369bc2235940fd2fe19239056193d0f`; the portable backend and frontend jobs completed successfully. This CI run did not execute Windows enforcement.
+- A2 synchronization: implementation commit `854ba2159369bc2235940fd2fe19239056193d0f` was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the commit and the local working tree was clean.
 - Verification lanes: portable CI is reported separately and does not establish Windows enforcement. The automated Windows CI lane and all A3 launcher/Job Object tests remain `NOT_RUN`.
-- Remaining issues: implement A3 only after this A2 checkpoint is committed and synchronized; A2 does not claim a full machine sandbox, network isolation, or A3 process containment.
+- Remaining issues: A3 launcher/job containment is next; A2 does not claim a full machine sandbox, network isolation, or A3 process containment.
 
 ## Next step
 
