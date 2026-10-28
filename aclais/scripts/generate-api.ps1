@@ -1,11 +1,13 @@
 $ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent $PSScriptRoot
-$backendDir = Join-Path $repoRoot 'backend/aclais'
-$frontendDir = Join-Path $repoRoot 'frontend/aclais'
+$componentRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $componentRoot
+$backendDir = Join-Path $componentRoot 'backend'
+$frontendDir = Join-Path $componentRoot 'frontend'
+$openApiExporter = Join-Path $PSScriptRoot 'export_openapi.py'
 
 Push-Location $backendDir
 try {
-    uv run --locked python ../../scripts/export_openapi.py
+    uv run --locked python $openApiExporter
     if ($LASTEXITCODE -ne 0) { throw 'OpenAPI export failed.' }
 }
 finally {

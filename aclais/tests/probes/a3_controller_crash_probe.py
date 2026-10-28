@@ -8,8 +8,8 @@ import sys
 import time
 from pathlib import Path
 
-REPOSITORY = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPOSITORY / "backend" / "aclais" / "src"))
+REPOSITORY = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPOSITORY / "aclais" / "backend" / "src"))
 
 from aclais.launcher.windows import RuntimeLayout, WindowsWorkerController  # noqa: E402
 

@@ -144,7 +144,7 @@ $code = Join-Path $labRoot 'code'
 $store = Join-Path $labRoot 'store'
 $workRoot = Join-Path $labRoot 'work'
 $repositoryRoot = [IO.Path]::GetFullPath($RepositoryRoot)
-$repositorySource = Join-Path $repositoryRoot 'backend\aclais\src\aclais\app.py'
+$repositorySource = Join-Path $repositoryRoot 'aclais\backend\src\aclais\app.py'
 $repositoryEvidence = Join-Path $repositoryRoot 'evidence'
 $repositoryEvidenceProbe = Join-Path $repositoryEvidence '.a2-worker-access-probe.tmp'
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -284,10 +284,10 @@ try {
 
     $null = Test-A2ExpectedDenied -Name 'repository_application_code_read_denied' -Operation {
         Test-A2CanRead -Path $repositorySource
-    }
+    } -ExpectedWin32Errors @(5, 2, 3)
     $null = Test-A2ExpectedDenied -Name 'repository_application_code_write_denied' -Operation {
         Test-A2WriteOpen -Path $repositorySource
-    }
+    } -ExpectedWin32Errors @(5, 2, 3)
     $null = Test-A2ExpectedDenied -Name 'repository_evidence_read_denied' -Operation {
         Test-A2CanRead -Path $repositoryEvidenceProbe
     }

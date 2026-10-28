@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$componentRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $componentRoot
 $labRoot = 'C:\ACLAIS-Lab'
 $sentinelPath = Join-Path $labRoot '.owner-sentinel.json'
 $manifestPath = Join-Path $labRoot 'state\installation.json'
@@ -35,8 +36,8 @@ function Write-A2Marker {
 function Restore-A2DisposableTargets {
     param([Parameter(Mandatory)][byte[]]$SentinelBytes)
 
-    $privateTemplate = Join-Path $repoRoot 'tests\fixtures\templates\private-original.template.csv'
-    $selectedTemplate = Join-Path $repoRoot 'tests\fixtures\templates\selected-input.template.csv'
+    $privateTemplate = Join-Path $componentRoot 'tests\fixtures\templates\private-original.template.csv'
+    $selectedTemplate = Join-Path $componentRoot 'tests\fixtures\templates\selected-input.template.csv'
     $privateBytes = [IO.File]::ReadAllBytes($privateTemplate)
     $selectedBytes = [IO.File]::ReadAllBytes($selectedTemplate)
     foreach ($name in @('Personnel_Private.csv', 'delete-target.csv', 'rename-target.csv', 'replace-target.csv', 'overwrite-target.csv', 'dacl-target.csv')) {
@@ -180,7 +181,7 @@ $repositoryEvidenceChild = Join-Path (Split-Path -Parent $repositoryEvidenceProb
 $repositoryEvidenceChildBytes = [Text.UTF8Encoding]::new($false).GetBytes('checkout evidence create attempt')
 $repositoryEvidenceProbeHashBefore = $null
 $repositoryEvidenceProbeHashAfter = $null
-$repositorySourcePath = Join-Path $repoRoot 'backend\aclais\src\aclais\app.py'
+$repositorySourcePath = Join-Path $componentRoot 'backend\src\aclais\app.py'
 $repositorySourceHashBefore = $null
 $repositorySourceHashAfter = $null
 $previousPythonPath = $env:PYTHONPATH
@@ -196,6 +197,15 @@ try {
     if ($manifest.owner_sid -ne $ownerIdentity.User.Value -or $sentinel.owner_sid -ne $ownerIdentity.User.Value) {
         throw 'The A2 installation belongs to a different owner SID.'
     }
+    $probeSource = Join-Path $componentRoot 'tests\probes\windows_a2_access_probe.ps1'
+    $probePath = Join-Path $labRoot 'code\private-probes\windows_a2_access_probe.ps1'
+    $probeRecord = @($manifest.protected_code | Where-Object { $_.path -eq 'code/private-probes/windows_a2_access_probe.ps1' })
+    if ($probeRecord.Count -ne 1 -or -not (Test-Path -LiteralPath $probeSource -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $probePath -PathType Leaf) -or
+        (Get-FileHash -LiteralPath $probeSource -Algorithm SHA256).Hash.ToLowerInvariant() -ne $probeRecord[0].sha256 -or
+        (Get-FileHash -LiteralPath $probePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $probeRecord[0].sha256) {
+        throw 'The fixed A2 probe source and protected installation do not match; run aclais/scripts/deploy_a2_probe.ps1 first.'
+    }
     if ($sentinel.root_path -ne $labRoot -or $sentinel.root_id -ne $manifest.root_id -or
         $sentinel.machine -ne $env:COMPUTERNAME -or $manifest.machine -ne $env:COMPUTERNAME) {
         throw 'The A2 sentinel does not match the owned root, manifest, or demonstration machine.'
@@ -207,7 +217,7 @@ try {
         throw 'The A2 worker SID must differ from the ordinary owner SID.'
     }
 
-    $rootGuardProbePath = Join-Path $repoRoot 'tests\probes\a2_root_guard_probe.ps1'
+    $rootGuardProbePath = Join-Path $componentRoot 'tests\probes\a2_root_guard_probe.ps1'
     $rootGuardOutput = @(& (Join-Path $PSHOME 'powershell.exe') -NoProfile -NonInteractive `
         -ExecutionPolicy Bypass -File $rootGuardProbePath)
     if ($LASTEXITCODE -ne 0 -or $rootGuardOutput.Count -ne 1) {
@@ -297,7 +307,6 @@ try {
     $stdoutPath = Join-Path $labRoot ('state\a2-probe-' + [guid]::NewGuid().ToString('N') + '.stdout.tmp')
     $stderrPath = Join-Path $labRoot ('state\a2-probe-' + [guid]::NewGuid().ToString('N') + '.stderr.tmp')
     $probeId = [guid]::NewGuid().ToString('N')
-    $probePath = Join-Path $labRoot 'code\private-probes\windows_a2_access_probe.ps1'
     $selectedRecord = @($manifest.fixtures | Where-Object { $_.path -eq 'store/selected/Selected_Input.csv' }) | Select-Object -First 1
     if (-not $selectedRecord) { throw 'Selected input hash is missing from the protected installation manifest.' }
     $arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -LabRoot "{1}" -ExpectedWorkerSid "{2}" -ExpectedSelectedHash "{3}" -RepositoryRoot "{4}" -ProbeId "{5}"' -f `
@@ -364,8 +373,8 @@ try {
         evidence_probe_sha256_after = $repositoryEvidenceProbeHashAfter
     }
 
-    $privateTemplate = Join-Path $repoRoot 'tests\fixtures\templates\private-original.template.csv'
-    $selectedTemplate = Join-Path $repoRoot 'tests\fixtures\templates\selected-input.template.csv'
+    $privateTemplate = Join-Path $componentRoot 'tests\fixtures\templates\private-original.template.csv'
+    $selectedTemplate = Join-Path $componentRoot 'tests\fixtures\templates\selected-input.template.csv'
     $integrityChecks = @()
     foreach ($record in $manifest.fixtures) {
         $path = Join-Path $labRoot ($record.path.Replace('/', '\'))
@@ -524,7 +533,7 @@ try {
         "- Owned-root guard checks: $($summary.root_guard_probe.check_count) (PASS)",
         "- Protected runtime import: $($summary.runtime_import)",
         '',
-        'The checks below ran inside the actual AclaisWorker process. Errors are the Windows HRESULT/Win32 results returned by attempted operations. Windows may report file/path-not-found (2/3) when a protected parent denies traversal; these outcomes count only when owner-side hashes confirm all seeded targets still exist unchanged. The fixture contents and worker password are not included.',
+        'The checks below ran inside the actual AclaisWorker process. Errors are the Windows HRESULT/Win32 results returned by attempted operations. Windows may report file/path-not-found (2/3) when a protected parent denies traversal; these outcomes count only when owner-side hashes confirm the protected target existed before launch and remains present and unchanged afterward. Seeded fixtures are checked against the trusted manifest; checkout application source and the temporary evidence marker use owner-side before/after hashes. The fixture contents and worker password are not included.',
         '',
         '| Check | Result | Observed operation | Windows error |',
         '|---|---:|---|---|'

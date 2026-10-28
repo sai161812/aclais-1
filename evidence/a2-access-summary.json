@@ -530,7 +530,7 @@
                                  {
                                      "name":  "repository_application_code_read_denied",
                                      "passed":  true,
-                                     "expected":  "Win32 5",
+                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
                                      "actual":  "access_denied",
                                      "error":  {
                                                    "win32_error":  5,
@@ -542,7 +542,7 @@
                                  {
                                      "name":  "repository_application_code_write_denied",
                                      "passed":  true,
-                                     "expected":  "Win32 5",
+                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
                                      "actual":  "access_denied",
                                      "error":  {
                                                    "win32_error":  5,
@@ -850,10 +850,10 @@
                      ],
     "code_integrity_before_repair":  {
                                          "passed":  true,
-                                         "expected_file_count":  530,
-                                         "actual_file_count":  530,
-                                         "expected_inventory_sha256":  "3642414f183564d0e72e4c0e37c9a7eff26cb4ee71a7e1e2aa0587c420399e64",
-                                         "actual_inventory_sha256":  "3642414f183564d0e72e4c0e37c9a7eff26cb4ee71a7e1e2aa0587c420399e64",
+                                         "expected_file_count":  566,
+                                         "actual_file_count":  566,
+                                         "expected_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
+                                         "actual_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
                                          "mismatches":  [
 
                                                         ]
@@ -955,9 +955,9 @@
                                 },
     "installation_manifest_integrity":  {
                                             "passed":  true,
-                                            "before_sha256":  "5547e6d44a747ebc9ce0034b6b8d15214e1f4ad34697cf4356f4b7c075f326c2",
-                                            "after_probe_sha256":  "5547e6d44a747ebc9ce0034b6b8d15214e1f4ad34697cf4356f4b7c075f326c2",
-                                            "after_repair_sha256":  "5547e6d44a747ebc9ce0034b6b8d15214e1f4ad34697cf4356f4b7c075f326c2"
+                                            "before_sha256":  "fc7a694f739104d6490474cf526ac63a738aa3f7362db695be74fd348405b172",
+                                            "after_probe_sha256":  "fc7a694f739104d6490474cf526ac63a738aa3f7362db695be74fd348405b172",
+                                            "after_repair_sha256":  "fc7a694f739104d6490474cf526ac63a738aa3f7362db695be74fd348405b172"
                                         },
     "sentinel_integrity":  {
                                "passed":  true,
@@ -1035,10 +1035,10 @@
                                        ],
     "code_integrity_after_repair":  {
                                         "passed":  true,
-                                        "expected_file_count":  530,
-                                        "actual_file_count":  530,
-                                        "expected_inventory_sha256":  "3642414f183564d0e72e4c0e37c9a7eff26cb4ee71a7e1e2aa0587c420399e64",
-                                        "actual_inventory_sha256":  "3642414f183564d0e72e4c0e37c9a7eff26cb4ee71a7e1e2aa0587c420399e64",
+                                        "expected_file_count":  566,
+                                        "actual_file_count":  566,
+                                        "expected_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
+                                        "actual_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
                                         "mismatches":  [
 
                                                        ]
@@ -1125,7 +1125,7 @@
                                                  "Successfully processed 1 files; Failed processing 0 files"
                                              ],
                           "repository_application_code":  [
-                                                              "D:\\Workspace\\IDL\\ACLAIS-1\\backend\\aclais\\src\\aclais LAPTOP-FMQ8RARQ\\AclaisWorker:(OI)(CI)(N)",
+                                                              "D:\\Workspace\\IDL\\ACLAIS-1\\aclais\\backend\\src\\aclais LAPTOP-FMQ8RARQ\\AclaisWorker:(OI)(CI)(N)",
                                                               "                                                    LAPTOP-FMQ8RARQ\\AclaisWorker:(I)(OI)(CI)(N)",
                                                               "                                                    BUILTIN\\Administrators:(I)(F)",
                                                               "                                                    BUILTIN\\Administrators:(I)(OI)(CI)(IO)(F)",

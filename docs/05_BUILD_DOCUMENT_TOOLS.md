@@ -1,6 +1,8 @@
 # Component 3 — Document Tools website and workers
 Prerequisites: G1 and G2 PASS. Read 01, 02, 06 and 07. Both utilities are internal parts of this component; finish/test Report Formatter before adding Invoice Analyzer.
 
+Keep the website, Report Formatter worker, Invoice Analyzer worker, assets, tests, dependencies and component-specific configuration inside `document-tools/`. Keep generated confidential fixtures and runtime data in their designated protected runtime locations outside Git. Do not add production Document Tools code before both G1 and G2 pass; root `tests/` remains reserved for cross-component integration and acceptance tests.
+
 ## Website
 Serve a separate local website at browser origin `http://localhost:8766`, with listeners only on `127.0.0.1:8766` and `[::1]:8766` and an exact `localhost:8766` Host allowlist. This hostname differs from the ACLAIS owner-session host `127.0.0.1`; different ports alone do not isolate cookies. Do not set, proxy, copy or expose the ACLAIS session cookie/token to this origin. Brand it “Document Tools,” a credible compact utility suite. Two clear cards: Format a report and Extract invoice details. Each explains the legitimate result and has a normal primary action. No attacks, scenarios, protection switches, payload fields, exploit logs or demo terminology in the UI.
 

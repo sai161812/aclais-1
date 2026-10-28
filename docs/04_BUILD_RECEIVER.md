@@ -1,6 +1,8 @@
 # Component 2 — local collection server
 Prerequisite: evidence/G1.md PASS. Read 01, 02 and 07. This is a separate process with its own SQLite database, not a counter inside ACLAIS.
 
+Keep receiver source, tests, receipt inspection tools, dependencies and component-specific configuration inside `receiver/`. Keep its live database and raw receipt payloads in the designated protected runtime location outside Git. Do not add receiver production implementation before ACLAIS G1 passes. Root `tests/` remains reserved for cross-component integration and acceptance tests.
+
 ## Purpose
 Receive a stolen seeded payload if a hostile utility actually obtains it. Supply independent persistent receipt evidence. It does not decide whether an attack was blocked and cannot alter ACLAIS incidents.
 

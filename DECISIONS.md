@@ -1,6 +1,6 @@
 # Decisions
 
-This log records the A0 specification decisions, A1 foundation choices, A2 protected-fixture decisions and A3 launcher choices. Later production controller components remain unimplemented.
+This log records the A0 specification decisions, A1 foundation choices, A2 protected-fixture decisions, A3 launcher choices, and repository-structure checkpoint. Later production controller components remain unimplemented.
 
 ## D-001 — Preserve the supplied specification pack
 
@@ -54,9 +54,9 @@ Report portable CI, Windows-specific automated checks and mandatory demonstratio
 
 Retain all nine specifications under `docs/`. Root documentation must link to `docs/00_START_HERE.md`; do not move the pack to `docs/spec/`. Build sequence is defined in root `IMPLEMENTATION_CHECKPOINTS.md` and does not change the three-component scope or G1→G2→G3 order.
 
-## D-014 — Use locked project-local development environments
+## D-014 — Use locked component-local development environments
 
-Keep the Python controller project in `backend/aclais` with its PEP 621 `pyproject.toml` and committed `uv.lock`; keep the React/TypeScript dashboard in `frontend/aclais` with exact package versions and committed `package-lock.json`. Use Python 3.12 and the observed Node 24/npm environment. Keep virtual environments and installed packages ignored and local to their component directories.
+Keep the Python controller project in `aclais/backend` with its PEP 621 `pyproject.toml` and committed `uv.lock`; keep the React/TypeScript dashboard in `aclais/frontend` with exact package versions and committed `package-lock.json`. Use Python 3.12 and the observed Node 24/npm environment. Keep virtual environments and installed packages ignored and local to their component directories.
 
 ## D-015 — Generate shared API artifacts from backend models
 
@@ -74,9 +74,9 @@ Run real backend lint/tests and frontend API-type check, typecheck, lint and bui
 
 The demonstration checkout is on a volume whose inherited `Authenticated Users` permissions include Modify. Apply an explicit deny only to the `AclaisWorker` SID on the backend/frontend application source and committed evidence subtrees, where the owner can still read and update files. Do not change the repository root, volume/ancestor ACLs, or a group containing the owner. Keep the separate `C:\ACLAIS-Lab` runtime code ACL allowlist as the primary worker-visible code boundary.
 
-## D-019 — Require integrity evidence for path-hidden rename failures
+## D-019 — Require owner integrity evidence for path-hidden denials
 
-Windows may return file/path-not-found when traversal to a protected parent is denied. A private probe may count Win32 2/3 as a denied rename only when the owner verifies the seeded target exists and matches its trusted manifest hash before launch, then confirms it remains present and unchanged after the probe. Other denials require the observed access-denied result; command success or an exception alone is not proof.
+Windows may return file/path-not-found when traversal to a protected parent is denied, including for reads, writes, and renames. A private probe may count Win32 2/3 as a denial only when the owner verifies the protected target exists and matches its trusted manifest hash before launch, then confirms it remains present and unchanged after the probe. Other denials require the observed access-denied result; command success or an exception alone is not proof.
 
 ## D-020 — Keep the A3 entrypoint fixed and task configuration owner-protected
 
@@ -93,3 +93,7 @@ After resume, the returned worker handle owns the process, primary thread, job, 
 ## D-023 — Serialize launch admission with controller shutdown
 
 Hold the controller lifecycle lock across private task configuration creation, suspended process setup and active-handle registration. Shutdown takes the same lock before snapshotting active handles. This prevents a process from being created after shutdown snapshots the job set but before a new handle is registered. The demonstration-machine harness pauses immediately before `ResumeThread` and races shutdown against launch to check this boundary.
+
+## D-024 — Keep each component's source in its assigned folder
+
+Use one repository with `aclais/`, `receiver/`, and `document-tools/` as the component roots, `shared/` for schemas/minimal protocol definitions, root `tests/` only for cross-component integration/acceptance, and root `scripts/` only for whole-system orchestration. Keep component implementation, component-owned test suites and private probes, assets, configuration, dependency manifests, and locks with that component. Keep later component folders as reservation notes until their prerequisite gates pass. Root orchestration must invoke component commands by resolved paths from any caller working directory. Application/runtime paths and fixed worker registration remain explicit and independent of shell CWD. This checkpoint changes source organization only; protected runtime data, credentials, and confidential fixtures stay in their existing designated runtime locations.

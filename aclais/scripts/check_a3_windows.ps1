@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$componentRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $componentRoot
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
 if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -13,9 +14,9 @@ Push-Location $repoRoot
 try {
     & (Join-Path $PSScriptRoot 'deploy_a3_probe.ps1')
     if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "A3 runtime deployment failed: $LASTEXITCODE" }
-    Push-Location (Join-Path $repoRoot 'backend\aclais')
+    Push-Location (Join-Path $componentRoot 'backend')
     try {
-        & uv run --locked pytest -c pyproject.toml ../../tests/windows_enforcement/test_a3_windows_launcher.py -m windows_enforcement -v
+        & uv run --locked pytest -c pyproject.toml ../tests/windows_enforcement/test_a3_windows_launcher.py -m windows_enforcement -v
         if ($LASTEXITCODE -ne 0) { throw "A3 Windows enforcement checks failed: $LASTEXITCODE" }
     }
     finally { Pop-Location }

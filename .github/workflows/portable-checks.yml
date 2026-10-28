@@ -32,20 +32,20 @@ jobs:
           enable-cache: false
 
       - name: Sync locked backend environment
-        working-directory: backend/aclais
+        working-directory: aclais/backend
         run: uv sync --locked
 
       - name: Backend lint
-        working-directory: backend/aclais
+        working-directory: aclais/backend
         run: uv run --locked ruff check .
 
       - name: Portable backend tests
-        working-directory: backend/aclais
+        working-directory: aclais/backend
         run: uv run --locked pytest -m portable
 
       - name: Check generated OpenAPI
-        working-directory: backend/aclais
-        run: uv run --locked python ../../scripts/export_openapi.py --check
+        working-directory: aclais/backend
+        run: uv run --locked python ../../aclais/scripts/export_openapi.py --check
 
   frontend:
     name: Portable frontend
@@ -60,27 +60,27 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: frontend/aclais/.nvmrc
+          node-version-file: aclais/frontend/.nvmrc
 
       - name: Install locked frontend dependencies
-        working-directory: frontend/aclais
+        working-directory: aclais/frontend
         run: npm ci
 
       - name: Generate API types
-        working-directory: frontend/aclais
+        working-directory: aclais/frontend
         run: npm run api:generate
 
       - name: Verify generated API types
-        run: git diff --exit-code -- frontend/aclais/src/generated/api.ts
+        run: git diff --exit-code -- aclais/frontend/src/generated/api.ts
 
       - name: Frontend type checking
-        working-directory: frontend/aclais
+        working-directory: aclais/frontend
         run: npm run typecheck
 
       - name: Frontend lint
-        working-directory: frontend/aclais
+        working-directory: aclais/frontend
         run: npm run lint
 
       - name: Frontend build
-        working-directory: frontend/aclais
+        working-directory: aclais/frontend
         run: npm run build

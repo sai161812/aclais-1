@@ -405,7 +405,7 @@ def test_a3_real_worker_identity_job_pipes_and_cleanup() -> None:
                 "--signal-file",
                 str(signal_path),
             ],
-            cwd=Path(__file__).resolve().parents[2],
+            cwd=Path(__file__).resolve().parents[3],
             env=_minimal_owner_env(layout),
             shell=False,
             creationflags=_CREATE_NO_WINDOW,

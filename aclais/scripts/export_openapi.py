@@ -7,12 +7,13 @@ import json
 import sys
 from pathlib import Path
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+ACLAIS_ROOT = REPOSITORY_ROOT / "aclais"
 OUTPUT_PATH = REPOSITORY_ROOT / "shared" / "openapi.json"
 
 
 def render_openapi() -> str:
-    sys.path.insert(0, str(REPOSITORY_ROOT / "backend" / "aclais" / "src"))
+    sys.path.insert(0, str(ACLAIS_ROOT / "backend" / "src"))
     from aclais.app import app
 
     return json.dumps(app.openapi(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
@@ -30,7 +31,7 @@ def main() -> int:
 
     if args.check:
         if not OUTPUT_PATH.is_file() or OUTPUT_PATH.read_text(encoding="utf-8") != generated:
-            print("shared/openapi.json is stale; run scripts/generate-api.ps1", file=sys.stderr)
+            print("shared/openapi.json is stale; run aclais/scripts/generate-api.ps1", file=sys.stderr)
             return 1
         print("Shared OpenAPI schema matches the backend response models.")
         return 0

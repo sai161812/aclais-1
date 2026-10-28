@@ -2,6 +2,8 @@
 
 This sequence decomposes ACLAIS G1 into reviewable checkpoints. It preserves the product scope and component order in `docs/00_START_HERE.md`: finish ACLAIS G1 before production receiver G2, and finish G2 before Document Tools G3. A0 is readiness/specification work; A1–A10 build and audit ACLAIS. Passing A0 does not mean G1 is complete.
 
+The repository-structure checkpoint `R0` is a source-organization prerequisite inserted after the completed A3 work and before A4 begins. It does not renumber, replace, or change the deliverables of A0–A10.
+
 For each checkpoint, verify only its listed tests and acceptance criteria, update `BUILD_STATUS.md` and `DECISIONS.md`, inspect the explicit staged diff, and commit/push only the working branch under `AGENTS.md` and `GIT_WORKFLOW.md`. A failed or unavailable mandatory prerequisite stops advancement. Report `PASS`, `FAIL`, `BLOCKED`, or `NOT_RUN` accurately. Do not implement a later checkpoint while completing an earlier one.
 
 ## A0 — Readiness and specification
@@ -44,9 +46,19 @@ For each checkpoint, verify only its listed tests and acceptance criteria, updat
 
 **Observable acceptance:** No worker runs before verified job assignment; identity/assignment failure leaves no probe marker or running process; a harmless child is terminated with the parent/job after exit, cancel, timeout, shutdown and abrupt controller closure; shutdown serialized against launch admission leaves no untracked worker; the unrelated owner process remains alive; task configuration is unchanged and removed by the owner; bounded stdout/stderr are tagged only as `worker_reported`; no owner-identity fallback occurs. Record sanitized results from both lanes. A3 does not complete G1 or authorize A4 until these acceptance results are reviewed.
 
+## R0 — Repository structure (after A3, before A4)
+
+**Dependencies:** A0–A3 PASS; no A4 work has started.
+
+**Deliverables:** Keep one repository and the existing working branch. Put all current ACLAIS source, tests, fixtures/templates, probes, scripts, assets, and configuration under `aclais/`; keep `receiver/` and `document-tools/` as reservation notes only until their gates pass; keep only shared schemas/minimal protocols under `shared/`; reserve root `tests/` for cross-component integration/acceptance and root `scripts/` for whole-system orchestration. Retain the supplied `docs/` arrangement, runtime data and credentials in their designated runtime locations, existing root tracking files, and fixed worker allowlist. Update imports, manifests, scripts, CI, specs, and documentation together. Add no application features.
+
+**Tests/checks:** Inspect the complete repository/Git state and all moved files; audit for stale paths and component-private cross-imports; verify root orchestration from outside component directories; run the full implemented ACLAIS portable suite and frontend build; parse component PowerShell scripts; rerun the real A2 worker filesystem access probe and A3 launcher/child-process enforcement suite on the demonstration machine because source ACLs and launcher paths may have changed; inspect runtime fixture locations and verify they remain outside Git; validate all links and the staged diff. A path-hidden Win32 2/3 result for a protected source operation is accepted only when the owner verifies the source exists and its hash is unchanged before and after the worker probe.
+
+**Observable acceptance:** Each component-owned file is in its assigned component folder; root tests and scripts have only their cross-component/orchestration roles; reserved components contain no production implementation; the single Git worktree and branch are unchanged; root commands need no manual component-directory change; fixed entrypoint registration resolves from explicit paths; actual A2/A3 checks pass after relocation; no protected runtime data is staged; current portable and Windows results are recorded separately. `R0 PASS` is required before A4; it does not advance or complete A4 or G1.
+
 ## A4 — Persistence and contracts
 
-**Dependencies:** A3 PASS.
+**Dependencies:** A3 PASS and R0 repository-structure PASS.
 
 **Deliverables:** Versioned SQLite schema/migrations with protected state directory, WAL and `synchronous=FULL`; task/event/contract/token/incident/output/request/receipt journal models; strict request and response schemas for every ACLAIS and receiver contract route; discriminated broker operations; generated OpenAPI and TypeScript types; idempotency keys bound to canonical request-body hashes. This checkpoint defines the receiver contract but does not implement its production process.
 

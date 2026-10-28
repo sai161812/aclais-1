@@ -1,9 +1,10 @@
 $ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$componentRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $componentRoot
 $labRoot = 'C:\ACLAIS-Lab'
 $manifestPath = Join-Path $labRoot 'state\installation.json'
 $sentinelPath = Join-Path $labRoot '.owner-sentinel.json'
-$sourceProbe = Join-Path $repoRoot 'tests\probes\a3_worker_probe.py'
+$sourceProbe = Join-Path $componentRoot 'tests\probes\a3_worker_probe.py'
 $runtimeProbe = Join-Path $labRoot 'code\private-probes\a3_worker_probe.py'
 $codeRoot = Join-Path $labRoot 'code'
 $pythonRuntime = Join-Path $codeRoot 'python-runtime'
@@ -144,7 +145,7 @@ if ($LASTEXITCODE -ne 0 -or $sourceRevision -notmatch '^[0-9a-f]{40}$') {
 }
 $runtimeUpdates += [ordered]@{
     checkpoint = 'A3'
-    source_path = 'tests/probes/a3_worker_probe.py'
+    source_path = 'aclais/tests/probes/a3_worker_probe.py'
     source_sha256 = $sourceHash
     source_revision = $sourceRevision
     deployed_utc = [DateTime]::UtcNow.ToString('o')

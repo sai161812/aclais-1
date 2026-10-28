@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$componentRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $componentRoot
 $labRoot = 'C:\ACLAIS-Lab'
 $sentinelPath = Join-Path $labRoot '.owner-sentinel.json'
 $provisionMarkerPath = Join-Path $labRoot '.provisioning.json'
@@ -222,10 +223,10 @@ foreach ($child in Get-ChildItem -LiteralPath (Join-Path $labRoot 'code') -Force
 New-Item -ItemType Directory -Path (Join-Path $labRoot 'code\aclais') -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $labRoot 'code\private-probes') -Force | Out-Null
 
-$sourcePackage = Join-Path $repoRoot 'backend\aclais\src\aclais'
+$sourcePackage = Join-Path $componentRoot 'backend\src\aclais'
 $protectedPackage = Join-Path $labRoot 'code\aclais'
 Copy-Item -Path (Join-Path $sourcePackage '*') -Destination $protectedPackage -Recurse -Force -ErrorAction Stop
-$probeSource = Join-Path $repoRoot 'tests\probes\windows_a2_access_probe.ps1'
+$probeSource = Join-Path $componentRoot 'tests\probes\windows_a2_access_probe.ps1'
 $probeDestination = Join-Path $labRoot 'code\private-probes\windows_a2_access_probe.ps1'
 Copy-Item -LiteralPath $probeSource -Destination $probeDestination -Force -ErrorAction Stop
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'a2_credential_manager.ps1') `
@@ -238,7 +239,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'a2_acl.ps1') `
     [Text.UTF8Encoding]::new($false)
 )
 
-$fixtureTemplateDir = Join-Path $repoRoot 'tests\fixtures\templates'
+$fixtureTemplateDir = Join-Path $componentRoot 'tests\fixtures\templates'
 $privateTemplate = Join-Path $fixtureTemplateDir 'private-original.template.csv'
 $selectedTemplate = Join-Path $fixtureTemplateDir 'selected-input.template.csv'
 $privateHash = Write-A2SeedFile -TemplatePath $privateTemplate -DestinationPath (Join-Path $labRoot 'store\originals\Personnel_Private.csv')
@@ -275,7 +276,7 @@ try {
         $previousErrorActionPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            $uvOutput = @(& $uv.Source sync --locked --no-dev --no-install-project --project backend/aclais 2>&1)
+            $uvOutput = @(& $uv.Source sync --locked --no-dev --no-install-project --project aclais/backend 2>&1)
             $uvExitCode = $LASTEXITCODE
         }
         finally { $ErrorActionPreference = $previousErrorActionPreference }
@@ -303,8 +304,8 @@ try {
         New-Item -ItemType Directory -Path $checkoutEvidence -Force | Out-Null
     }
     foreach ($protectedCheckoutPath in @(
-        (Join-Path $repoRoot 'backend\aclais\src'),
-        (Join-Path $repoRoot 'frontend\aclais\src'),
+        (Join-Path $componentRoot 'backend\src'),
+        (Join-Path $componentRoot 'frontend\src'),
         $checkoutEvidence
     )) {
         if (Test-Path -LiteralPath $protectedCheckoutPath) {

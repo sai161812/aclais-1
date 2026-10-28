@@ -23,6 +23,10 @@ Before Git changes, inspect the root and complete working tree, current branch a
 
 The verified repository was empty, so a documentation-only baseline was committed on local `main`, the configured default branch. Then `aclais-prototype` was created from that baseline. The remote default branch had no prior history to alter. Push only the working branch for this checkpoint. Keep ACLAIS, the receiver, and Document Tools together in this repository.
 
+## Source organization
+
+Keep one Git repository and one working branch for all components. The canonical layout is `aclais/`, `receiver/`, `document-tools/`, `shared/`, `tests/`, `scripts/`, and the existing `docs/`. Component source, tests, assets, manifests, and configuration stay in their component folder. Root `tests/` is cross-component only; root `scripts/` contains whole-system orchestration only. Shared files remain schemas and minimal protocol definitions. Keep later component folders as reservation notes until their prerequisite gate passes. Do not create nested repositories, submodules, or separate component histories. Never put provisioned credentials, confidential fixtures, runtime databases, or protected installation data in Git. Use the root orchestration commands without requiring a manual `cd` into a component.
+
 ## Checkpoint procedure
 
 1. Confirm the checkpoint's mandatory prerequisites and inspect files before staging.
@@ -31,5 +35,7 @@ The verified repository was empty, so a documentation-only baseline was committe
 4. Commit a passing checkpoint coherently with its implementation, tests, and documentation.
 5. Push only the working branch to the verified remote. Verify the remote branch head and push result; report synchronization failure accurately.
 6. When CI exists, inspect the checks for the pushed revision. Never report skipped or unrun enforcement checks as passing.
+
+For the repository-structure checkpoint, stage the moves and all import, script, worker-registration, frontend, CI, spec, permission-assumption, and documentation updates together. Rerun affected checks after relocation; historical PASS records do not replace checks invalidated by a source-path or ACL change.
 
 Never force-push, destructively reset, rewrite shared history, change repository settings, merge, or deploy without a separate instruction. Use `.gitignore` for local secrets/environments, runtime databases and raw receipts, generated confidential fixtures, unsanitized logs, and build output; retain synthetic fixture templates and sanitized summaries.
