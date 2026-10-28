@@ -101,6 +101,8 @@ Run implemented portable checks from any working directory:
 
 The root command delegates to the implemented ACLAIS checks by script location. Those checks sync the locked Python environment, run Ruff and portable pytest cases, check OpenAPI generation, install from the npm lockfile, verify generated TypeScript, typecheck and lint the frontend, and build its bundle. GitHub-hosted CI runs the portable backend and frontend jobs separately. No placeholder checks are used for reserved components.
 
+A4's SQLite migration tests create disposable databases under the test runner's temporary directory. The checked-in SQL files under `aclais/backend/src/aclais/persistence/migrations/` are versioned source; do not copy generated test databases into the protected runtime state or commit any runtime database. Pydantic models are authoritative for request, response and receiver journal schemas; regenerate `shared/openapi.json` and the TypeScript API types together after changing them.
+
 Portable checks do not run Windows enforcement. They never imply A2/A3 enforcement passed. The automated Windows tests and demonstration-machine checks must be reported separately. There is no self-hosted Windows CI runner.
 
 Regenerate API artifacts after changing backend models:
@@ -113,4 +115,4 @@ Review `shared/openapi.json` and `aclais/frontend/src/generated/api.ts` in the r
 
 ## Shutdown
 
-Stop each development server with Ctrl+C. No background worker, receiver, or production tool is started by the A1 shell.
+Stop each development server with Ctrl+C. The development shell does not start a receiver service or production tool. The A3 harmless private worker probes run only through their explicit test scripts.

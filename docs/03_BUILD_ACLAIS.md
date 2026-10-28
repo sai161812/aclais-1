@@ -33,7 +33,7 @@ The demonstration-machine A3 harness runs from the ordinary owner session, retri
 At runtime, startup doctor checks SID, effective fixture permissions, roots, secret access, DB migration state, code paths and ability to assign the job. Disable task launch when unhealthy.
 
 ## Step 3 — controller and broker
-Implement shared contracts exactly. SQLite holds tasks, contract grants, token hashes, incidents, events, published outputs and request deduplication. Protect the DB directory. Serialize task creation; never race two launches past the single-worker limit.
+Implement shared contracts exactly. Versioned SQLite migrations hold the controller document registry, tasks, immutable action contracts and grants, hash-only worker credentials, incidents, append-only events and state transitions, output publication journal, and request deduplication. The receiver owns a separate receipt database and filesystem journal; A4 defines its strict value contract only. Protect the controller DB directory. Serialize task creation; never race two launches past the single-worker limit.
 
 Document registry owns canonical paths. Requests accept opaque IDs only. No user path joins, UNC paths, alternate data streams, ../ escapes or absolute path arguments. Reject reparse points in managed roots and verify provisioned roots at startup. Since workers cannot mutate the originals directory, keep that invariant throughout execution.
 

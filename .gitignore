@@ -3,11 +3,15 @@
 .env.*
 !.env.example
 secrets/
+**/credentials/
 *.pem
 *.p12
 *.pfx
 *.key
 *.token
+*.credential
+*.credentials
+*.password
 
 # Local Python and JavaScript environments
 .venv/

@@ -101,3 +101,15 @@ Use one repository with `aclais/`, `receiver/`, and `document-tools/` as the com
 ## D-025 — Start implemented development services through root orchestration
 
 Use root `scripts/start.ps1 -Service Backend` or `-Service Frontend`, with component-specific commands in `aclais/scripts/start.ps1`. Resolve component locations from script paths and pass them as separate native arguments to uv/npm. Keep each server in the foreground in its own terminal, with live output and Ctrl+C shutdown; report native startup failures and preserve an existing port owner. Do not create background process registries or start reserved production components as part of the R0 follow-up. The later G1 operator startup/readiness controls remain their own deliverables.
+
+## D-026 — Version controller persistence with immutable intent and audit history
+
+The ACLAIS controller stores only controller-selected document paths and grants in a protected SQLite database. Versioned SQL migrations are checksum-verified using normalized LF line endings; connections enable foreign keys, WAL, and `synchronous=FULL`. Task identity, document identity/path, contract grants, credential digest/expiry, request key/body hash, and output journal intent are immutable in SQLite; state, revocation, response finalization, and verifier metadata change only through their defined transitions. Task transitions, grants, events, incident linkage, completed replay responses, and output publication states receive database guards appropriate to their immutability. Recovery may move an output from published to inconsistent so subsequent owner reads withhold it. Receiver receipt storage remains in the later receiver-owned database; A4 supplies and tests its strict receipt journal value model without building that service or mixing its authority into the controller database.
+
+## D-027 — Use backend Pydantic models as the contract source
+
+Backend strict Pydantic models define ACLAIS and receiver wire records, request/response shapes, the broker operation union, query bounds, IDs, and journal record values. Generate `shared/openapi.json` and the frontend TypeScript contract from those models. Keep generated files checked in and reject unexplained generator diffs. Only the existing health endpoint is mounted during A4; schema coverage of later routes is not a claim that those routes already work.
+
+## D-028 — Make verification a state on the success and revocation paths
+
+Both benign and revoked task flows enter `VERIFYING`: normal completion is `RUNNING → VERIFYING → COMPLETED`, and denial/cancel/timeout/shutdown pass through `REVOKING → VERIFYING`. The first persisted revocation cause remains unchanged through termination and terminalization. `BLOCKED` requires policy denial, `CANCELLED` requires cancellation, and only verified successful exit can produce `COMPLETED`; other containment/verification outcomes fail closed as `FAILED`.

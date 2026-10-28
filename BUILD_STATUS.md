@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0 through A3 and repository-structure checkpoint R0 are complete. R0 passed local portable and actual Windows A2/A3 checks after relocation; GitHub Actions runs 7 and 8 passed for its implementation and status commits. The R0 follow-up closes the remaining root-startup gap and passed local startup/shutdown, portable checks and hosted CI run 9. A4 has not started. Later production controller components remain unimplemented.
+As of 2026-10-29. A0 through A3 and repository-structure checkpoint R0 are complete. R0 passed local portable and actual Windows A2/A3 checks after relocation; GitHub Actions runs 7 and 8 passed for its implementation and status commits. The R0 follow-up closes the remaining root-startup gap and passed local startup/shutdown, portable checks and hosted CI run 9. A4 implementation and local verification are complete; its implementation commit and hosted CI review are pending. Later production controller components remain unimplemented.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
@@ -35,7 +35,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | A1 — project foundation | PASS | Local portable checks passed; GitHub Actions run 1 passed for the A1 implementation commit. Windows enforcement remains `NOT_RUN`. |
 | A2 — protected fixtures and worker identity | PASS | Demonstration-machine private worker probe passed 57/57 checks; sanitized evidence is tracked under `evidence/`. |
 | A3 — launcher and containment | PASS | Actual Windows demonstration-machine launcher checks and local portable checks passed; sanitized evidence is in `evidence/A3.md` and `evidence/a3-launcher-summary.json`. GitHub CI is portable only. |
-| A4 — persistence and contracts | NOT_STARTED | Requires A3 PASS and the separate R0 repository-structure checkpoint. |
+| A4 — persistence and contracts | PASS (local; hosted CI pending) | Requires A3 PASS and the separate R0 repository-structure checkpoint; see `evidence/A4.md`. |
 | A5 — broker and publication | NOT_STARTED | Requires A2–A4 PASS. |
 | A6 — lifecycle and recovery | NOT_STARTED | Requires A3–A5 PASS. |
 | A7 — verification and evidence | NOT_STARTED | Requires A2, A4–A6 PASS. |
@@ -60,7 +60,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - Root `scripts/start.ps1 -Service Backend` and `-Service Frontend` delegate to `aclais/scripts/start.ps1`. uv receives an explicit backend directory and npm receives an explicit frontend prefix; neither requires a manual directory change. Both servers run in the foreground and surface startup errors. Dependency-only instructions also avoid manual folder changes.
 - Actual Windows development smoke from `C:\Windows\Temp`: direct API health, frontend shell and frontend-proxied API health returned HTTP 200; health retained `protection_ready:false`. Duplicate starts failed for both occupied ports without changing existing listener identities; an unimplemented service name and missing uv/npm were rejected. Ctrl+C stopped each foreground session and final process/listener checks found no development servers remaining. This is development orchestration evidence, not worker enforcement.
 - Root portable checks from `C:\Windows\Temp` passed Ruff, 23 backend tests, OpenAPI/type generation consistency, frontend typecheck/lint/build and npm audit (0 vulnerabilities). The new scripts parsed successfully. The prior A2/A3 Windows evidence remains historical; this follow-up does not relocate source/runtime data or change worker entrypoints, permissions or launcher behavior, so those enforcement tests were not rerun.
-- Evidence: `evidence/R0-structure.md`, follow-up section. Implementation commit `860070068607acb7004a2cc001a5b7e39854bce8` was pushed to `origin/aclais-prototype` and `git ls-remote --heads` matched the local head. [GitHub Actions run 9](https://github.com/sai161812/aclais-1/actions/runs/40769494744) completed successfully for that exact revision; both portable jobs passed. The staged implementation diff was reviewed, and the working tree was clean after push. A4 remains `NOT_STARTED`.
+- Evidence: `evidence/R0-structure.md`, follow-up section. Implementation commit `860070068607acb7004a2cc001a5b7e39854bce8` was pushed to `origin/aclais-prototype` and `git ls-remote --heads` matched the local head. [GitHub Actions run 9](https://github.com/sai161812/aclais-1/actions/runs/40769494744) completed successfully for that exact revision; both portable jobs passed. The staged implementation diff was reviewed, and the working tree was clean after push. At R0 acceptance, A4 remained `NOT_STARTED`; its status is recorded in the current A4 section below.
 
 ## Checks and evidence
 
@@ -102,6 +102,15 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - Verification lanes at A2 completion: portable CI did not establish Windows enforcement. The A3 launcher/Job Object tests had not yet run; their later result is tracked in the A3 section.
 - Remaining issues: A3 launcher/job containment is next; A2 does not claim a full machine sandbox, network isolation, or A3 process containment.
 
+## A4 checkpoint
+
+- Status: local acceptance PASS; hosted CI and synchronization review pending.
+- Implemented versioned SQLite persistence models and migration `0001_initial.sql`, fixed controller-owned document/grant rules, hash-only worker credential records, append-only events/transitions, incident guards, immutable task/credential/dedup/output intent identities and output publication journal transitions. The ACLAIS database contains no receiver tables; A4 defines the strict receiver wire and receipt-journal value models only.
+- Backend Pydantic models now define the complete ACLAIS and receiver request/response contract. `shared/openapi.json` and the frontend API TypeScript are regenerated from that source. Only the existing health endpoint is mounted; later routes remain schema-only.
+- Local portable suite: 45 passed. Ruff, OpenAPI consistency, frontend typecheck/lint/build passed. The backend wheel includes the tracked SQL migration. The complete root portable check passed from `C:\Windows\Temp` after staging and confirmed generated OpenAPI/TypeScript consistency.
+- All A4 database tests used disposable SQLite databases under pytest's temporary directory. No runtime database or credential material is tracked. Windows enforcement tests were not run for A4; this checkpoint adds no Windows enforcement behavior. Historical A2/A3 evidence remains separate; G1 is still `NOT_STARTED`.
+- Hosted CI: pending. Commit, push, exact revision run, and synchronization result will be appended after review.
+
 ## Next step
 
-R0 is complete. A4 persistence and strict contracts are next and require A3 and R0 PASS. Do not begin A4 as part of this checkpoint.
+After A4's hosted portable CI passes and synchronization is verified, A5 broker and publication can begin. A4 does not complete G1 or authorize receiver G2.

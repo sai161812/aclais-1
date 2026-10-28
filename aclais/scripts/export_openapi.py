@@ -14,9 +14,12 @@ OUTPUT_PATH = REPOSITORY_ROOT / "shared" / "openapi.json"
 
 def render_openapi() -> str:
     sys.path.insert(0, str(ACLAIS_ROOT / "backend" / "src"))
+    from aclais.api_contracts import build_openapi_document
     from aclais.app import app
 
-    return json.dumps(app.openapi(), ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    return json.dumps(
+        build_openapi_document(app), ensure_ascii=False, indent=2, sort_keys=True
+    ) + "\n"
 
 
 def main() -> int:

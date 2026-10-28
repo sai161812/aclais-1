@@ -48,7 +48,7 @@ For each checkpoint, verify only its listed tests and acceptance criteria, updat
 
 ## R0 — Repository structure (after A3, before A4)
 
-**Dependencies:** A0–A3 PASS; no A4 work has started.
+**Dependencies:** A0–A3 PASS; at the time R0 was accepted, no A4 work had started.
 
 **Deliverables:** Keep one repository and the existing working branch. Put all current ACLAIS source, tests, fixtures/templates, probes, scripts, assets, and configuration under `aclais/`; keep `receiver/` and `document-tools/` as reservation notes only until their gates pass; keep only shared schemas/minimal protocols under `shared/`; reserve root `tests/` for cross-component integration/acceptance and root `scripts/` for whole-system orchestration. Retain the supplied `docs/` arrangement, runtime data and credentials in their designated runtime locations, existing root tracking files, and fixed worker allowlist. Update imports, manifests, scripts, CI, specs, and documentation together. Add no application features.
 
@@ -60,11 +60,11 @@ For each checkpoint, verify only its listed tests and acceptance criteria, updat
 
 **Dependencies:** A3 PASS and R0 repository-structure PASS.
 
-**Deliverables:** Versioned SQLite schema/migrations with protected state directory, WAL and `synchronous=FULL`; task/event/contract/token/incident/output/request/receipt journal models; strict request and response schemas for every ACLAIS and receiver contract route; discriminated broker operations; generated OpenAPI and TypeScript types; idempotency keys bound to canonical request-body hashes. This checkpoint defines the receiver contract but does not implement its production process.
+**Deliverables:** Versioned SQLite schema/migrations with protected state directory, WAL and `synchronous=FULL`; controller task/event/contract/token/incident/output/request journal models; strict receiver receipt-journal value model without a receiver-owned database or service; strict request and response schemas for every ACLAIS and receiver contract route, including approval query, bounded list/event query and UUID path parameters; discriminated broker operations; generated OpenAPI and TypeScript types; idempotency keys bound to canonical validated request-body hashes. Pydantic models are the wire-schema source of truth. This checkpoint publishes route contracts while only the existing health route remains mounted; it does not implement A5 broker behavior, A6 recovery/lifecycle arbitration, or the production receiver.
 
-**Tests:** Portable schema tests for unknown fields, coercion, duplicate keys, enums/unions, size limits, invalid IDs, response validation, operation/tool/output mismatch, invalid invoice JSON, request-ID conflict/replay, migrations and transaction rollback. Receiver model tests use values only, not a fake production endpoint.
+**Tests:** Portable schema tests for unknown fields, coercion, duplicate keys, enums/unions, size limits, invalid IDs, response validation, operation/tool/output mismatch, invalid invoice JSON, request-ID conflict/replay, grant and credential uniqueness/expiry, ordered append-only events, valid/invalid task transitions, output journal state rules, migration rollback/checksum and database reopen. Confirm the wheel includes its migration. Receiver contract and journal model tests use values only, not a fake production endpoint. Windows enforcement remains a separate lane and is not implied by A4's portable results.
 
-**Observable acceptance:** Every route has a bounded strict request/response model; malformed input cannot cause effects; valid forbidden operations remain distinguishable from malformed requests; schema/type generation has no unexplained diff; SQLite migrations preserve terminal states and request hashes.
+**Observable acceptance:** Every route has a bounded strict request/response model; client task requests cannot contain paths or grants; malformed input cannot cause effects; valid forbidden operations remain distinguishable from malformed requests; generated OpenAPI and TypeScript match with no unexplained diff; SQLite migrations preserve valid transitions, terminal causes, grants and request hashes. The ACLAIS database is created only from a trusted absolute path under the pre-provisioned protected state directory. Passing A4 does not mean later routes, broker effects, filesystem publication/recovery, authentication, dashboard connection, or G1 have been implemented.
 
 ## A5 — Broker and publication
 

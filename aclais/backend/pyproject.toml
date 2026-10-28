@@ -22,6 +22,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aclais"]
+artifacts = ["src/aclais/persistence/migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
