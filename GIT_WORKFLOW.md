@@ -11,7 +11,7 @@
 - Workspace before setup: `D:\Workspace\IDL\ACLAIS-1` had no `.git` directory, local branch/history, staged changes, remote, or tracking configuration. Its root contained the nine supplied specification files under `docs/`.
 - Local baseline: commit `0752747004fc689e07f8e55435964bf4d267fd12` on `main`, containing the specification pack, workflow documents, agent instructions, and ignore rules.
 - Current branch: `aclais-prototype`, created from that baseline; it tracks `origin/aclais-prototype`.
-- Remote branch head: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`; the GitHub branch API and `git ls-remote --heads` agree.
+- First push head: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`. The final status push was verified separately by comparing local HEAD, `origin/aclais-prototype`, `git ls-remote --heads`, and the GitHub branch API.
 - Local `main` retains the baseline commit and has no upstream. The baseline is present in the pushed working-branch history.
 - No `.github/workflows` directory exists in the pushed tree.
 

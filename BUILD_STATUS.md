@@ -6,7 +6,7 @@ As of 2026-10-28. This checkpoint establishes project workflow and guardrails on
 
 - All nine specification files in `docs/` have been reviewed in the prescribed order.
 - The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public and its configured default branch is `main`.
-- The remote was genuinely empty: GitHub reported repository size 0 and no branches, its refs endpoint reported an empty repository, and `git ls-remote --heads` returned no refs. A documentation-only baseline was committed to local `main` as `0752747004fc689e07f8e55435964bf4d267fd12`; working branch `aclais-prototype` was created from it. Only `aclais-prototype` was pushed. Its remote head is `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`, and it tracks `origin/aclais-prototype`.
+- The remote was genuinely empty: GitHub reported repository size 0 and no branches, its refs endpoint reported an empty repository, and `git ls-remote --heads` returned no refs. A documentation-only baseline was committed to local `main` as `0752747004fc689e07f8e55435964bf4d267fd12`; working branch `aclais-prototype` was created from it. Only `aclais-prototype` was pushed; it tracks `origin/aclais-prototype`, and the local and GitHub branch heads matched after the final status push.
 - Before the first push, GitHub reported `main` as the configured default branch. After the first branch was pushed to the empty repository, GitHub reported `aclais-prototype` as the default. No repository settings API was used.
 - Environment observed: Windows 11 Home Single Language, build 26200, 64-bit; workspace volume D: is NTFS; Python 3.12.10 with pip 25.0.1; Node.js v24.19.0 with npm 11.17.0; Git 2.55.0.windows.4. `icacls` and `pytest` executables are present. `C:\ACLAIS-Lab` is absent and the `AclaisWorker` local account was not found. The current shell is not elevated; provisioning capability has not been tested.
 
@@ -28,7 +28,7 @@ As of 2026-10-28. This checkpoint establishes project workflow and guardrails on
 - Evidence artifacts: none.
 - Baseline commit: `0752747004fc689e07f8e55435964bf4d267fd12` on local `main` and in the working-branch history.
 - G0 workflow commit: `01effbdea3a55ede6d40b29bcc07003d4f0d8da2`.
-- Synchronization: PUSHED and verified at `origin/aclais-prototype`.
+- Synchronization: PUSHED and verified at `origin/aclais-prototype`; the upstream ref matched local HEAD after the final status push.
 - CI: no `.github/workflows` directory exists in the pushed tree.
 
 ## Next step
