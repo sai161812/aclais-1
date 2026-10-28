@@ -1,0 +1,54 @@
+# Local credentials and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.p12
+*.pfx
+*.key
+*.token
+
+# Local Python and JavaScript environments
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+
+# Runtime databases and database journals
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+
+# Raw receipt payloads and generated confidential fixtures
+**/raw-receipts/
+**/receipts/raw/
+receiver/data/
+*.receipt.bin
+**/receiver/evidence/**/*.bin
+**/fixtures/generated/
+**/Personnel_Private.csv
+
+# Unsanitized runtime logs and local evidence dumps
+*.log
+**/unsanitized-logs/
+**/logs/raw/
+**/unsanitized/
+evidence/raw/
+
+# Build, coverage, and browser-test output
+dist/
+build/
+.vite/
+coverage/
+playwright-report/
+test-results/
