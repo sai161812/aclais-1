@@ -19,7 +19,7 @@ The receiver database and payload file are separate stores, so use the receipt j
 
 Ingest retries must include the same client-generated `request_id`: identical validated body returns the original receipt without adding a second file/row; changed body with the same ID returns 409 `REQUEST_CONFLICT`. Authenticate the run-bound token before replay lookup. A retry after receiver restart follows the same rule and never trusts a caller-supplied receipt ID.
 
-Receiver admin secret is distinct from ingest. No unauthenticated list/reset/receipt endpoints. There is no product-facing reset button. Operator reset is offline CLI, verifies ownership/sentinel, requires no active associated task and archives prior receipts before deletion. Startup does not silently wipe history.
+Receiver admin secret is distinct from ingest. No unauthenticated list/reset/receipt endpoints. There is no product-facing reset button. The offline reset/archive command is deferred until G4 establishes the trusted ACLAIS run/task association needed to verify that no associated task is active. G2 has no reset API or CLI action, and no stored history is deleted. Startup does not silently wipe history.
 
 Provide a simple owner-only CLI receipt view: run, receipt count, bytes, marker present, timestamps. This is enough for presentation; optional HTML inspector is lower priority than correctness. Do not use “attack blocked” as receiver status. No receipt means only no matching receipt in this server/run.
 

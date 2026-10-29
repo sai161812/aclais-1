@@ -12,7 +12,7 @@ quarantine are protected there. Initialize once with
 `receiver/scripts/receiver.ps1 -Action init`, then start in the foreground with
 `scripts/start.ps1 -Service Receiver`. Stop with Ctrl+C. The generated admin
 credential is never printed; ACLAIS reads it from the same owner-only runtime
-directory when collecting evidence.
+directory when collecting evidence. The owner CLI exposes metadata only; G2 has no reset action and preserves stored history. A safe offline archive/reset remains deferred until G4 provides a trusted way to verify that no associated ACLAIS task is active.
 
 Run `receiver/scripts/check.ps1` for portable component checks. The repository
 check also runs the real IPv6 HTTP adapter integration in `tests/`. Raw test

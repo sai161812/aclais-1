@@ -230,3 +230,8 @@ After verified G1 PASS, implement G2 as a separate FastAPI process and SQLite da
 Bound one decoded payload to 1 MiB, one request to 2 MiB, and one run to 10 MiB. Store raw receipt bytes in UUID-named `.bin` files through the independent journal/stage/flush/no-replace/finalize recovery flow; GET returns validated metadata, never payload. Quota exhaustion uses the shared `429 RATE_LIMITED` response. The local CLI exposes metadata only and offers no online reset. Raw payloads and credentials are excluded from Git and CI artifacts.
 
 Connect ACLAIS through its read-only HTTP adapter, with strict JSON/model validation and distinct healthy-empty, positive receipt, unknown run, authentication failure, protocol failure, and unavailable outcomes. A positive marker is independent confidentiality evidence, not an ACLAIS policy decision or a claim of blocking. Production run creation and ingest-token delivery to G3 workers remain G4 integration work.
+
+
+## D-052 - Defer receiver archival until task association is trusted
+
+The receiver specification describes an offline receipt archive/reset that must prove no associated ACLAIS task is active before deleting any history. G2 has no trusted run-to-task association because production run creation and worker-token delivery are G4 handoff work. Do not introduce a partial reset guard, ask the operator to assert quiescence, import ACLAIS private persistence into `receiver/`, or delete receiver history. G2 therefore exposes no reset route or CLI action and preserves all records. Implement the offline archive/reset only after G4 defines a trusted association and quiescence check; then archive before deletion and fail closed on unavailable proof.
