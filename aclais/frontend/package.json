@@ -9,7 +9,7 @@
     "npm": "11.x"
   },
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev": "vite --host 127.0.0.2 --port 5173 --strictPort",
     "build": "vite build",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",

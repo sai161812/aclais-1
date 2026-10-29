@@ -174,7 +174,7 @@
                   "observed_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006",
                   "is_administrator":  false,
                   "passed":  true,
-                  "check_count":  60,
+                  "check_count":  62,
                   "checks":  [
                                  {
                                      "name":  "worker_identity",
@@ -609,6 +609,30 @@
                                                }
                                  },
                                  {
+                                     "name":  "repository_frontend_bundle_read_denied",
+                                     "passed":  true,
+                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
+                                     "actual":  "access_denied",
+                                     "error":  {
+                                                   "win32_error":  5,
+                                                   "error_type":  "System.UnauthorizedAccessException",
+                                                   "hresult":  "0x80070005",
+                                                   "windows_message":  "Access is denied"
+                                               }
+                                 },
+                                 {
+                                     "name":  "repository_frontend_bundle_write_denied",
+                                     "passed":  true,
+                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
+                                     "actual":  "access_denied",
+                                     "error":  {
+                                                   "win32_error":  5,
+                                                   "error_type":  "System.UnauthorizedAccessException",
+                                                   "hresult":  "0x80070005",
+                                                   "windows_message":  "Access is denied"
+                                               }
+                                 },
+                                 {
                                      "name":  "repository_evidence_read_denied",
                                      "passed":  true,
                                      "expected":  "Win32 5",
@@ -900,6 +924,11 @@
                              "actual":  "owner_read_succeeded"
                          },
                          {
+                             "name":  "owner_can_read_repository_frontend_bundle",
+                             "passed":  true,
+                             "actual":  "owner_read_succeeded"
+                         },
+                         {
                              "name":  "owner_can_read_repository_evidence",
                              "passed":  true,
                              "actual":  "owner_read_succeeded"
@@ -909,18 +938,21 @@
                                          "passed":  true,
                                          "expected_file_count":  566,
                                          "actual_file_count":  566,
-                                         "expected_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
-                                         "actual_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
+                                         "expected_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
+                                         "actual_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
                                          "mismatches":  [
 
                                                         ]
                                      },
     "repository_checkout_integrity":  {
                                           "application_source_unchanged":  true,
+                                          "frontend_bundle_unchanged":  true,
                                           "evidence_probe_unchanged":  true,
                                           "evidence_child_not_created":  true,
-                                          "application_source_sha256_before":  "84219c310712987f63b8e13ae770440e275f438d8295c3981773321af6c83a62",
-                                          "application_source_sha256_after":  "84219c310712987f63b8e13ae770440e275f438d8295c3981773321af6c83a62",
+                                          "application_source_sha256_before":  "e7ef3775464867e47920fc33e95ce9edd719e03ed722ad84d28338ac123b6c7d",
+                                          "application_source_sha256_after":  "e7ef3775464867e47920fc33e95ce9edd719e03ed722ad84d28338ac123b6c7d",
+                                          "frontend_bundle_sha256_before":  "3a99de6150e94f2cc407975c9d7820e4457c73aa274bc38530c551fd001b8bda",
+                                          "frontend_bundle_sha256_after":  "3a99de6150e94f2cc407975c9d7820e4457c73aa274bc38530c551fd001b8bda",
                                           "evidence_probe_sha256_before":  "dceadaf620d1005dd44467fbd5c38c903b600d4f398536c9bc00b254f4c51fa9",
                                           "evidence_probe_sha256_after":  "dceadaf620d1005dd44467fbd5c38c903b600d4f398536c9bc00b254f4c51fa9"
                                       },
@@ -1033,9 +1065,9 @@
                                 },
     "installation_manifest_integrity":  {
                                             "passed":  true,
-                                            "before_sha256":  "24125109ec76b96eedec90ee447b7bbef09d29c187d861056a6e0b326d36ad31",
-                                            "after_probe_sha256":  "24125109ec76b96eedec90ee447b7bbef09d29c187d861056a6e0b326d36ad31",
-                                            "after_repair_sha256":  "24125109ec76b96eedec90ee447b7bbef09d29c187d861056a6e0b326d36ad31"
+                                            "before_sha256":  "2a3dd88e72177873a36045dd90deb9af44695bb1171e8eaa26fcdb1146c2de5f",
+                                            "after_probe_sha256":  "2a3dd88e72177873a36045dd90deb9af44695bb1171e8eaa26fcdb1146c2de5f",
+                                            "after_repair_sha256":  "2a3dd88e72177873a36045dd90deb9af44695bb1171e8eaa26fcdb1146c2de5f"
                                         },
     "sentinel_integrity":  {
                                "passed":  true,
@@ -1133,8 +1165,8 @@
                                         "passed":  true,
                                         "expected_file_count":  566,
                                         "actual_file_count":  566,
-                                        "expected_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
-                                        "actual_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
+                                        "expected_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
+                                        "actual_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
                                         "mismatches":  [
 
                                                        ]

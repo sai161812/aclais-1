@@ -312,6 +312,7 @@ def test_revocation_cause_is_immutable_and_incident_requires_policy_event(tmp_pa
     )
     db.create_incident(incident)
     assert db.get_task(current.task_id).incident_id == incident.incident_id
+    assert db.incident_for_task(current.task_id) == incident
     db.transition_task(current.task_id, TaskStatus.VERIFYING, now=NOW + timedelta(seconds=5))
     blocked = db.transition_task(
         current.task_id,

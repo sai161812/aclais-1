@@ -184,6 +184,9 @@ $repositoryEvidenceProbeHashAfter = $null
 $repositorySourcePath = Join-Path $componentRoot 'backend\src\aclais\app.py'
 $repositorySourceHashBefore = $null
 $repositorySourceHashAfter = $null
+$repositoryFrontendIndexPath = Join-Path $componentRoot 'frontend\dist\index.html'
+$repositoryFrontendIndexHashBefore = $null
+$repositoryFrontendIndexHashAfter = $null
 $previousPythonPath = $env:PYTHONPATH
 
 try {
@@ -264,7 +267,8 @@ try {
         (Get-A2OwnerReadCheck -Path (Join-Path $labRoot 'state\trusted-state.json') -Name 'owner_can_read_trusted_state'),
         (Get-A2OwnerReadCheck -Path (Join-Path $labRoot 'evidence\permission-write-probe.json') -Name 'owner_can_read_evidence'),
         (Get-A2OwnerReadCheck -Path (Join-Path $labRoot 'code\aclais\app.py') -Name 'owner_can_read_protected_code'),
-        (Get-A2OwnerReadCheck -Path $repositorySourcePath -Name 'owner_can_read_repository_application_code')
+        (Get-A2OwnerReadCheck -Path $repositorySourcePath -Name 'owner_can_read_repository_application_code'),
+        (Get-A2OwnerReadCheck -Path $repositoryFrontendIndexPath -Name 'owner_can_read_repository_frontend_bundle')
     )
     $repositoryEvidenceDir = Split-Path -Parent $repositoryEvidenceProbe
     if (-not (Test-Path -LiteralPath $repositoryEvidenceDir -PathType Container)) {
@@ -281,6 +285,7 @@ try {
     $ownerChecks += Get-A2OwnerReadCheck -Path $repositoryEvidenceProbe -Name 'owner_can_read_repository_evidence'
     $repositoryEvidenceProbeHashBefore = (Get-FileHash -LiteralPath $repositoryEvidenceProbe -Algorithm SHA256).Hash.ToLowerInvariant()
     $repositorySourceHashBefore = (Get-FileHash -LiteralPath $repositorySourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $repositoryFrontendIndexHashBefore = (Get-FileHash -LiteralPath $repositoryFrontendIndexPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $trustedStateHashBefore = (Get-FileHash -LiteralPath $trustedStatePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $manifestHashBefore = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $sentinelHashBefore = (Get-FileHash -LiteralPath $sentinelPath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -363,12 +368,18 @@ try {
     $repositorySourceHashAfter = if (Test-Path -LiteralPath $repositorySourcePath -PathType Leaf) {
         (Get-FileHash -LiteralPath $repositorySourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
     } else { $null }
+    $repositoryFrontendIndexHashAfter = if (Test-Path -LiteralPath $repositoryFrontendIndexPath -PathType Leaf) {
+        (Get-FileHash -LiteralPath $repositoryFrontendIndexPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    } else { $null }
     $summary.repository_checkout_integrity = [ordered]@{
         application_source_unchanged = ($repositorySourceHashAfter -and $repositorySourceHashAfter -eq $repositorySourceHashBefore)
+        frontend_bundle_unchanged = ($repositoryFrontendIndexHashAfter -and $repositoryFrontendIndexHashAfter -eq $repositoryFrontendIndexHashBefore)
         evidence_probe_unchanged = ($repositoryEvidenceProbeHashAfter -and $repositoryEvidenceProbeHashAfter -eq $repositoryEvidenceProbeHashBefore)
         evidence_child_not_created = -not (Test-Path -LiteralPath $repositoryEvidenceChild)
         application_source_sha256_before = $repositorySourceHashBefore
         application_source_sha256_after = $repositorySourceHashAfter
+        frontend_bundle_sha256_before = $repositoryFrontendIndexHashBefore
+        frontend_bundle_sha256_after = $repositoryFrontendIndexHashAfter
         evidence_probe_sha256_before = $repositoryEvidenceProbeHashBefore
         evidence_probe_sha256_after = $repositoryEvidenceProbeHashAfter
     }
@@ -487,6 +498,7 @@ try {
         [bool]$summary.installation_manifest_integrity.passed -and
         [bool]$summary.sentinel_integrity.passed -and
         [bool]$summary.repository_checkout_integrity.application_source_unchanged -and
+        [bool]$summary.repository_checkout_integrity.frontend_bundle_unchanged -and
         [bool]$summary.repository_checkout_integrity.evidence_probe_unchanged -and
         [bool]$summary.repository_checkout_integrity.evidence_child_not_created -and
         [bool]$codeInventoryBefore.passed -and

@@ -1667,7 +1667,7 @@ class Database:
                     "containment_status": row["containment_status"],
                     "integrity_status": row["integrity_status"],
                     "confidentiality_status": row["confidentiality_status"],
-                    "evidence_refs": json.loads(row["evidence_refs_json"]),
+                    "evidence_refs": tuple(json.loads(row["evidence_refs_json"])),
                 },
                 strict=True,
             )

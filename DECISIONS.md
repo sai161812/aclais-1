@@ -157,3 +157,11 @@ The fixed controller registry maps only `report_formatter/doc-report` and `invoi
 ## D-038 â€” Reconcile missing permitted A2 originals with synthetic templates
 
 The demonstration runtime initially lacked the three permitted originals already named in the trusted registry. Add trackable fabricated templates for report, notes and invoice documents; update A2 provisioning to seed and hash them; use the scoped A8 prerequisite updater only when the protected lab exists, controller is stopped, sentinel/identity match and any existing bytes match their template. Apply owner-only DACLs to each file and reconcile the manifest/trusted hashes. Re-run the actual A2 worker probe before using those documents; raw runtime files remain outside Git.
+
+## D-039 — Derive dashboard state from same-origin persisted responses
+
+Serve the built owner dashboard and its assets from the authenticated ACLAIS origin. Keep the Vite preview on `127.0.0.2` without an API proxy so it cannot share the owner cookie. The UI treats network reachability and protection readiness as separate states: a failed request is disconnected; a reachable failed preflight is protection unavailable; pending G1 gates or evidence stay pending/unknown. Refresh reloads health, document registry, task summaries and selected task events from the backend, merges events by sequence, and never carries forward a green state after an outage. Active tasks refresh every 500 ms only while connected and otherwise back off. Worker output is size-bounded inert text. Visual/API failure tests may alter only a private health response; they do not synthesize activity, task status, broker telemetry, or evidence.
+
+## D-040 — Keep owner routes responsive during broker work and cancellation
+
+Run synchronous broker execution in FastAPI's thread pool so slow policy work cannot starve health or owner requests on the event loop. Bind the owner cancellation route to the controller callback under a stable local name so the route handler cannot recursively shadow it. Decode persisted incident evidence lists back to the contract's immutable tuple before response validation. These fixes keep the UI connected to the existing broker/persistence authority without adding a UI-side status source.

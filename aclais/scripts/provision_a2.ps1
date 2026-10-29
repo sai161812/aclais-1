@@ -312,6 +312,7 @@ try {
     foreach ($protectedCheckoutPath in @(
         (Join-Path $componentRoot 'backend\src'),
         (Join-Path $componentRoot 'frontend\src'),
+        (Join-Path $componentRoot 'frontend\dist'),
         $checkoutEvidence
     )) {
         if (Test-Path -LiteralPath $protectedCheckoutPath) {

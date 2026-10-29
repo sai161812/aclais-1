@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -109,6 +110,7 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
     owner_auth = OwnerAuth(database, origin=runtime_settings.expected_origin)
     bootstrap_url = owner_auth.issue_bootstrap_url()
     tool_registry = FixedToolRegistry(layout.root)
+    frontend_dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     application = create_app(
         runtime_settings,
         broker=lifecycle.broker,
@@ -116,6 +118,7 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
         owner_auth=owner_auth,
         cancel_task=lifecycle.cancel,
         tool_registry=tool_registry,
+        frontend_dist=frontend_dist,
     )
     application.router.add_event_handler("shutdown", lifecycle.shutdown)
     return A8Runtime(

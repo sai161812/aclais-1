@@ -5,9 +5,11 @@ from __future__ import annotations
 import html
 import inspect
 import json
+import re
 import secrets
 import sqlite3
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 from uuid import UUID, uuid4
@@ -15,6 +17,7 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import TypeAdapter, ValidationError
+from starlette.staticfiles import StaticFiles
 
 from aclais.owner_auth import OWNER_CSRF_COOKIE, OWNER_SESSION_COOKIE, OwnerAuth
 from aclais.persistence.database import DatabaseError, TaskAlreadyActive
@@ -51,8 +54,17 @@ def install_owner_routes(
     cancel_task: TaskCanceller | None = None,
     task_launcher: TaskLauncher | None = None,
     tool_registry: FixedToolRegistry | None = None,
+    frontend_dist: Path | None = None,
 ) -> None:
     database = owner_auth.database
+    task_canceller = cancel_task
+    frontend_root = _validate_frontend_dist(frontend_dist)
+    if frontend_root is not None:
+        application.mount(
+            "/assets",
+            StaticFiles(directory=str(frontend_root / "assets"), check_dir=True),
+            name="owner-frontend-assets",
+        )
 
     @application.get("/bootstrap", response_class=HTMLResponse, include_in_schema=False)
     async def bootstrap_page(request: Request) -> Response:
@@ -66,11 +78,7 @@ def install_owner_routes(
             return _error(400, "INVALID_REQUEST", "Owner query is invalid.")
         if owner_auth.authenticate(request) is None:
             return _html_response(_signin_html(), status_code=401)
-        return _html_response(
-            "<!doctype html><html lang='en'><meta charset='utf-8'><title>ACLAIS owner</title>"
-            "<main><h1>Owner session active</h1>"
-            "<p>Task history and dashboard views are added in A9.</p></main></html>"
-        )
+        return _frontend_response(frontend_root)
 
     @application.get("/approve", response_class=HTMLResponse, include_in_schema=False)
     async def approval_page(request: Request) -> Response:
@@ -80,6 +88,8 @@ def install_owner_routes(
         session = owner_auth.authenticate(request)
         if session is None:
             return _html_response(_signin_html(), status_code=401)
+        if frontend_root is None:
+            return _frontend_response(None)
         provenance = _observed_provenance(request)
         context = owner_auth.create_approval_context(
             session,
@@ -88,15 +98,15 @@ def install_owner_routes(
             observed_origin=provenance[0],
             observed_referer=provenance[1],
         )
-        return _html_response(
-            _approval_html(
-                tool_id=query.tool_id,
-                launch_source_claim=query.launch_source_claim,
-                approval_context=context,
-                nonce=secrets.token_urlsafe(18),
-                observed_origin=provenance[0],
-                observed_referer=provenance[1],
-            ),
+        return _frontend_response(
+            frontend_root,
+            approval={
+                "tool_id": query.tool_id,
+                "launch_source_claim": query.launch_source_claim,
+                "approval_context": context,
+                "observed_origin": provenance[0],
+                "observed_referer": provenance[1],
+            },
             referrer_policy="strict-origin-when-cross-origin",
         )
 
@@ -366,10 +376,10 @@ def install_owner_routes(
                     return _error(413, "PAYLOAD_TOO_LARGE", "Request body exceeds 2 MiB.")
         if body_chunks:
             return _error(400, "INVALID_REQUEST", "Cancel requests do not accept a body.")
-        if cancel_task is None:
+        if task_canceller is None:
             return _error(503, "PROTECTION_UNAVAILABLE", "Task cancellation is unavailable.")
         try:
-            task = cancel_task(identifier)
+            task = task_canceller(identifier)
             result = CancelResponse(schema_version=1, task_id=task.task_id, status=task.status)
             return _private_response(JSONResponse(content=result.model_dump(mode="json")))
         except KeyError:
@@ -547,6 +557,72 @@ def _private_response(response: Response) -> Response:
     return response
 
 
+def _validate_frontend_dist(frontend_dist: Path | None) -> Path | None:
+    if frontend_dist is None:
+        return None
+    if not frontend_dist.is_absolute():
+        raise ValueError("frontend distribution path must be absolute")
+    try:
+        root = frontend_dist.resolve(strict=True)
+        assets = (root / "assets").resolve(strict=True)
+    except OSError as exc:
+        raise ValueError("frontend distribution is unavailable") from exc
+    if (
+        not root.is_dir()
+        or not (root / "index.html").is_file()
+        or not assets.is_dir()
+        or not assets.is_relative_to(root)
+    ):
+        raise ValueError("frontend distribution is incomplete or escapes its install root")
+    return root
+
+
+def _frontend_response(
+    frontend_root: Path | None,
+    *,
+    approval: dict[str, str | None] | None = None,
+    referrer_policy: str = "no-referrer",
+) -> HTMLResponse:
+    if frontend_root is None:
+        body = (
+            "<!doctype html><html lang='en'><meta charset='utf-8'>"
+            "<title>ACLAIS unavailable</title><main><h1>Owner interface unavailable</h1>"
+            "<p>Build the ACLAIS frontend and restart the controller.</p></main></html>"
+        )
+        response = HTMLResponse(body, status_code=503)
+    else:
+        index_path = frontend_root / "index.html"
+        try:
+            body = index_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            body = ""
+        root_pattern = re.compile(r"<div id=([\"'])root\1\s*></div>")
+        if body and len(root_pattern.findall(body)) == 1:
+            attribute = ""
+            if approval is not None:
+                encoded = json.dumps(approval, ensure_ascii=True, separators=(",", ":"))
+                attribute = f' data-approval="{html.escape(encoded, quote=True)}"'
+            body = root_pattern.sub(f'<div id="root"{attribute}></div>', body, count=1)
+            response = HTMLResponse(body)
+        else:
+            body = (
+                "<!doctype html><html lang='en'><meta charset='utf-8'>"
+                "<title>ACLAIS unavailable</title><main><h1>Owner interface unavailable</h1>"
+                "<p>The frontend distribution is incomplete. Rebuild it and restart "
+                "ACLAIS.</p></main></html>"
+            )
+            response = HTMLResponse(body, status_code=503)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = referrer_policy
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+        "font-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none'; "
+        "frame-ancestors 'none'; object-src 'none'"
+    )
+    return response
+
+
 def _html_response(
     body: str, *, status_code: int = 200, referrer_policy: str = "no-referrer"
 ) -> HTMLResponse:
@@ -610,86 +686,4 @@ def _signin_html() -> str:
         "<p>Use the one-time sign-in link opened by the ACLAIS controller. "
         "If your session expired, restart the controller to create a fresh link.</p>"
         "</main></body></html>"
-    )
-
-
-def _approval_html(
-    *,
-    tool_id: str,
-    launch_source_claim: str,
-    approval_context: str,
-    nonce: str,
-    observed_origin: str | None,
-    observed_referer: str | None,
-) -> str:
-    data = json.dumps(
-        {
-            "tool_id": tool_id,
-            "launch_source_claim": launch_source_claim,
-            "approval_context": approval_context,
-        },
-        ensure_ascii=True,
-        separators=(",", ":"),
-    ).replace("<", "\\u003c")
-    script = """
-const config = JSON.parse(document.querySelector('main').dataset.approval);
-const statusNode = document.getElementById('status');
-const picker = document.getElementById('document');
-const allowedDocument = config.tool_id === 'report_formatter' ? 'doc-report' : 'doc-invoice';
-const csrfCookie = document.cookie.split('; ').find(item => item.startsWith('aclais_owner_csrf='));
-const csrf = csrfCookie ? csrfCookie.slice('aclais_owner_csrf='.length) : '';
-fetch('/api/documents', { credentials: 'same-origin' }).then(response => {
-  if (!response.ok) throw new Error('The trusted document registry is unavailable.');
-  return response.json();
-}).then(data => {
-  for (const documentInfo of data.documents) {
-    if (documentInfo.id !== allowedDocument) continue;
-    const option = document.createElement('option');
-    option.value = documentInfo.id;
-    option.textContent = documentInfo.display_name;
-    picker.append(option);
-  }
-  if (!picker.options.length) throw new Error('The registered input is unavailable.');
-}).catch(error => { statusNode.textContent = error.message; });
-document.getElementById('approve').addEventListener('click', async () => {
-  if (!csrf || !picker.value) {
-    statusNode.textContent = 'Owner approval credentials or input are unavailable.';
-    return;
-  }
-  const response = await fetch('/api/tasks', {
-    method: 'POST', credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json', 'X-CSRF-Token': csrf,
-      'X-Aclais-Approval-Context': config.approval_context
-    },
-    body: JSON.stringify({ schema_version: 1, tool_id: config.tool_id,
-      selected_document_id: picker.value, launch_source_claim: config.launch_source_claim })
-  });
-  const result = await response.json();
-  statusNode.textContent = response.ok ? `Task ${result.task_id} accepted.` : result.error.message;
-});
-"""
-    return (
-        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>Approve ACLAIS task</title></head><body>"
-        f"<main data-approval='{html.escape(data, quote=True)}'><h1>Review task permissions</h1>"
-        f"<p>Tool: <strong>{html.escape(tool_id)}</strong></p>"
-        f"<p>Launch source claim: <strong>{html.escape(launch_source_claim)}</strong></p>"
-        "<p>The source is a user claim. Observed browser headers are recorded separately; "
-        "they do not prove which page initiated this request.</p>"
-        f"<p>Observed Origin header: <strong>"
-        f"{html.escape(observed_origin or 'not provided')}</strong></p>"
-        f"<p>Observed referrer origin: <strong>"
-        f"{html.escape(observed_referer or 'not provided')}</strong></p>"
-        "<h2>Contract to approve</h2>"
-        "<ul><li>Read only the selected trusted document.</li>"
-        "<li>Publish one validated result in the ACLAIS output store.</li>"
-        "<li>Other documents and original-file changes are not permitted.</li>"
-        "<li>The caller cannot choose an executable, arguments, grants or paths.</li></ul>"
-        "<label for='document'>Selected document</label> <select id='document'></select>"
-        "<button id='approve' type='button'>Approve and open</button>"
-        "<p id='status' role='status'>No task starts until you select "
-        "Approve and open.</p></main>"
-        f"<script nonce='{nonce}'>{script}</script></body></html>"
     )

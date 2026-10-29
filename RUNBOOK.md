@@ -28,25 +28,21 @@ npm --prefix .\aclais\frontend ci
 
 The backend virtual environment is `aclais/backend/.venv` and is ignored by Git. Frontend packages are installed under `aclais/frontend/node_modules`, also ignored.
 
-## Start the ACLAIS shell
+## Start the connected ACLAIS owner dashboard
 
-Use two PowerShell terminals. Run these repository-root commands; they resolve component locations from the scripts themselves and leave the caller's working directory unchanged.
-
-Backend terminal:
+Build the frontend bundle from the repository root. The protected controller serves the built application and its assets from its own authenticated origin; no browser API proxy is used.
 
 ```powershell
+npm --prefix .\aclais\frontend run build
+$env:ACLAIS_PROTECTED_RUNTIME = 'true'
 .\scripts\start.ps1 -Service Backend
 ```
 
-Frontend terminal:
+Run this connected dashboard only after the A2 protected runtime has been provisioned on the demonstration machine. The controller opens the one-time owner bootstrap link. After sign-in, open `http://127.0.0.1:8765/owner`. The direct health URL is `http://127.0.0.1:8765/api/health`. The production worker routes remain closed until their G3 entrypoints pass the required gate.
 
-```powershell
-.\scripts\start.ps1 -Service Frontend
-```
+For source editing, `scripts/start.ps1 -Service Frontend` runs Vite at `http://127.0.0.2:5173` as an unauthenticated visual preview. It has no API proxy and cannot display owner data. This separate loopback host prevents the preview from receiving cookies scoped to `127.0.0.1`; browser cookies are scoped by host, not port. Use the connected dashboard at port 8765 for real task state, approval and evidence. Do not put the owner session on a same-host dev server.
 
-From any other directory use `& '<repository-root>\scripts\start.ps1' -Service Backend` or `-Service Frontend`. Install the locked dependencies with the root check command first. Each command runs in the foreground with live output; stop it with Ctrl+C in its terminal. A startup error returns failure; an occupied port is reported without terminating its existing owner. Frontend uses strict port 5173 and does not silently choose a different port.
-
-Open `http://127.0.0.1:5173`. Vite proxies same-origin `/api` requests to the API at `http://127.0.0.1:8765`. The direct health URL is `http://127.0.0.1:8765/api/health`. An unavailable protection state is expected until its implementation checkpoint passes. No receiver or Document Tools service starts early.
+From any other directory use `& '<repository-root>\scripts\start.ps1' -Service Backend` or `-Service Frontend`. Install the locked dependencies with the root check command first. Servers run in the foreground with live output and stop with Ctrl+C. Startup failures and occupied ports are reported without terminating an existing port owner. Vite uses strict port 5173 and does not silently choose another port. No receiver or Document Tools production service starts early.
 
 ## Configuration and logging
 
@@ -61,7 +57,7 @@ $env:ACLAIS_LOG_LEVEL = 'INFO'
 $env:ACLAIS_PROTECTED_RUNTIME = 'false'
 ```
 
-On the provisioned A2/A3 Windows machine, `ACLAIS_PROTECTED_RUNTIME=true` assembles the worker controller, broker and persistence, runs restart reconciliation before the API serves requests, and keeps the broker unavailable if recovery fails. A8 adds owner session and approval routes; production launch remains closed while the fixed G3 worker entrypoints are absent. The health response remains `unknown` for overall G1 protection until A7–A10 verification gates pass.
+On the provisioned A2/A3 Windows machine, `ACLAIS_PROTECTED_RUNTIME=true` assembles the worker controller, broker and persistence, runs restart reconciliation before the API serves requests, and keeps the broker unavailable if recovery fails. The ACLAIS frontend bundle is resolved from the component location and served from the protected controller origin. The A2 ACL covers the generated `aclais/frontend/dist` bundle as application code; rebuilds retain its inherited worker deny rule. Production launch remains closed while the fixed G3 worker entrypoints are absent. The health response remains `unknown` for overall G1 protection until A7–A10 verification gates pass.
 
 Logs are one-line JSON records on stderr. Structured fields with names containing authorization, cookie, token, password, secret, credential, canary, payload, private, or API key are replaced with `[REDACTED]`; common bearer and `key=value`/header patterns in messages are also redacted. Exception text and tracebacks are omitted. Do not log request bodies, headers, credentials, canary values, private document contents, or arbitrary user input. The redactor is defense in depth and does not make unsafe logging of arbitrary strings acceptable.
 
@@ -186,3 +182,15 @@ On the designated Windows machine, while the protected A2 runtime is provisioned
 The private harness starts ACLAIS on `127.0.0.1:8765`, test-only hostile web origins on `localhost:8766`, and an IPv6 receiver-origin probe at `[::1]:8767`. It verifies no owner cookie reaches either other host; cross-origin API attempts have no owner credential; a cross-host top-level approval GET makes no task; and the explicit owner button launches only the existing harmless A3 probe in the test harness. The probe selects the trusted document, starts a child in the assigned Job Object, then the harness cancels and verifies the actual worker and child process identities stopped before checking persisted evidence. The harness does not add a production tool or a production receiver.
 
 `launch_source_claim` is user-supplied attribution. Observed Origin and referrer headers are recorded separately and do not prove which site launched the task; the referrer path/query is stripped. The fixed production registry only accepts installed Document Tools entrypoints by exact tool/document pair. Since G3 workers are not installed, a production approval POST returns protection unavailable without creating a task. The demonstration test injects a private probe callback only in its test process.
+
+## A9 connected dashboard checks
+
+Run portable checks from any directory with `scripts/check.ps1`. On the provisioned Windows demonstration machine, run the real-backend Chrome flow from any directory:
+
+```powershell
+& '<repository-root>\aclais\scripts\check_a9_windows.ps1'
+```
+
+The private browser test uses a fresh disposable SQLite database, the protected seeded documents, the actual ACLAIS APIs, and the existing A3 private probe. It checks keyboard approval, side-effect-free approval-page loading, rendered inert output, event sequence order before and after refresh and on Activity, disconnection and reconnection, an unavailable preflight response, cancellation with verified worker termination, and a policy-denial incident with pending then completed verifier evidence. It captures sanitized screenshots at 1366x768 and 1920x1080 plus one reduced-motion screenshot. The test-only health response is used only to exercise unavailable-state rendering; production status always comes from backend responses. A9 does not claim a verified incident when the real receiver adapter leaves confidentiality unknown.
+
+The frontend preview binds to `127.0.0.2:5173` and has no API proxy. Only the built owner UI served from `127.0.0.1:8765` is connected. During an outage, the UI clears green protection status and marks active task progress as disconnected; after refresh it rebuilds state from persisted task, event, incident and evidence responses.

@@ -4,10 +4,13 @@ import asyncio
 import hashlib
 import json
 import secrets
+import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
+import httpx2 as httpx
 import pytest
 from fastapi import Request
 from starlette.types import ASGIApp, Message, Scope
@@ -143,6 +146,51 @@ def test_broker_http_route_uses_bearer_token_and_bounded_json_body(
     )
     assert oversized == 413
     assert json.loads(error)["error"]["code"] == "PAYLOAD_TOO_LARGE"
+
+
+def test_slow_broker_execution_does_not_block_owner_health_route() -> None:
+    async def exercise() -> None:
+        started = threading.Event()
+        release = threading.Event()
+        fallback_release = threading.Timer(2, release.set)
+
+        class BlockingBroker:
+            def execute(self, _token: str, _body: bytes):
+                started.set()
+                if not release.wait(timeout=5):
+                    raise TimeoutError("test broker was not released")
+
+                class ResultBody:
+                    def model_dump(self, *, mode: str):
+                        assert mode == "json"
+                        return {"schema_version": 1}
+
+                return SimpleNamespace(status_code=200, body=ResultBody())
+
+        app = create_app(Settings(), broker=BlockingBroker())
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1:8765"
+        ) as client:
+            fallback_release.start()
+            broker_request = asyncio.create_task(
+                client.post(
+                    "/api/broker/operations",
+                    content=b"{}",
+                    headers={"authorization": "Bearer " + secrets.token_urlsafe(32)},
+                )
+            )
+            try:
+                assert await asyncio.to_thread(started.wait, 1)
+                health = await asyncio.wait_for(client.get("/api/health"), timeout=1)
+                assert health.status_code == 200
+                assert not release.is_set()
+            finally:
+                release.set()
+                fallback_release.cancel()
+            broker_response = await asyncio.wait_for(broker_request, timeout=1)
+            assert broker_response.status_code == 200
+
+    asyncio.run(exercise())
 
 
 def test_output_http_route_requires_injected_owner_auth_and_serves_finalized_attachment(

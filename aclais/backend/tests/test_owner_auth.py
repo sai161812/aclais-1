@@ -7,6 +7,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -16,7 +17,7 @@ from aclais.app import create_app
 from aclais.config import Settings
 from aclais.owner_auth import OWNER_CSRF_COOKIE, OWNER_SESSION_COOKIE, OwnerAuth
 from aclais.persistence.database import Database
-from aclais.persistence.models import CreateTaskRequest
+from aclais.persistence.models import CreateTaskRequest, TaskStatus
 from aclais.tool_registry import FixedToolRegistry
 
 pytestmark = pytest.mark.portable
@@ -30,7 +31,7 @@ class _MainDataParser(HTMLParser):
         self.value: str | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag == "main":
+        if tag == "div" and dict(attrs).get("id") == "root":
             self.value = dict(attrs).get("data-approval")
 
 
@@ -95,8 +96,18 @@ def _cookie(headers: list[tuple[str, str]], name: str) -> str:
     raise AssertionError(f"missing {name} cookie")
 
 
-def _fixture(tmp_path: Path, *, task_launcher=None, tool_registry=None):
+def _fixture(tmp_path: Path, *, task_launcher=None, tool_registry=None, cancel_task=None):
     database = Database(tmp_path / "controller.sqlite3")
+    frontend_dist = tmp_path / "frontend"
+    asset_dir = frontend_dist / "assets"
+    asset_dir.mkdir(parents=True)
+    (asset_dir / "app-test.js").write_text(
+        "document.documentElement.dataset.test='ok';", encoding="utf-8"
+    )
+    (frontend_dist / "index.html").write_text(
+        '<!doctype html><html lang="en"><body><div id="root"></div></body></html>',
+        encoding="utf-8",
+    )
     token_iter = iter(TOKENS)
     auth = OwnerAuth(
         database,
@@ -107,12 +118,79 @@ def _fixture(tmp_path: Path, *, task_launcher=None, tool_registry=None):
     app = create_app(
         Settings(),
         owner_auth=auth,
+        cancel_task=cancel_task,
         approved_task_launcher=task_launcher,
         tool_registry=tool_registry,
+        frontend_dist=frontend_dist,
     )
     bootstrap_url = auth.issue_bootstrap_url()
     assert bootstrap_url is not None
     return app, auth, database, bootstrap_url.rsplit("#", 1)[1]
+
+
+def test_authenticated_dashboard_and_approval_serve_private_same_origin_spa(tmp_path: Path) -> None:
+    app, _auth, database, token = _fixture(tmp_path)
+    assert _asgi_request(app, "GET", "/owner")[0] == 401
+    status, cookies, _ = _exchange(app, token)
+    assert status == 200
+    session = _cookie(cookies, OWNER_SESSION_COOKIE)
+
+    status, headers, owner_html = _asgi_request(
+        app, "GET", "/owner", headers={"cookie": f"{OWNER_SESSION_COOKIE}={session}"}
+    )
+    response_headers = dict(headers)
+    assert status == 200
+    assert b'<div id="root"></div>' in owner_html
+    assert response_headers["cache-control"] == "no-store"
+    assert "connect-src 'self'" in response_headers["content-security-policy"]
+
+    status, asset_headers, _ = _asgi_request(app, "GET", "/assets/app-test.js")
+    assert status == 200
+    assert dict(asset_headers)["content-type"].startswith("text/javascript")
+
+    status, headers, approval_html = _asgi_request(
+        app,
+        "GET",
+        "/approve?tool_id=report_formatter&launch_source_claim=document_tools",
+        headers={"cookie": f"{OWNER_SESSION_COOKIE}={session}"},
+    )
+    assert status == 200
+    parser = _MainDataParser()
+    parser.feed(approval_html.decode("utf-8"))
+    assert parser.value is not None
+    config = json.loads(html.unescape(parser.value))
+    assert config["tool_id"] == "report_formatter"
+    assert config["launch_source_claim"] == "document_tools"
+    assert config["approval_context"]
+    assert config["observed_origin"] is None
+    assert config["observed_referer"] is None
+    assert dict(headers)["cache-control"] == "no-store"
+    assert database.task_summaries() == ()
+
+
+def test_authenticated_cancel_route_invokes_controller_callback_once(tmp_path: Path) -> None:
+    task_id = UUID("d4c87c46-9af4-470b-a877-cf480a2c6abc")
+    calls: list[UUID] = []
+
+    def cancel(identifier: UUID):
+        calls.append(identifier)
+        return SimpleNamespace(task_id=identifier, status=TaskStatus.CANCELLED)
+
+    app, _auth, _database, _bootstrap, = _fixture(tmp_path, cancel_task=cancel)
+    status, cookies, _ = _exchange(app, _bootstrap)
+    assert status == 200
+    session = _cookie(cookies, OWNER_SESSION_COOKIE)
+    csrf = _cookie(cookies, OWNER_CSRF_COOKIE)
+    status, _headers, body = _asgi_request(
+        app,
+        "POST",
+        f"/api/tasks/{task_id}/cancel",
+        headers=_owner_headers(session, csrf),
+    )
+
+    assert status == 200, f"{body}; controller_calls={len(calls)}"
+    assert json.loads(body)["status"] == "CANCELLED"
+    assert calls == [task_id]
 
 
 def _exchange(app: ASGIApp, token: str, *, extra_headers: dict[str, str] | None = None):

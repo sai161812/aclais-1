@@ -6,10 +6,12 @@ import inspect
 import logging
 import sqlite3
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 from aclais.broker import BrokerService
 from aclais.config import Settings
@@ -33,6 +35,7 @@ def create_app(
     cancel_task: TaskCanceller | None = None,
     approved_task_launcher: TaskLauncher | None = None,
     tool_registry: FixedToolRegistry | None = None,
+    frontend_dist: Path | None = None,
 ) -> FastAPI:
     runtime = settings if settings is not None else Settings()
     application = FastAPI(
@@ -126,7 +129,7 @@ def create_app(
                 if body_size > 2_097_152:
                     return _error_response(413, "PAYLOAD_TOO_LARGE", "Request body exceeds 2 MiB.")
                 chunks.append(chunk)
-            result = broker.execute(token, b"".join(chunks))
+            result = await run_in_threadpool(broker.execute, token, b"".join(chunks))
             return JSONResponse(
                 status_code=result.status_code,
                 content=result.body.model_dump(mode="json"),
@@ -180,6 +183,7 @@ def create_app(
             cancel_task=cancel_task,
             task_launcher=approved_task_launcher,
             tool_registry=tool_registry,
+            frontend_dist=frontend_dist,
         )
 
     return application
