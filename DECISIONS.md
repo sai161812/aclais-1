@@ -36,7 +36,7 @@ Serialize broker admission, policy denial, cancellation, timeout, process exit, 
 
 ## D-009 — Use strict operation-specific models
 
-Every JSON route has strict request and response schemas with extra fields/coercion rejected. Broker requests use a discriminated union so each operation has exactly its permitted fields. Malformed requests return validation errors with no side effect; well-formed forbidden operations return policy denial and create an incident only while the task remains active. Receiver ingest also has request-ID idempotency.
+Every JSON route has strict request and response schemas with extra fields/coercion rejected. Broker requests use a discriminated union so each operation has exactly its permitted fields. Malformed requests return validation errors with no side effect; a well-formed forbidden operation admitted while the task is `RUNNING` atomically records the policy incident and `RUNNING → REVOKING` cause before the 403 response and worker termination. Receiver ingest also has request-ID idempotency.
 
 ## D-010 — Make the dashboard's data path explicit
 
@@ -113,3 +113,15 @@ Backend strict Pydantic models define ACLAIS and receiver wire records, request/
 ## D-028 — Make verification a state on the success and revocation paths
 
 Both benign and revoked task flows enter `VERIFYING`: normal completion is `RUNNING → VERIFYING → COMPLETED`, and denial/cancel/timeout/shutdown pass through `REVOKING → VERIFYING`. The first persisted revocation cause remains unchanged through termination and terminalization. `BLOCKED` requires policy denial, `CANCELLED` requires cancellation, and only verified successful exit can produce `COMPLETED`; other containment/verification outcomes fail closed as `FAILED`.
+
+## D-029 — Resolve selected input from one active task copy
+
+The broker reads only `work/selected-inputs/<task UUID>/<document ID><extension from the trusted registry>`. It derives the task UUID from the hashed bearer credential, validates the requested document against the immutable task contract, and never reads the original path. A6 creates the task directory with worker read/execute rights only, keeps its parent traverse-only/non-listable, provides the fixed path to the launcher, and removes the active copy after containment and verification. This avoids leaving prior task inputs available to the shared worker SID.
+
+## D-030 — Finalize output, replay response and audit event together
+
+`output_records` is the publication journal and source of output metadata; there is no second output file table. After the final file is hash/size-verified, one SQLite transaction advances `staged → file_committed → published`, appends the `output_published` broker event, and completes the request's exact replay response. A selected-read response and its one allow event are committed together. A replay adds no filesystem effect or duplicate event. Any failure before that transaction leaves output unserved.
+
+## D-031 — Inject broker routes only from trusted startup assembly
+
+`create_app` mounts the worker broker route only when a trusted `BrokerService` is injected. The output download route requires both an `OutputPublisher` and an owner-authorizer dependency; no output route is mounted by the default app, and A8 supplies the product owner session/CSRF implementation. Route tests inject a private test authorizer and do not claim owner authentication is complete. The broker's durable credential, task, contract and expiry checks remain authoritative for worker operations.

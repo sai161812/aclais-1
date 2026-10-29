@@ -36,7 +36,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | A2 — protected fixtures and worker identity | PASS | Demonstration-machine private worker probe passed 57/57 checks; sanitized evidence is tracked under `evidence/`. |
 | A3 — launcher and containment | PASS | Actual Windows demonstration-machine launcher checks and local portable checks passed; sanitized evidence is in `evidence/A3.md` and `evidence/a3-launcher-summary.json`. GitHub CI is portable only. |
 | A4 — persistence and contracts | PASS | Requires A3 PASS and the separate R0 repository-structure checkpoint; see `evidence/A4.md` and [GitHub Actions run 11](https://github.com/sai161812/aclais-1/actions/runs/40774065632). |
-| A5 — broker and publication | NOT_STARTED | Requires A2–A4 PASS. |
+| A5 — broker and publication | IN_PROGRESS | A2–A4 prerequisites pass; local portable and Windows publication checks pass. Push and hosted CI inspection remain. |
 | A6 — lifecycle and recovery | NOT_STARTED | Requires A3–A5 PASS. |
 | A7 — verification and evidence | NOT_STARTED | Requires A2, A4–A6 PASS. |
 | A8 — owner authentication and approval | NOT_STARTED | Requires A4, A6 and A7 PASS. |
@@ -111,8 +111,18 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - All A4 database tests used disposable SQLite databases under pytest's temporary directory. No runtime database or credential material is tracked. Windows enforcement tests were not run for A4; this checkpoint adds no Windows enforcement behavior. Historical A2/A3 evidence remains separate; G1 is still `NOT_STARTED`.
 - Implementation commit `db4c372719fba250764084800383d25859fb596f` was pushed to the verified `origin/aclais-prototype`; `git ls-remote --heads` matched the local commit.
 - [GitHub Actions run 11](https://github.com/sai161812/aclais-1/actions/runs/40774065632) passed for that exact commit. Both portable backend and frontend jobs succeeded; Windows enforcement is a separate lane and was not run by this workflow.
-- Next checkpoint: A5 broker and publication. A4 contains the journal records and state machine only; it does not implement NTFS publication, crash reconciliation, or G1.
+- At A4 completion, A5 broker and publication was next. A4 contains the journal records and state machine only; it does not implement NTFS publication, crash reconciliation, or G1.
+
+## A5 checkpoint
+
+- Status: local implementation and verification PASS; commit synchronization and hosted CI are pending.
+- Implemented credential-derived task binding, active credential/contract checks, strict operation validation, registry-derived selected-copy reads, pre-effect policy denials, idempotent request handling, atomic broker events/replay records, one bounded output slot, and crash-consistent staging/flush/no-replace rename/finalization. Output API mount requires trusted injected owner authorization; default app remains health-only.
+- Local backend checks: Ruff passed; 72 portable tests passed. The complete `scripts/check.ps1` passed from `C:\Windows\Temp`, including OpenAPI/TypeScript consistency, frontend typecheck, lint and production build.
+- Demonstration Windows publication lane: 1 `windows_enforcement` test passed on Windows 11 Home Single Language build 26200. It asserted NTFS and exercised actual `MoveFileExW` no-replace behavior. This does not rerun A2/A3 identity/ACL/Job Object tests and does not establish G1.
+- A5 tests used disposable databases and files. No runtime database, credential material, password or confidential fixture was staged.
+- The implementation commit, remote-head verification and hosted Actions run for that exact revision will be recorded after push. Portable hosted CI does not replace the separate Windows lane.
+- Remaining issues: A6 must provision per-task selected-copy ACLs, integrate broker admission with lifecycle arbitration, clean up task copies and reconcile journals on startup. A8 must supply real owner authentication before the product output route is mounted.
 
 ## Next step
 
-After A4's hosted portable CI passes and synchronization is verified, A5 broker and publication can begin. A4 does not complete G1 or authorize receiver G2.
+A5 implementation and local verification are complete; the pushed-revision CI check remains. A6 may begin only after A5's commit is synchronized and its hosted portable CI passes. A5 does not complete G1 or authorize receiver G2.

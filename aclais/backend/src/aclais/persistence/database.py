@@ -18,10 +18,12 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from aclais.persistence.models import (
     ActionContractRecord,
+    BrokerOutputAllowed,
     CreateTaskRequest,
     CredentialHashRecord,
     DocumentListResponse,
     DocumentSummary,
+    ErrorResponse,
     EventRecord,
     EventSource,
     Incident,
@@ -54,6 +56,10 @@ class RequestConflict(DatabaseError):
 
 class RequestInProgress(DatabaseError):
     """The idempotency key is reserved and its effect has not been finalized."""
+
+
+class CredentialInvalid(DatabaseError):
+    """Worker credential, task state, or bound action contract is no longer active."""
 
 
 class RequestDisposition(StrEnum):
@@ -195,6 +201,39 @@ class Database:
             yield connection
         finally:
             connection.close()
+
+    @staticmethod
+    def _assert_active_credential(
+        connection: sqlite3.Connection,
+        task_id: str,
+        token_sha256: str,
+        *,
+        at: datetime,
+    ) -> None:
+        if len(token_sha256) != 64 or any(char not in "0123456789abcdef" for char in token_sha256):
+            raise CredentialInvalid("worker credential is invalid")
+        row = connection.execute(
+            "SELECT c.token_sha256, c.expires_at, c.revoked_at, t.status, "
+            "t.revocation_cause, a.expires_at AS contract_expires_at "
+            "FROM tasks t JOIN worker_credentials c USING(task_id) "
+            "JOIN action_contracts a USING(task_id) WHERE t.task_id = ?",
+            (task_id,),
+        ).fetchone()
+        if row is None:
+            raise CredentialInvalid("worker credential is invalid")
+        credential_expiry = _parse_timestamp(row["expires_at"])
+        contract_expiry = _parse_timestamp(row["contract_expires_at"])
+        if not (
+            secrets.compare_digest(row["token_sha256"], token_sha256)
+            and credential_expiry is not None
+            and at.astimezone(_UTC) < credential_expiry
+            and contract_expiry is not None
+            and at.astimezone(_UTC) < contract_expiry
+            and row["revoked_at"] is None
+            and row["status"] == TaskStatus.RUNNING.value
+            and row["revocation_cause"] is None
+        ):
+            raise CredentialInvalid("worker credential or contract is no longer active")
 
     @contextmanager
     def _transaction(self) -> Iterator[sqlite3.Connection]:
@@ -367,7 +406,8 @@ class Database:
     ) -> TaskRecord:
         """Create task, fixed action contract and its two grants atomically."""
 
-        timestamp = _timestamp(now or utc_now())
+        event_time = now or utc_now()
+        timestamp = _timestamp(event_time)
         task_id, contract_id, output_slot_id = uuid4(), uuid4(), uuid4()
         trusted_run_id = _identifier(run_id) if run_id is not None else uuid4()
         created_at = _parse_timestamp(timestamp)
@@ -571,7 +611,8 @@ class Database:
         if not isinstance(to_status, TaskStatus):
             raise ValueError("unknown task state")
         identifier = str(_identifier(task_id))
-        timestamp = _timestamp(now or utc_now())
+        event_time = now or utc_now()
+        timestamp = _timestamp(event_time)
         with self._transaction() as connection:
             current_row = connection.execute(
                 "SELECT * FROM tasks WHERE task_id = ?", (identifier,)
@@ -689,6 +730,43 @@ class Database:
             revoked_at=_parse_timestamp(row["revoked_at"]),
         )
 
+    def active_task_for_credential(self, token: str, *, at: datetime) -> TaskRecord | None:
+        """Resolve an active worker task from the bearer token without storing the token."""
+
+        if not isinstance(token, str) or not 32 <= len(token) <= 512:
+            return None
+        try:
+            encoded = token.encode("ascii", errors="strict")
+        except UnicodeEncodeError:
+            return None
+        token_hash = hashlib.sha256(encoded).hexdigest()
+        _timestamp(at)
+        with self._connection() as connection:
+            credential = connection.execute(
+                "SELECT task_id, token_sha256, expires_at, revoked_at "
+                "FROM worker_credentials "
+                "WHERE token_sha256 = ?",
+                (token_hash,),
+            ).fetchone()
+            if credential is None:
+                return None
+            row = connection.execute(
+                "SELECT * FROM tasks WHERE task_id = ?", (credential["task_id"],)
+            ).fetchone()
+        if row is None:
+            return None
+        expires = _parse_timestamp(credential["expires_at"])
+        if not (
+            secrets.compare_digest(credential["token_sha256"], token_hash)
+            and expires is not None
+            and at.astimezone(_UTC) < expires
+            and credential["revoked_at"] is None
+            and row["status"] == TaskStatus.RUNNING.value
+            and row["revocation_cause"] is None
+        ):
+            return None
+        return self._model_from_task_row(row)
+
     def credential_is_valid(self, task_id: UUID | str, token_sha256: str, *, at: datetime) -> bool:
         identifier = str(_identifier(task_id))
         _timestamp(at)
@@ -719,6 +797,69 @@ class Database:
                 "WHERE task_id = ?",
                 (timestamp, identifier),
             )
+
+    @staticmethod
+    def _insert_event_row(
+        connection: sqlite3.Connection,
+        task_id: str,
+        *,
+        timestamp: datetime,
+        source: EventSource,
+        kind: str,
+        operation: Operation | None,
+        target_document_id: str | None,
+        decision: str | None,
+        reason_code: str | None,
+        message: str,
+        event_id: UUID | None = None,
+    ) -> EventRecord:
+        task_row = connection.execute(
+            "SELECT run_id FROM tasks WHERE task_id = ?", (task_id,)
+        ).fetchone()
+        if task_row is None:
+            raise KeyError("task not found")
+        seq = int(
+            connection.execute(
+                "SELECT COALESCE(MAX(seq), 0) + 1 FROM task_events WHERE task_id = ?",
+                (task_id,),
+            ).fetchone()[0]
+        )
+        model = EventRecord(
+            schema_version=1,
+            event_id=event_id or uuid4(),
+            task_id=task_id,
+            run_id=task_row["run_id"],
+            seq=seq,
+            timestamp=timestamp,
+            source=source,
+            kind=kind,
+            operation=operation,
+            target_document_id=target_document_id,
+            decision=decision,
+            reason_code=reason_code,
+            message=message,
+            evidence_refs=(),
+        )
+        connection.execute(
+            "INSERT INTO task_events(event_id, task_id, run_id, seq, timestamp, source, "
+            "kind, operation, target_document_id, decision, reason_code, message, "
+            "evidence_refs_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]')",
+            (
+                str(model.event_id),
+                task_id,
+                str(model.run_id),
+                model.seq,
+                _timestamp(model.timestamp),
+                model.source,
+                model.kind,
+                model.operation,
+                model.target_document_id,
+                model.decision,
+                model.reason_code,
+                model.message,
+            ),
+        )
+        return model
 
     def append_event(
         self,
@@ -787,6 +928,132 @@ class Database:
                 ),
             )
         return model
+
+    def record_policy_denial(
+        self,
+        task_id: UUID | str,
+        request_id: UUID | str,
+        body_sha256: str,
+        *,
+        token_sha256: str,
+        operation: Operation,
+        target_document_id: str,
+        reason_code: str,
+        policy_reason: str,
+        message: str,
+        now: datetime | None = None,
+    ) -> ErrorResponse:
+        """Atomically persist denial, revocation, event, incident, and request response."""
+
+        task_key, request_key = str(_identifier(task_id)), str(_identifier(request_id))
+        if len(body_sha256) != 64 or any(c not in "0123456789abcdef" for c in body_sha256):
+            raise ValueError("canonical body hash must be lower-case SHA-256")
+        if not (
+            (
+                operation == "read_document"
+                and reason_code == "DOCUMENT_OUT_OF_SCOPE"
+                and policy_reason == "DOCUMENT_OUT_OF_SCOPE"
+            )
+            or (
+                operation in {"replace_original", "delete_document"}
+                and reason_code == "ORIGINAL_MUTATION_FORBIDDEN"
+                and policy_reason == "ORIGINAL_MUTATION_FORBIDDEN"
+            )
+        ):
+            raise ValueError("policy denial fields do not describe a supported denial")
+        event_time = now or utc_now()
+        timestamp = _timestamp(event_time)
+        error_response = ErrorResponse(
+            schema_version=1,
+            error={
+                "code": "POLICY_DENIED",
+                "message": "The requested operation is forbidden by the task contract.",
+                "request_id": request_key,
+            },
+        )
+        response_text = canonical_model_json(error_response)
+        with self._transaction() as connection:
+            self._assert_active_credential(connection, task_key, token_sha256, at=event_time)
+            existing = connection.execute(
+                "SELECT canonical_body_sha256, state FROM request_deduplication "
+                "WHERE task_id = ? AND request_id = ?",
+                (task_key, request_key),
+            ).fetchone()
+            if existing is not None:
+                if existing["canonical_body_sha256"] != body_sha256:
+                    raise RequestConflict("request ID was reused with a different canonical body")
+                raise RequestInProgress("request ID already has a durable result or intent")
+            latest = connection.execute(
+                "SELECT seq, timestamp FROM task_state_transitions "
+                "WHERE task_id = ? ORDER BY seq DESC LIMIT 1",
+                (task_key,),
+            ).fetchone()
+            if latest is not None and timestamp < latest["timestamp"]:
+                raise ValueError("denial time cannot precede the latest task transition")
+            connection.execute(
+                "INSERT INTO request_deduplication(task_id, request_id, canonical_body_sha256, "
+                "state, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?)",
+                (task_key, request_key, body_sha256, timestamp, timestamp),
+            )
+            event_id, incident_id = uuid4(), uuid4()
+            self._insert_event_row(
+                connection,
+                task_key,
+                timestamp=event_time,
+                source="broker",
+                kind="operation_denied",
+                operation=operation,
+                target_document_id=target_document_id,
+                decision="deny",
+                reason_code=reason_code,
+                message=message,
+                event_id=event_id,
+            )
+            connection.execute(
+                "UPDATE tasks SET status = 'REVOKING', revocation_cause = 'POLICY_DENIED' "
+                "WHERE task_id = ?",
+                (task_key,),
+            )
+            transition_seq = int(latest["seq"] + 1) if latest is not None else 1
+            connection.execute(
+                "INSERT INTO task_state_transitions(task_id, seq, from_status, to_status, "
+                "cause, timestamp) VALUES (?, ?, 'RUNNING', 'REVOKING', 'POLICY_DENIED', ?)",
+                (task_key, transition_seq, timestamp),
+            )
+            incident = Incident(
+                incident_id=incident_id,
+                task_id=task_key,
+                trigger_event_id=event_id,
+                policy_reason=policy_reason,
+                containment_status="pending",
+                integrity_status="pending",
+                confidentiality_status="pending",
+                evidence_refs=(),
+            )
+            connection.execute(
+                "INSERT INTO incidents(incident_id, task_id, trigger_event_id, policy_reason, "
+                "containment_status, integrity_status, confidentiality_status, evidence_refs_json) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, '[]')",
+                (
+                    str(incident.incident_id),
+                    task_key,
+                    str(incident.trigger_event_id),
+                    incident.policy_reason,
+                    incident.containment_status,
+                    incident.integrity_status,
+                    incident.confidentiality_status,
+                ),
+            )
+            connection.execute(
+                "UPDATE tasks SET incident_id = ? WHERE task_id = ?",
+                (str(incident_id), task_key),
+            )
+            connection.execute(
+                "UPDATE request_deduplication SET state = 'completed', response_json = ?, "
+                "updated_at = ? WHERE task_id = ? AND request_id = ?",
+                (response_text, timestamp, task_key, request_key),
+            )
+        return error_response
 
     def events(self, task_id: UUID | str, *, after_seq: int = 0) -> tuple[EventRecord, ...]:
         identifier = str(_identifier(task_id))
@@ -879,12 +1146,21 @@ class Database:
         body_sha256: str,
         *,
         now: datetime | None = None,
+        token_sha256: str | None = None,
     ) -> tuple[RequestDisposition, dict[str, object] | None]:
         task_key, request_key = str(_identifier(task_id)), str(_identifier(request_id))
         if len(body_sha256) != 64 or any(c not in "0123456789abcdef" for c in body_sha256):
             raise ValueError("canonical body hash must be lower-case SHA-256")
-        at = _timestamp(now or utc_now())
+        at_time = now or utc_now()
+        at = _timestamp(at_time)
         with self._transaction() as connection:
+            if token_sha256 is not None:
+                self._assert_active_credential(
+                    connection,
+                    task_key,
+                    token_sha256,
+                    at=at_time,
+                )
             existing = connection.execute(
                 "SELECT canonical_body_sha256, state, response_json "
                 "FROM request_deduplication WHERE task_id = ? AND request_id = ?",
@@ -913,11 +1189,21 @@ class Database:
         response: BaseModel,
         *,
         now: datetime | None = None,
+        token_sha256: str | None = None,
+        event_kind: str | None = None,
+        event_operation: Operation | None = None,
+        event_target_document_id: str | None = None,
+        event_decision: str | None = None,
+        event_reason_code: str | None = None,
+        event_message: str | None = None,
     ) -> None:
         task_key, request_key = str(_identifier(task_id)), str(_identifier(request_id))
         response_text = canonical_model_json(response)
-        at = _timestamp(now or utc_now())
+        at_time = now or utc_now()
+        at = _timestamp(at_time)
         with self._transaction() as connection:
+            if token_sha256 is not None:
+                self._assert_active_credential(connection, task_key, token_sha256, at=at_time)
             row = connection.execute(
                 "SELECT canonical_body_sha256, state, created_at FROM request_deduplication "
                 "WHERE task_id = ? AND request_id = ?",
@@ -931,11 +1217,53 @@ class Database:
                 raise RequestInProgress("request response is already finalized")
             if at < row["created_at"]:
                 raise ValueError("request completion time cannot precede its reservation")
+            if event_kind is not None:
+                if event_operation is None or event_decision is None or event_message is None:
+                    raise ValueError("broker event requires an operation, decision, and message")
+                self._insert_event_row(
+                    connection,
+                    task_key,
+                    timestamp=at_time,
+                    source="broker",
+                    kind=event_kind,
+                    operation=event_operation,
+                    target_document_id=event_target_document_id,
+                    decision=event_decision,
+                    reason_code=event_reason_code,
+                    message=event_message,
+                )
             connection.execute(
                 "UPDATE request_deduplication SET state = 'completed', "
                 "response_json = ?, updated_at = ? "
                 "WHERE task_id = ? AND request_id = ?",
                 (response_text, at, task_key, request_key),
+            )
+
+    def abandon_unstarted_request(
+        self, task_id: UUID | str, request_id: UUID | str, body_sha256: str
+    ) -> None:
+        """Remove a read-only reservation only when no durable output intent exists."""
+
+        task_key, request_key = str(_identifier(task_id)), str(_identifier(request_id))
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT canonical_body_sha256, state FROM request_deduplication "
+                "WHERE task_id = ? AND request_id = ?",
+                (task_key, request_key),
+            ).fetchone()
+            if row is None:
+                return
+            if row["canonical_body_sha256"] != body_sha256 or row["state"] != "reserved":
+                raise RequestConflict("only the matching unfinished request can be abandoned")
+            has_output = connection.execute(
+                "SELECT 1 FROM output_records WHERE task_id = ? AND request_id = ?",
+                (task_key, request_key),
+            ).fetchone()
+            if has_output is not None:
+                raise DatabaseError("durable output intent cannot be abandoned")
+            connection.execute(
+                "DELETE FROM request_deduplication WHERE task_id = ? AND request_id = ?",
+                (task_key, request_key),
             )
 
     def reserve_output(
@@ -946,10 +1274,13 @@ class Database:
         decoded_bytes: int,
         *,
         now: datetime | None = None,
+        token_sha256: str | None = None,
     ) -> OutputJournalRecord:
         task_key, request_key = str(_identifier(task_id)), str(_identifier(request_id))
         at = now or utc_now()
         with self._transaction() as connection:
+            if token_sha256 is not None:
+                self._assert_active_credential(connection, task_key, token_sha256, at=at)
             row = connection.execute(
                 "SELECT t.tool_id, c.output_slot_id, r.state FROM tasks t "
                 "JOIN action_contracts c ON c.task_id = t.task_id "
@@ -1008,6 +1339,125 @@ class Database:
             )
         return record
 
+    def output_for_request(
+        self, task_id: UUID | str, request_id: UUID | str
+    ) -> OutputJournalRecord | None:
+        task_key, request_key = str(_identifier(task_id)), str(_identifier(request_id))
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM output_records WHERE task_id = ? AND request_id = ?",
+                (task_key, request_key),
+            ).fetchone()
+        return None if row is None else self._output_model(row)
+
+    @staticmethod
+    def _output_model(row: sqlite3.Row) -> OutputJournalRecord:
+        return OutputJournalRecord(
+            task_id=row["task_id"],
+            request_id=row["request_id"],
+            output_id=row["output_id"],
+            output_slot_id=row["output_slot_id"],
+            output_kind=row["output_kind"],
+            staging_relative_path=row["staging_relative_path"],
+            final_relative_path=row["final_relative_path"],
+            content_sha256=row["content_sha256"],
+            decoded_bytes=row["decoded_bytes"],
+            state=JournalState(row["state"]),
+            created_at=_parse_timestamp(row["created_at"]),
+            updated_at=_parse_timestamp(row["updated_at"]),
+        )
+
+    def finalize_output_publication(
+        self,
+        output_id: UUID | str,
+        body_sha256: str,
+        response: BrokerOutputAllowed,
+        *,
+        now: datetime | None = None,
+        token_sha256: str | None = None,
+    ) -> OutputJournalRecord:
+        """Commit file-verified output state and exact replay response atomically."""
+
+        identifier = str(_identifier(output_id))
+        if response.output_id != UUID(identifier):
+            raise ValueError("publication response output ID does not match its journal row")
+        at_time = now or utc_now()
+        at = _timestamp(at_time)
+        response_text = canonical_model_json(response)
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM output_records WHERE output_id = ?", (identifier,)
+            ).fetchone()
+            if row is None:
+                raise KeyError("output journal row not found")
+            if token_sha256 is not None:
+                self._assert_active_credential(connection, row["task_id"], token_sha256, at=at_time)
+            if response.sha256 != row["content_sha256"]:
+                raise ValueError("publication response hash does not match its journal row")
+            if row["state"] == JournalState.PUBLISHED.value:
+                request_row = connection.execute(
+                    "SELECT state, canonical_body_sha256 FROM request_deduplication "
+                    "WHERE task_id = ? AND request_id = ?",
+                    (row["task_id"], row["request_id"]),
+                ).fetchone()
+                if (
+                    request_row is not None
+                    and request_row["state"] == "completed"
+                    and request_row["canonical_body_sha256"] == body_sha256
+                ):
+                    return self._output_model(row)
+                raise DatabaseError("published output is missing its finalized request response")
+            request_row = connection.execute(
+                "SELECT state, canonical_body_sha256, created_at FROM request_deduplication "
+                "WHERE task_id = ? AND request_id = ?",
+                (row["task_id"], row["request_id"]),
+            ).fetchone()
+            if (
+                request_row is None
+                or request_row["state"] != "reserved"
+                or request_row["canonical_body_sha256"] != body_sha256
+            ):
+                raise RequestConflict("output request no longer matches its reservation")
+            if row["state"] not in {
+                JournalState.STAGED.value,
+                JournalState.FILE_COMMITTED.value,
+            }:
+                raise DatabaseError("output is not ready for publication finalization")
+            if at < row["updated_at"] or at < request_row["created_at"]:
+                raise ValueError("publication time cannot move backwards")
+            if row["state"] == JournalState.STAGED.value:
+                connection.execute(
+                    "UPDATE output_records SET state='file_committed', updated_at=? "
+                    "WHERE output_id=?",
+                    (at, identifier),
+                )
+            connection.execute(
+                "UPDATE output_records SET state='published', updated_at=? WHERE output_id=?",
+                (at, identifier),
+            )
+            self._insert_event_row(
+                connection,
+                row["task_id"],
+                timestamp=at_time,
+                source="broker",
+                kind="output_published",
+                operation="publish_output",
+                target_document_id=None,
+                decision="allow",
+                reason_code=None,
+                message="Validated task output was published.",
+            )
+            connection.execute(
+                "UPDATE request_deduplication SET state='completed', response_json=?, "
+                "updated_at=? WHERE task_id=? AND request_id=?",
+                (response_text, at, row["task_id"], row["request_id"]),
+            )
+            finalized = connection.execute(
+                "SELECT * FROM output_records WHERE output_id = ?", (identifier,)
+            ).fetchone()
+        assert finalized is not None
+        return self._output_model(finalized)
+
     def transition_output(
         self, output_id: UUID | str, state: JournalState, *, now: datetime | None = None
     ) -> OutputJournalRecord:
@@ -1053,20 +1503,7 @@ class Database:
             ).fetchone()
         if row is None:
             return None
-        return OutputJournalRecord(
-            task_id=row["task_id"],
-            request_id=row["request_id"],
-            output_id=row["output_id"],
-            output_slot_id=row["output_slot_id"],
-            output_kind=row["output_kind"],
-            staging_relative_path=row["staging_relative_path"],
-            final_relative_path=row["final_relative_path"],
-            content_sha256=row["content_sha256"],
-            decoded_bytes=row["decoded_bytes"],
-            state=JournalState(row["state"]),
-            created_at=_parse_timestamp(row["created_at"]),
-            updated_at=_parse_timestamp(row["updated_at"]),
-        )
+        return self._output_model(row)
 
     def published_output(self, output_id: UUID | str) -> OutputMetadata | None:
         identifier = str(_identifier(output_id))

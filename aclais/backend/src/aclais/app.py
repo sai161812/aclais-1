@@ -1,20 +1,32 @@
-"""Minimal A1 HTTP application; enforcement remains explicitly unavailable."""
+"""Local API routes assembled from trusted controller services at startup."""
 
 from __future__ import annotations
 
+import inspect
 import logging
+import sqlite3
+from collections.abc import Awaitable, Callable
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
+from aclais.broker import BrokerService
 from aclais.config import Settings
+from aclais.persistence.database import DatabaseError
+from aclais.publication import OutputPublisher, OutputUnavailable
 from aclais.schemas import ApiError, ErrorResponse, HealthCheck, HealthResponse
 
 _logger = logging.getLogger("aclais.api")
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    broker: BrokerService | None = None,
+    output_publisher: OutputPublisher | None = None,
+    authorize_output: Callable[[Request], bool | Awaitable[bool]] | None = None,
+) -> FastAPI:
     runtime = settings if settings is not None else Settings()
     application = FastAPI(
         title="ACLAIS Local API",
@@ -55,12 +67,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 HealthCheck(
                     id="application_api",
                     status="pass",
-                    summary="The A1 API process is responding.",
+                    summary="The local API process is responding.",
                 ),
                 HealthCheck(
                     id="g1_protection",
                     status="unknown",
-                    summary="Worker isolation and enforcement are not implemented in A1.",
+                    summary="Windows task containment and lifecycle integration are not complete.",
                 ),
             ),
         )
@@ -70,7 +82,90 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return result
 
+    if broker is not None:
+
+        @application.post("/api/broker/operations", tags=["worker"], operation_id="brokerOperation")
+        async def broker_operation(request: Request):
+            authorization_values = request.headers.getlist("authorization")
+            if len(authorization_values) != 1:
+                return _error_response(401, "AUTH_INVALID", "Worker credential is required.")
+            authorization = authorization_values[0]
+            if not authorization.startswith("Bearer "):
+                return _error_response(401, "AUTH_INVALID", "Worker credential is required.")
+            token = authorization[7:]
+            if not token or any(char.isspace() for char in token):
+                return _error_response(401, "AUTH_INVALID", "Worker credential is invalid.")
+            content_length = request.headers.get("content-length")
+            if content_length is not None:
+                try:
+                    if int(content_length) > 2_097_152:
+                        return _error_response(
+                            413, "PAYLOAD_TOO_LARGE", "Request body exceeds 2 MiB."
+                        )
+                except ValueError:
+                    return _error_response(400, "INVALID_REQUEST", "Content-Length is invalid.")
+            chunks: list[bytes] = []
+            body_size = 0
+            async for chunk in request.stream():
+                body_size += len(chunk)
+                if body_size > 2_097_152:
+                    return _error_response(413, "PAYLOAD_TOO_LARGE", "Request body exceeds 2 MiB.")
+                chunks.append(chunk)
+            result = broker.execute(token, b"".join(chunks))
+            return JSONResponse(
+                status_code=result.status_code,
+                content=result.body.model_dump(mode="json"),
+            )
+
+    if output_publisher is not None and authorize_output is not None:
+
+        @application.get(
+            "/api/outputs/{output_id}", tags=["owner"], operation_id="getPublishedOutput"
+        )
+        async def published_output(output_id: str, request: Request):
+            try:
+                authorized = authorize_output(request)
+                if inspect.isawaitable(authorized):
+                    authorized = await authorized
+            except Exception:
+                return _error_response(
+                    503, "PROTECTION_UNAVAILABLE", "Owner authorization is unavailable."
+                )
+            if not authorized:
+                return _error_response(401, "AUTH_INVALID", "Owner session is required.")
+            try:
+                metadata, content = output_publisher.read_published(output_id)
+            except (OutputUnavailable, ValueError):
+                return _error_response(404, "NOT_FOUND", "Published output was not found.")
+            except (DatabaseError, sqlite3.Error, OSError):
+                return _error_response(
+                    503, "PROTECTION_UNAVAILABLE", "Output integrity state is unavailable."
+                )
+            media_type = (
+                "text/markdown; charset=utf-8"
+                if metadata.output_kind == "formatted_markdown"
+                else "application/json"
+            )
+            return Response(
+                content=content,
+                status_code=200,
+                media_type=media_type,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{metadata.file_name}"',
+                    "X-Content-Type-Options": "nosniff",
+                    "Cache-Control": "no-store",
+                },
+            )
+
     return application
 
 
 app = create_app(Settings())
+
+
+def _error_response(status: int, code: str, message: str) -> JSONResponse:
+    response = ErrorResponse(
+        schema_version=1,
+        error=ApiError(code=code, message=message, request_id=str(uuid4())),
+    )
+    return JSONResponse(status_code=status, content=response.model_dump(mode="json"))

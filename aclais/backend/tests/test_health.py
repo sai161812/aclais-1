@@ -9,9 +9,8 @@ from aclais.config import Settings
 
 @pytest.mark.portable
 def test_health_is_live_and_reports_protection_unavailable() -> None:
-    client = TestClient(create_app(Settings()), base_url="http://127.0.0.1:8765")
-
-    response = client.get("/api/health")
+    with TestClient(create_app(Settings()), base_url="http://127.0.0.1:8765") as client:
+        response = client.get("/api/health")
 
     assert response.status_code == 200
     assert response.json() == {
@@ -22,12 +21,12 @@ def test_health_is_live_and_reports_protection_unavailable() -> None:
             {
                 "id": "application_api",
                 "status": "pass",
-                "summary": "The A1 API process is responding.",
+                "summary": "The local API process is responding.",
             },
             {
                 "id": "g1_protection",
                 "status": "unknown",
-                "summary": "Worker isolation and enforcement are not implemented in A1.",
+                "summary": "Windows task containment and lifecycle integration are not complete.",
             },
         ],
     }
@@ -35,9 +34,8 @@ def test_health_is_live_and_reports_protection_unavailable() -> None:
 
 @pytest.mark.portable
 def test_health_rejects_an_unknown_host_with_contract_error() -> None:
-    client = TestClient(create_app(Settings()), base_url="http://127.0.0.1:8765")
-
-    response = client.get("/api/health", headers={"host": "attacker.example"})
+    with TestClient(create_app(Settings()), base_url="http://127.0.0.1:8765") as client:
+        response = client.get("/api/health", headers={"host": "attacker.example"})
 
     assert response.status_code == 400
     body = response.json()

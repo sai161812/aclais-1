@@ -36,9 +36,8 @@ def _validate_unicode(value: Any) -> None:
             _validate_unicode(item)
 
 
-def parse_strict_json[TModel: BaseModel](data: bytes, model: type[TModel]) -> TModel:
-    """Decode bounded strict JSON: no duplicate keys, invalid UTF-8, NaN, or coercion."""
-
+def decode_strict_json(data: bytes) -> Any:
+    """Decode bounded JSON without duplicate keys, invalid UTF-8, NaN, or bad Unicode."""
     if not isinstance(data, bytes):
         raise TypeError("JSON body must be bytes")
     if len(data) > MAX_JSON_BODY_BYTES:
@@ -51,6 +50,15 @@ def parse_strict_json[TModel: BaseModel](data: bytes, model: type[TModel]) -> TM
             parse_constant=_reject_constant,
         )
         _validate_unicode(decoded)
-        return model.model_validate(decoded, strict=True)
-    except (UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
+        return decoded
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("JSON body is not valid strict UTF-8 JSON") from exc
+
+
+def parse_strict_json[TModel: BaseModel](data: bytes, model: type[TModel]) -> TModel:
+    """Decode bounded strict JSON and validate it without type coercion."""
+
+    try:
+        return model.model_validate(decode_strict_json(data), strict=True)
+    except ValidationError as exc:
         raise ValueError("JSON body does not match its strict request model") from exc

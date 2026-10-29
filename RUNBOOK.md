@@ -116,3 +116,20 @@ Review `shared/openapi.json` and `aclais/frontend/src/generated/api.ts` in the r
 ## Shutdown
 
 Stop each development server with Ctrl+C. The development shell does not start a receiver service or production tool. The A3 harmless private worker probes run only through their explicit test scripts.
+
+## A5 broker and publication checks
+
+Run from any directory:
+
+```powershell
+& 'D:\Workspace\IDL\ACLAIS-1\scripts\check.ps1'
+```
+
+The portable check includes the A5 broker and publication filesystem/journal tests. It does not establish Windows containment or NTFS enforcement. Run that separate lane on the demonstration Windows machine:
+
+```powershell
+Set-Location 'D:\Workspace\IDL\ACLAIS-1\aclais\backend'
+uv run --locked pytest -m windows_enforcement tests/test_publication.py --tb=short
+```
+
+The A5 broker API is mounted only by injecting a trusted `BrokerService`; output downloads additionally require an owner-authorizer dependency. The default app remains health-only until trusted startup assembly is added. Tests use private injected dependencies and do not claim A8 owner authentication. A6 must create the fixed per-task selected-input copy directory with its worker ACL, pass that path to the fixed launcher registration, and remove it during verified cleanup.
