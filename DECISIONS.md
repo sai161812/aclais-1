@@ -235,3 +235,10 @@ Connect ACLAIS through its read-only HTTP adapter, with strict JSON/model valida
 ## D-052 - Defer receiver archival until task association is trusted
 
 The receiver specification describes an offline receipt archive/reset that must prove no associated ACLAIS task is active before deleting any history. G2 has no trusted run-to-task association because production run creation and worker-token delivery are G4 handoff work. Do not introduce a partial reset guard, ask the operator to assert quiescence, import ACLAIS private persistence into `receiver/`, or delete receiver history. G2 therefore exposes no reset route or CLI action and preserves all records. Implement the offline archive/reset only after G4 defines a trusted association and quiescence check; then archive before deletion and fail closed on unavailable proof.
+
+
+## D-053 - Keep unresolved receiver publications unknown and protect SQLite sidecars
+
+Receipt inspection must not turn a `reserved`, `staged`, `file_committed`, or `aborted` journal row into a healthy empty result. Query the run and receipt journal under one SQLite read snapshot; return the bounded `503 PROTECTION_UNAVAILABLE` response while a row is unresolved. A valid run-bound retry with the identical canonical request body may resolve that row and produce the one committed receipt; changed content remains a conflict. This keeps ACLAIS at unknown until publication is complete or retry resolves it.
+
+SQLite may create WAL/SHM sidecar files after the receiver's first storage-protection pass. After startup migrations and recovery, apply and verify the scoped owner/SYSTEM/Administrators DACL again before the service listens. This covers database artifacts created during initialization while retaining the existing fixed runtime root and worker-SID exclusion.

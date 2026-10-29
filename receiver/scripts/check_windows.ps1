@@ -31,8 +31,18 @@ if ($LASTEXITCODE -ne 0) { throw 'Receiver runtime ACL grants the worker or diff
 
 Push-Location $componentRoot
 try {
-    & uv --project $componentRoot run --locked pytest -m windows_runtime_acl
-    if ($LASTEXITCODE -ne 0) { throw 'Receiver Windows storage ACL checks failed.' }
+    $previousAuditFlag = $env:ACLAIS_G2_LIVE_AUDIT
+    $previousPythonPath = $env:PYTHONPATH
+    try {
+        $repositoryRoot = Split-Path -Parent $componentRoot
+        $env:PYTHONPATH = Join-Path $repositoryRoot 'aclais\backend\src'
+        $env:ACLAIS_G2_LIVE_AUDIT = '1'
+        & uv --project $componentRoot run --locked pytest -m "windows_runtime_acl or windows_receiver_live_http"
+        if ($LASTEXITCODE -ne 0) { throw 'Receiver Windows storage or live HTTP checks failed.' }
+    } finally {
+        $env:ACLAIS_G2_LIVE_AUDIT = $previousAuditFlag
+        $env:PYTHONPATH = $previousPythonPath
+    }
 } finally {
     Pop-Location
 }

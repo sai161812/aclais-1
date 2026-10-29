@@ -74,8 +74,12 @@ def test_crash_recovery_yields_at_most_one_receipt_and_exact_retry(
 
     recovered = ReceiverStore(tmp_path / crash_step)
     recovered.initialize()
-    receipts = recovered.get_receipts(run_id)
-    assert len(receipts.receipts) == recovered_before_retry
+    if recovered_before_retry:
+        receipts = recovered.get_receipts(run_id)
+        assert len(receipts.receipts) == recovered_before_retry
+    else:
+        with pytest.raises(StorageIntegrityUnknown):
+            recovered.get_receipts(run_id)
     replay = recovered.ingest(_INGEST_TOKEN, request)
     replay_again = recovered.ingest(_INGEST_TOKEN, request)
     assert len(recovered.get_receipts(run_id).receipts) == 1

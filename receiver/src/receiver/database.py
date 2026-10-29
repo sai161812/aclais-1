@@ -186,6 +186,10 @@ class ReceiverStore:
                 db.close()
             self._initialized = True
             self.reconcile()
+            if os.name == "nt":
+                # SQLite may create WAL/SHM files after the initial tree protection pass.
+                # Reapply and verify the same scoped DACL before startup can expose a listener.
+                prepare_store_root(self.data_root)
         except (OSError, sqlite3.Error, StorageProtectionError, StorageUnavailable):
             self._initialized = False
             raise
@@ -480,48 +484,60 @@ class ReceiverStore:
     def get_receipts(self, run_id: uuid.UUID) -> ReceiptsResponse:
         text_run_id = str(run_id)
         with self._connection() as connection:
-            self._assert_service_integrity(connection)
-            run = connection.execute(
-                "SELECT integrity_state, canary_marker FROM runs WHERE run_id=?",
-                (text_run_id,),
-            ).fetchone()
-            if run is None:
-                raise RunUnknown("receiver run is unknown")
-            if run["integrity_state"] != "healthy":
-                raise StorageIntegrityUnknown("receiver run integrity is unknown")
-            rows = connection.execute(
-                "SELECT * FROM receipts WHERE run_id=? AND state IN (?, ?) "
-                "ORDER BY received_at, receipt_id",
-                (text_run_id, *_FINAL_STATES),
-            ).fetchall()
-            summaries: list[ReceiptSummary] = []
-            marker = bytes(run["canary_marker"])
-            for row in rows:
-                if row["state"] != "committed":
-                    self._mark_run_unknown(text_run_id, str(row["receipt_id"]))
+            connection.execute("BEGIN")
+            try:
+                self._assert_service_integrity(connection)
+                run = connection.execute(
+                    "SELECT integrity_state, canary_marker FROM runs WHERE run_id=?",
+                    (text_run_id,),
+                ).fetchone()
+                if run is None:
+                    raise RunUnknown("receiver run is unknown")
+                if run["integrity_state"] != "healthy":
                     raise StorageIntegrityUnknown("receiver run integrity is unknown")
-                try:
-                    payload = self._read_valid_payload(row)
-                    valid = (
-                        len(payload) == int(row["decoded_bytes"])
-                        and _sha256(payload) == str(row["payload_sha256"])
-                        and (marker in payload) == bool(row["marker_match"])
+                unresolved = connection.execute(
+                    "SELECT 1 FROM receipts WHERE run_id=? AND state NOT IN (?, ?) LIMIT 1",
+                    (text_run_id, *_FINAL_STATES),
+                ).fetchone()
+                if unresolved is not None:
+                    raise StorageIntegrityUnknown("receiver run has an unresolved receipt")
+                rows = connection.execute(
+                    "SELECT * FROM receipts WHERE run_id=? AND state IN (?, ?) "
+                    "ORDER BY received_at, receipt_id",
+                    (text_run_id, *_FINAL_STATES),
+                ).fetchall()
+                summaries: list[ReceiptSummary] = []
+                marker = bytes(run["canary_marker"])
+                for row in rows:
+                    if row["state"] != "committed":
+                        self._mark_run_unknown(text_run_id, str(row["receipt_id"]))
+                        raise StorageIntegrityUnknown("receiver run integrity is unknown")
+                    try:
+                        payload = self._read_valid_payload(row)
+                        valid = (
+                            len(payload) == int(row["decoded_bytes"])
+                            and _sha256(payload) == str(row["payload_sha256"])
+                            and (marker in payload) == bool(row["marker_match"])
+                        )
+                    except (OSError, StorageIntegrityUnknown):
+                        valid = False
+                    if not valid:
+                        self._mark_run_unknown(text_run_id, str(row["receipt_id"]))
+                        raise StorageIntegrityUnknown("receiver run integrity is unknown")
+                    summaries.append(
+                        ReceiptSummary(
+                            receipt_id=uuid.UUID(str(row["receipt_id"])),
+                            task_id=uuid.UUID(str(row["task_id"])),
+                            received_at=_parse_timestamp(str(row["received_at"])),
+                            decoded_bytes=int(row["decoded_bytes"]),
+                            sha256=str(row["payload_sha256"]),
+                            marker_match=bool(row["marker_match"]),
+                        )
                     )
-                except (OSError, StorageIntegrityUnknown):
-                    valid = False
-                if not valid:
-                    self._mark_run_unknown(text_run_id, str(row["receipt_id"]))
-                    raise StorageIntegrityUnknown("receiver run integrity is unknown")
-                summaries.append(
-                    ReceiptSummary(
-                        receipt_id=uuid.UUID(str(row["receipt_id"])),
-                        task_id=uuid.UUID(str(row["task_id"])),
-                        received_at=_parse_timestamp(str(row["received_at"])),
-                        decoded_bytes=int(row["decoded_bytes"]),
-                        sha256=str(row["payload_sha256"]),
-                        marker_match=bool(row["marker_match"]),
-                    )
-                )
+                connection.commit()
+            except BaseException:
+                connection.rollback()
+                raise
         return ReceiptsResponse(
             schema_version=1,
             run_id=run_id,

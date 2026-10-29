@@ -33,6 +33,7 @@ addopts = "-ra --strict-markers"
 markers = [
     "portable: platform-independent checks that do not establish Windows ACL enforcement",
     "windows_runtime_acl: actual Windows DACL verification for owner-only receiver storage",
+    "windows_receiver_live_http: actual Windows receiver process and protected persistent HTTP audit",
 ]
 
 [tool.ruff]

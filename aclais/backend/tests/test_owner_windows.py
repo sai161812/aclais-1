@@ -542,7 +542,9 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             route.fulfill(response=response)
 
         page.route("**/api/health", slow_real_health)
-        page.reload(wait_until="domcontentloaded")
+        with page.expect_response("**/api/health", timeout=10_000) as delayed_health:
+            page.reload(wait_until="domcontentloaded")
+        assert delayed_health.value.status == 200
         page.locator(".event-line").first.wait_for(state="visible", timeout=10_000)
         refreshed_sequences = page.locator(".event-line").evaluate_all(
             "items => items.map(item => Number(item.dataset.eventSeq))"
@@ -594,7 +596,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             )
         assert reconnect_health.value.status == 200
         page.get_by_text("Connected", exact=True).wait_for(timeout=5_000)
-        assert page.get_by_text("Verification pending").first.is_visible()
+        page.get_by_text("Verification pending").first.wait_for(state="visible", timeout=5_000)
 
         def failed_preflight(route) -> None:
             response = route.fetch()
