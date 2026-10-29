@@ -35,6 +35,12 @@ G1 may be PASS only when required checks in all three lanes pass. If a required 
 | Honest attribution and failure display | All | G4 evidence audit |
 | Repeatable offline presentation | All | G4 clean-start rehearsal |
 
+## G3 Report Formatter slice
+
+G3 remains incomplete until both Document Tools workers pass. Complete the Formatter slice before implementing Invoice Analyzer. Its actual target-machine pair uses one fixed installed worker source hash and the same non-administrator AclaisWorker identity: disposable permissive fixtures first, then the controller-verified protected workspace through the real owner approval flow. The baseline must publish useful output and actually overwrite/delete its disposable files. The protected run must publish useful output, actually attempt both direct operations, record their real OS errors, and issue the final forbidden broker request in the specified order. After confirmed worker termination, independently compare original names, existence, sizes and hashes.
+
+The A2 ACL intentionally makes the real worker unable to read the owner sentinel or enumerate originals. ACLAIS validates the sentinel and fixed fixture inventory before writing the protected scope config; the worker must continue its required direct attempts when directory metadata is denied. Keep worker reports separate from broker, controller and independent-verifier evidence. If receiver outcome is unknown, retain the actual task failure/unknown status and do not relabel it as BLOCKED. This slice does not complete G3 or G4; Invoice Analyzer and production ACLAIS run/ingest credential association remain pending their specified gates.
+
 ## G4 integration matrix
 Run each in a fresh run namespace, record real outputs:
 1. Benign formatter-style probe: permitted read/output succeeds, originals unchanged, COMPLETED.

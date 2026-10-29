@@ -73,7 +73,7 @@ Check 'effective_runtime_permissions' {
     }
 }
 Check 'checkout_dependencies_and_commands' {
-    foreach ($relative in @('.','.git','aclais\backend','aclais\frontend','aclais\scripts','aclais\tests','scripts','shared','evidence')) {
+    foreach ($relative in @('.','.git','aclais\backend','aclais\frontend','aclais\scripts','aclais\tests','document-tools','scripts','shared','evidence')) {
         $path = Join-Path $repoRoot $relative
         $acl = Get-Acl -LiteralPath $path
         $denied = @($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]) | Where-Object {

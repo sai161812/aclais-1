@@ -166,7 +166,18 @@ def test_g1_live_readiness_refuses_permission_drift_before_task_creation():
             assert api.advapi32.SetFileSecurityW(str(directory), 4 | 0x80000000, descriptor)
         finally:
             api.kernel32.LocalFree(descriptor)
-    readiness.require_core()
+    try:
+        readiness.require_core()
+    except ReadinessError as error:
+        failed_checks = [
+            (check.id, check.status, check.summary)
+            for check in readiness.check()
+            if check.status != "pass"
+        ]
+        pytest.fail(
+            f"readiness did not recover after restoring the original ACL: {failed_checks}; "
+            f"error={error}"
+        )
 
 
 def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_path: Path):
@@ -183,8 +194,8 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
             controller = subprocess.Popen(
                 [sys.executable, "-c", code], cwd=tmp_path, stdout=capture, stderr=capture
             )
-            # Two startup audits and the first health audit are each bounded at 45s.
-            deadline = time.monotonic() + 3 * 45 + 5
+            # Two startup audits and the first health audit are each bounded at 60s.
+            deadline = time.monotonic() + 3 * 60 + 5
             health = None
             while time.monotonic() < deadline:
                 if controller.poll() is not None:
@@ -199,10 +210,14 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
             assert all(
                 c["status"] == "pass" for c in health["checks"] if c["id"] != "g1_protection"
             )
-            assert (
-                next(c for c in health["checks"] if c["id"] == "g1_protection")["status"]
-                == "unknown"
+            protection_check = next(
+                c for c in health["checks"] if c["id"] == "g1_protection"
             )
+            assert protection_check["status"] in {"unknown", "pass"}
+            if protection_check["status"] == "pass":
+                assert "Report Formatter is installed" in protection_check["summary"]
+            else:
+                assert "Core checks passed" in protection_check["summary"]
             duplicate = subprocess.run(
                 [sys.executable, "-c", code],
                 cwd=tmp_path,
@@ -215,7 +230,7 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
                 [sys.executable, "-m", "aclais.operator", "reset"],
                 stdout=capture,
                 stderr=capture,
-                timeout=45,
+                timeout=105,
             )
             assert reset.returncode == 1 and controller.poll() is None
             stop_controller()
@@ -253,7 +268,7 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
                 [sys.executable, "-m", "aclais.operator", "reset"],
                 stdout=capture,
                 stderr=capture,
-                timeout=45,
+                timeout=105,
             )
             assert result.returncode == 1
             assert not handle.process_exit_observed()
@@ -265,7 +280,7 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
             [sys.executable, "-m", "aclais.operator", "reset"],
             stdout=capture,
             stderr=capture,
-            timeout=45,
+            timeout=105,
         )
         assert result.returncode == 0
         result = subprocess.run(
@@ -279,7 +294,7 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
             ],
             stdout=capture,
             stderr=capture,
-            timeout=45,
+            timeout=105,
         )
         assert result.returncode == 1 and layout.root.exists()
     Readiness(RuntimeLayout.open()).require_core()

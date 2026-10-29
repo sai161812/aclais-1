@@ -218,7 +218,7 @@ Cancel the actual worker through the owner UI while health transport is disconne
 
 The next complete rerun passed the dashboard and 11 other Windows cases, but the operator test's 35-second startup wait expired during sequential native readiness work. Its failure cleanup then tried to read a controller record that had not yet been written, leaving that test-owned startup process running. The recorded controller was subsequently stopped with the identity-checked operator command, and listener absence was verified.
 
-The test now allows the two startup audits and first health audit their existing 45-second bounds plus a five-second transport margin (140 seconds total). Actual failed preflight still refuses startup; no audit is omitted or relaxed. The normal passing path must use graceful identity-checked stop. Failure cleanup instead uses only the original Popen child's retained handle and waits for exit, even before its record exists; it never selects a process by port or another controller's record. The focused operator case passed before the final complete rerun.
+The test allowed the two startup audits and first health audit their then-configured 45-second bounds plus a five-second transport margin (140 seconds total). D-057 records the later measured increase to 60 seconds. Actual failed preflight still refuses startup; no audit is omitted or relaxed. The normal passing path must use graceful identity-checked stop. Failure cleanup instead uses only the original Popen child's retained handle and waits for exit, even before its record exists; it never selects a process by port or another controller's record. The focused operator case passed before the final complete rerun.
 
 Viewport evidence capture now waits for two actual animation frames after resizing. This removed an observed transient repaint band in the 1366x768 running capture without changing application styling, editing images or manufacturing data. The full source/test digest includes these harness corrections.
 
@@ -242,3 +242,37 @@ The receiver specification describes an offline receipt archive/reset that must 
 Receipt inspection must not turn a `reserved`, `staged`, `file_committed`, or `aborted` journal row into a healthy empty result. Query the run and receipt journal under one SQLite read snapshot; return the bounded `503 PROTECTION_UNAVAILABLE` response while a row is unresolved. A valid run-bound retry with the identical canonical request body may resolve that row and produce the one committed receipt; changed content remains a conflict. This keeps ACLAIS at unknown until publication is complete or retry resolves it.
 
 SQLite may create WAL/SHM sidecar files after the receiver's first storage-protection pass. After startup migrations and recovery, apply and verify the scoped owner/SYSTEM/Administrators DACL again before the service listens. This covers database artifacts created during initialization while retaining the existing fixed runtime root and worker-SID exclusion.
+
+
+## D-054 — Gate Report Formatter before Invoice Analyzer
+
+G1 and G2 are prerequisites for Document Tools. Implement only Report Formatter in the first G3 slice; keep Invoice Analyzer disabled in both UIs and do not add its worker until the Formatter slice has passed and been committed. The website is a normal local utility page at `localhost:8766` and links by a side-effect-free GET to the fixed ACLAIS approval route. It never receives owner credentials.
+
+The ACLAIS owner controller validates the real sentinel and full fixed fixture inventory before task configuration is issued because the A2 worker is intentionally denied access to those owner-controlled objects. The worker gets only the verified root ID and four fixed synthetic document names. It reads the selected report and publishes useful output through ACLAIS first, then unconditionally tries the exact overwrite and deletion, then sends `replace_original` as its final broker operation. It reports the actual OS result and never checks protection state or voluntarily skips an operation.
+
+Target evidence uses the same installed worker files and non-administrator identity in two isolated runs: disposable permissive fixtures for observable successful overwrite/delete, then protected originals through the authenticated ACLAIS approval flow. Record controller, broker, worker and independent inventory sources separately. G3's Report Formatter slice may pass without claiming G3 complete; any unknown receiver outcome or non-PASS task state remains exactly as observed. Raw local evidence stays owner-protected; only a source-digest-bound sanitized summary is tracked.
+
+
+## D-055 - Preserve the actual Windows denial mapping in G3 evidence
+
+The target machine reports the formatter's direct overwrite as `PermissionError` with `errno=EACCES` (13) and no `winerror` value; unlink reports `PermissionError`, `errno=13`, and `winerror=5`. Treat both as the observed access-denied result, retain each raw OS field, and render the sanitized report from those values. Do not convert a missing `winerror` to a fabricated Windows code. The independent before/after inventory and controller broker event remain separate evidence sources.
+
+
+## D-056 - Render live protection state after installing Report Formatter
+
+The G1 health state is derived from current readiness and the installed fixed worker registry. Before any production worker is installed, core readiness may be `unknown`; after the verified Report Formatter installation it is `pass`; a failed mandatory check is `fail`. Browser and operator tests assert the API-backed state they actually receive and verify its corresponding presentation. They must not hardcode the pre-G3 `unknown` state after installation.
+
+
+## D-057 - Bound the full source-boundary audit for the installed G3 tree
+
+After G3 installation, the real Windows boundary audit took about 41 seconds when invoked directly and twice exceeded the existing 45-second subprocess cap during authenticated ACLAIS startup. A later `-RequireIdle` run also exceeded 60 seconds because it adds a Windows process-owner sweep. These failures refused startup/operator action; no security check was skipped. Keep the complete SID, effective-ACL, source-hash, fixture-integrity and no-reparse-point audit, but set the bounded subprocess cap to 60 seconds normally and 90 seconds when the idle process-owner sweep is requested. Give browser health and initial workspace waits 65 seconds, operator startup 185 seconds for two audits plus the first health audit, and reset/teardown harness calls 105 seconds for one full idle audit plus command work. The first expanded target reruns also exposed stale 45/60-second harness waits; those failures are not counted as passing. A timed-out or failing audit still refuses startup. These bounds do not alter worker execution deadlines, grants or authorization.
+
+
+## D-058 - Synchronize A9 dashboard assertions with bounded readiness
+
+The A9 target test now waits for the real health and task-list responses after a browser reload before asserting the persisted incident card. Once the independent verifier records completion, the test allows one full bounded readiness refresh (65 seconds) for the evidence drawer to render its API response. These waits do not extend a worker deadline, replace an API assertion, or permit a stale result; the final test verifies backend persistence, response codes, event order, process termination, and the rendered state. A failed earlier browser wait is not counted as a pass.
+
+
+## D-059 - Keep G3 fixture identifiers and content hashes in raw evidence only
+
+Validate complete fixed before/after inventories inside the owner-side sanitizer, then emit only aggregate record counts and changed/unchanged outcomes. The tracked G3 summary may contain source and worker-code hashes, actual OS error fields, broker decisions, and verification status, but it omits individual fixture names, per-file hashes, output-content hashes, raw paths, worker text, and credentials. Keep the sanitizer and its privacy tests in `document-tools/`; whole-system target orchestration remains at the repository root. Raw inventory and payload evidence remains under the owner-protected runtime evidence root.

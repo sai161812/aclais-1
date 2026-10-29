@@ -117,7 +117,7 @@ def _wait_for_server(server: uvicorn.Server, thread: threading.Thread) -> None:
 
 
 def _build_private_approval_runtime(
-    probe_modes_by_tool: dict[str, tuple[str, str]] | None = None,
+    probe_modes_by_tool: dict[str, tuple[tuple[str, str], ...]] | None = None,
     hold_policy_verification: bool = False,
     private_worker_deadline: int = 20,
 ):
@@ -166,15 +166,19 @@ def _build_private_approval_runtime(
     bootstrap_url = auth.issue_bootstrap_url()
     if bootstrap_url is None:
         raise RuntimeError("a prior owner session is still active; log out before this probe")
+    probe_mode_indexes: dict[str, int] = {}
 
     def private_probe_launcher(
         request: CreateTaskRequest,
         observed_origin: str | None,
         observed_referer: str | None,
     ):
-        probe_case, broker_probe = (probe_modes_by_tool or {}).get(
-            request.tool_id, ("child_wait", "allow_and_publish")
+        modes = (probe_modes_by_tool or {}).get(
+            request.tool_id, (("child_wait", "allow_and_publish"),)
         )
+        mode_index = probe_mode_indexes.get(request.tool_id, 0)
+        probe_mode_indexes[request.tool_id] = mode_index + 1
+        probe_case, broker_probe = modes[min(mode_index, len(modes) - 1)]
         try:
             return lifecycle.start_private_probe(
                 "http://127.0.0.1:8765/api/broker/operations",
@@ -267,7 +271,7 @@ def test_real_browser_owner_isolation_and_authenticated_approval_launch(
         context = browser.new_context()
         page = context.new_page()
         try:
-            page.goto(bootstrap_url, wait_until="networkidle")
+            page.goto(bootstrap_url, wait_until="domcontentloaded")
         except Exception:
             pytest.fail(
                 "One-time bootstrap navigation failed; URL details are withheld.", pytrace=False
@@ -411,7 +415,12 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         pytest.fail(f"Required installed browser is missing: {browser_path.name}")
 
     app, lifecycle, database, auth, bootstrap_url = _build_private_approval_runtime(
-        {"invoice_analyzer": ("child_wait", "policy_denial")},
+        {
+            "report_formatter": (
+                ("child_wait", "allow_and_publish"),
+                ("child_wait", "policy_denial"),
+            )
+        },
         hold_policy_verification=True,
         private_worker_deadline=30,
     )
@@ -477,17 +486,33 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
                 else None
             ),
         )
-        page.goto(bootstrap_url, wait_until="networkidle")
+        page.goto(bootstrap_url, wait_until="domcontentloaded")
+        page.wait_for_url("http://127.0.0.1:8765/owner", timeout=10_000)
         session_cookie = next(
             cookie
             for cookie in context.cookies("http://127.0.0.1:8765")
             if cookie["name"] == OWNER_SESSION_COOKIE
         )
         session_token = session_cookie["value"]
-        page.wait_for_url("http://127.0.0.1:8765/owner", timeout=10_000)
-        page.wait_for_selector(".document-card", state="visible", timeout=10_000)
+        page.wait_for_selector(".document-card", state="visible", timeout=65_000)
         assert page.get_by_role("heading", name="Workspace").is_visible()
-        assert page.get_by_text("Verification pending").first.is_visible()
+
+        def assert_health_mapping(payload: dict[str, Any]) -> None:
+            check = next(item for item in payload["checks"] if item["id"] == "g1_protection")
+            expected_title = {
+                "pass": "Workspace protection ready",
+                "unknown": "Verification pending",
+                "fail": "Protection unavailable",
+            }[check["status"]]
+            heading = page.locator(".heading-health .health-copy strong")
+            heading.filter(has_text=expected_title).wait_for(state="visible", timeout=5_000)
+            assert heading.inner_text() == expected_title
+
+        initial_health = page.evaluate(
+            "async () => { const response = await fetch('/api/health'); "
+            "return response.json(); }"
+        )
+        assert_health_mapping(initial_health)
         assert page.get_by_role("heading", name="Documents", exact=True).is_visible()
         capture(page, "workspace")
 
@@ -577,7 +602,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         page.unroute("**/api/health")
         # Stop the real worker before subsequent health-only presentation checks.
         # Await the bounded native audit response, then retain the 5s render check.
-        with page.expect_response("**/api/health", timeout=50_000) as reconnect_health:
+        with page.expect_response("**/api/health", timeout=65_000) as reconnect_health:
             with page.expect_response("**/cancel") as cancellation_response:
                 page.get_by_role("button", name="Stop task").click()
             cancellation = cancellation_response.value
@@ -596,7 +621,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             )
         assert reconnect_health.value.status == 200
         page.get_by_text("Connected", exact=True).wait_for(timeout=5_000)
-        page.get_by_text("Verification pending").first.wait_for(state="visible", timeout=5_000)
+        assert_health_mapping(reconnect_health.value.json())
 
         def failed_preflight(route) -> None:
             response = route.fetch()
@@ -610,7 +635,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             route.fulfill(response=response, json=payload)
 
         page.route("**/api/health", failed_preflight)
-        with page.expect_response("**/api/health", timeout=50_000) as failed_health:
+        with page.expect_response("**/api/health", timeout=65_000) as failed_health:
             page.get_by_role("button", name="Refresh workspace").click()
         assert failed_health.value.status == 200
         page.get_by_text("Protection unavailable", exact=True).first.wait_for(timeout=5_000)
@@ -619,19 +644,21 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             "UNAVAILABLE",
         ]
         page.unroute("**/api/health")
-        with page.expect_response("**/api/health", timeout=50_000) as recovered_health:
+        with page.expect_response("**/api/health", timeout=65_000) as recovered_health:
             page.get_by_role("button", name="Refresh workspace").click()
         assert recovered_health.value.status == 200
-        page.get_by_text("Verification pending").first.wait_for(timeout=5_000)
+        assert_health_mapping(recovered_health.value.json())
 
         page.get_by_role("button", name="Workspace", exact=True).click()
-        invoice_action = page.get_by_role("button", name="Review Invoice Analyzer approval")
-        invoice_action.focus()
+        invoice_action = page.get_by_role("button", name="Invoice Analyzer unavailable")
+        assert invoice_action.is_disabled()
+        report_action = page.get_by_role("button", name="Review Report Formatter approval")
+        report_action.focus()
         page.keyboard.press("Enter")
         page.wait_for_url("http://127.0.0.1:8765/approve?*", timeout=10_000)
-        assert page.locator("#approval-document").input_value() == "doc-invoice"
-        invoice_approval = page.get_by_role("button", name="Approve and open")
-        invoice_approval.focus()
+        assert page.locator("#approval-document").input_value() == "doc-report"
+        formatter_approval = page.get_by_role("button", name="Approve and open")
+        formatter_approval.focus()
         page.keyboard.press("Enter")
         page.wait_for_url("http://127.0.0.1:8765/owner", timeout=10_000)
         page.wait_for_function(
@@ -660,7 +687,14 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         assert api_incident["body"]["incident_summary"]["incident_id"] == str(
             incident_record.incident_id
         )
-        page.reload(wait_until="domcontentloaded")
+        with page.expect_response("**/api/health", timeout=65_000) as reloaded_health:
+            with page.expect_response(
+                lambda response: response.url.endswith("/api/tasks?limit=20"),
+                timeout=65_000,
+            ) as reloaded_tasks:
+                page.reload(wait_until="domcontentloaded")
+        assert reloaded_health.value.status == 200
+        assert reloaded_tasks.value.status == 200
         page.wait_for_selector(".incident-callout", state="visible", timeout=10_000)
         assert any(
             event.source == "broker" and event.decision == "deny"
@@ -682,7 +716,8 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         lifecycle._private_verification_gate.set()
         incident_task = lifecycle.wait(incident_task_id, timeout=40)
         assert database.evidence_response(incident_task_id).status == "complete"
-        page.locator(".evidence-check").first.wait_for(state="visible", timeout=10_000)
+        # One dashboard refresh can wait for the bounded Windows protection preflight.
+        page.locator(".evidence-check").first.wait_for(state="visible", timeout=65_000)
         evidence = database.evidence_response(incident_task_id)
         assert evidence.report is not None
         should_block = (

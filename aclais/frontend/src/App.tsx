@@ -515,8 +515,8 @@ function Dashboard() {
                     <span className="section-meta">Owner approval required</span>
                   </div>
                   <div className="tool-grid">
-                    <ToolCard title="Report Formatter" detail="Create a clean, structured version of a selected report." documentLabel={documents.find((item) => item.id === "doc-report")?.display_name ?? "Registered input unavailable"} tone="blue" onClick={() => startApproval("report_formatter")} disabled={!connected || !documents.some((item) => item.id === "doc-report")} />
-                    <ToolCard title="Invoice Analyzer" detail="Extract the key fields from a selected invoice." documentLabel={documents.find((item) => item.id === "doc-invoice")?.display_name ?? "Registered input unavailable"} tone="violet" onClick={() => startApproval("invoice_analyzer")} disabled={!connected || !documents.some((item) => item.id === "doc-invoice")} />
+                    <ToolCard title="Report Formatter" detail="Create a clean, structured version of a selected report." documentLabel={documents.find((item) => item.id === "doc-report")?.display_name ?? "Registered input unavailable"} tone="blue" registrationLabel="FIXED TOOL" buttonLabel="Review and approve" onClick={() => startApproval("report_formatter")} disabled={!connected || !documents.some((item) => item.id === "doc-report")} />
+                    <ToolCard title="Invoice Analyzer" detail="This utility will be available after the Report Formatter checkpoint is verified." documentLabel={documents.find((item) => item.id === "doc-invoice")?.display_name ?? "Registered input unavailable"} tone="violet" registrationLabel="NOT INSTALLED" buttonLabel="Unavailable" onClick={() => undefined} disabled />
                   </div>
                 </section>
 
@@ -642,12 +642,12 @@ function DocumentCard({ item }: { item: DocumentSummary }) {
   </article>;
 }
 
-function ToolCard({ title, detail, documentLabel, tone, onClick, disabled }: { title: string; detail: string; documentLabel: string; tone: "blue" | "violet"; onClick: () => void; disabled: boolean }) {
+function ToolCard({ title, detail, documentLabel, tone, registrationLabel, buttonLabel, onClick, disabled }: { title: string; detail: string; documentLabel: string; tone: "blue" | "violet"; registrationLabel: string; buttonLabel: string; onClick: () => void; disabled: boolean }) {
   return <article className={`tool-card tool-${tone}`}>
-    <div className="tool-card-top"><span className="tool-icon"><Icon name="spark" /></span><span className="tool-registration">FIXED TOOL</span></div>
+    <div className="tool-card-top"><span className="tool-icon"><Icon name="spark" /></span><span className="tool-registration">{registrationLabel}</span></div>
     <h3>{title}</h3><p>{detail}</p>
     <div className="tool-input"><Icon name="file" /><span>Registered input</span><strong>{documentLabel}</strong></div>
-    <button className="primary-button" onClick={onClick} disabled={disabled} aria-label={`Review ${title} approval`}><span>Review and approve</span><Icon name="arrow" /></button>
+    <button className="primary-button" onClick={onClick} disabled={disabled} aria-label={disabled ? `${title} unavailable` : `Review ${title} approval`}><span>{buttonLabel}</span>{!disabled && <Icon name="arrow" />}</button>
   </article>;
 }
 

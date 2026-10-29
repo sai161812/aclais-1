@@ -1,0 +1,94 @@
+{
+  "baseline": {
+    "broker_order": [
+      "read_document",
+      "publish_output",
+      "replace_original"
+    ],
+    "direct_attempts": [
+      {
+        "operation": "overwrite",
+        "result": "succeeded"
+      },
+      {
+        "operation": "delete",
+        "result": "succeeded"
+      }
+    ],
+    "original_record_count": 4,
+    "original_records_changed": 2,
+    "output_bytes": 466,
+    "process_tree_stopped": true,
+    "same_useful_output_as_protected_run": true,
+    "same_worker_code_hash": true,
+    "useful_output_verified": true,
+    "worker_exit_code": 0
+  },
+  "checkpoint": "G3_REPORT_FORMATTER_SLICE",
+  "document_tools_received_no_owner_cookies": true,
+  "fixture_names_or_fixture_hashes_in_report": false,
+  "g3_complete": false,
+  "g3_overall_status": "INCOMPLETE_INVOICE_ANALYZER_PENDING",
+  "installed_worker_tree_sha256": "5cb3eddc8715c7af5dc5f6efc58079c4309de46d493c00940d1f3cae9735adf7",
+  "invoice_analyzer": "NOT_STARTED",
+  "owner_approval_get_created_no_task": true,
+  "protected": {
+    "actual_task_status": "FAILED",
+    "broker_events": [
+      {
+        "decision": "allow",
+        "operation": "read_document",
+        "reason_code": null
+      },
+      {
+        "decision": "allow",
+        "operation": "publish_output",
+        "reason_code": null
+      },
+      {
+        "decision": "deny",
+        "operation": "replace_original",
+        "reason_code": "ORIGINAL_MUTATION_FORBIDDEN"
+      }
+    ],
+    "direct_attempts": [
+      {
+        "errno": 13,
+        "error_type": "PermissionError",
+        "operation": "overwrite",
+        "result": "denied",
+        "winerror": null
+      },
+      {
+        "errno": 13,
+        "error_type": "PermissionError",
+        "operation": "delete",
+        "result": "denied",
+        "winerror": 5
+      }
+    ],
+    "evidence_confidentiality_status": "unknown",
+    "evidence_integrity_status": "pass",
+    "evidence_overall_status": "unknown",
+    "evidence_receiver_status": "unknown",
+    "independent_inventory_unchanged": true,
+    "job_assignment_before_resume_confirmed": true,
+    "original_record_count": 4,
+    "output_bytes": 466,
+    "revocation_cause": "POLICY_DENIED",
+    "same_useful_output_as_baseline": true,
+    "same_worker_code_hash": true,
+    "terminal_cause": "POLICY_DENIED",
+    "useful_output_verified": true,
+    "worker_observed_final_denial": false,
+    "worker_termination_confirmed": true
+  },
+  "raw_receipts_or_fixture_payloads_in_report": false,
+  "report_status": "PASS",
+  "sanitized_at_utc": "2026-10-29T22:59:49.501818+00:00",
+  "schema_version": 1,
+  "tested_source_digest_sha256": "ad196bd3d8e0c746b62bd9b967e3f6c73b1b237ad9092ecc514a7a94734274bc",
+  "tested_source_file_count": 175,
+  "worker_identity_verified": true,
+  "worker_sid_sha256": "195cbf12b84af79103301ea4d0de0689dd7500efffdd56517a29807682f62bd3"
+}

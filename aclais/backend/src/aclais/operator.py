@@ -270,6 +270,7 @@ def restore_recorded_checkout(root: Path, api: _NativeApi) -> None:
             or relative.parts[0]
             not in {
                 "aclais",
+                "document-tools",
                 "scripts",
                 "shared",
                 "evidence",

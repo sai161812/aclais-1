@@ -11,7 +11,7 @@ if ($manifest.owner_sid -ne $identity.User.Value -or $sentinel.owner_sid -ne $id
     $manifest.root_id -ne $sentinel.root_id -or $manifest.root_path -ne $labRoot) {
     throw 'Checkout protection refused inconsistent ownership.'
 }
-$paths = @('aclais\backend', 'aclais\frontend', 'aclais\scripts', 'aclais\tests', 'scripts', 'shared', 'evidence', '.git')
+$paths = @('aclais\backend', 'aclais\frontend', 'aclais\scripts', 'aclais\tests', 'document-tools', 'scripts', 'shared', 'evidence', '.git')
 $snapshotPath = Join-Path $labRoot 'state\checkout-acl-before.json'
 if (-not (Test-Path -LiteralPath $snapshotPath)) {
     $records = @()

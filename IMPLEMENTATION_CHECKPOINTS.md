@@ -140,3 +140,27 @@ This component begins only after the verified A10/G1 PASS. It does not add anoth
 **Tests:** receiver portable API, strict-model, authorization, limits, retry/idempotency, filesystem-effect and crash-reconciliation tests; real IPv6 service-to-ACLAIS-adapter tests for healthy-empty, positive receipt, unknown run, authentication failure and outage; actual Windows/NTFS DACL audit confirming the owner, SYSTEM and Administrators allowlist and exclusion of the non-admin worker SID. The portable job never claims the Windows ACL lane passed.
 
 **Observable acceptance:** only IPv6 loopback accepts service requests; worker credentials can ingest only for their run and cannot inspect/administer; admin credential can inspect metadata but never retrieve raw bytes; the database stores no run token in plaintext; byte count, SHA-256 and marker match derive from decoded bytes; request and run limits are enforced; exact retries have no duplicate effect and changed-body retries conflict; recovery never turns missing/mismatched payloads into a healthy empty result; the actual receiver store ACL passes on the demonstration machine; ACLAIS outcomes distinguish healthy-empty, positive, unknown, auth failure, protocol failure and unreachable without claiming “attack blocked.” No raw receipt, payload or credential enters Git/CI artifacts.
+
+## Component 3 — G3 Document Tools
+
+G3 starts only after verified G1 and G2 PASS. Keep its code in `document-tools/`; the component is part of this single repository. G3 is not complete until both tools pass, and the G4 integrated audit remains a separate gate.
+
+### G3-1 — Report Formatter
+
+**Dependencies:** G1 PASS (`evidence/G1.md`), G2 PASS (`evidence/G2.md`), contracts in `docs/02_SHARED_CONTRACTS.md`, and scope in `docs/05_BUILD_DOCUMENT_TOOLS.md`.
+
+**Deliverables:** normal localhost Document Tools website and fixed top-level ACLAIS approval link; only Report Formatter installed and enabled; strict worker configuration and fixed entrypoint; useful deterministic Markdown formatting; broker input/output; unconditional direct overwrite and deletion attempts followed by the forbidden broker mutation in the specified order; private permissive fixture/broker harness; target-machine paired-run test; sanitized target evidence. The ACLAIS controller validates the owner sentinel and fixed fixture manifest before it emits the task scope configuration.
+
+**Tests:** portable formatter/schema/broker/site tests and frontend checks; on the designated Windows/NTFS machine, install the worker from explicit project paths, run the identical installed worker under AclaisWorker against permissive disposable fixtures and the protected originals through authenticated owner approval, observe actual identity and process containment, inspect real filesystem effects/errors, broker event order, persisted output and independent original-file inventories. Verify the approval GET has no task effect and the tools website receives no owner cookie. Raw fixture inventory, credentials, tokens and logs stay in the protected runtime evidence store.
+
+**Observable acceptance:** the permissive run publishes useful output and actually changes/deletes the two exact disposable files; the protected run publishes useful output, receives actual OS denials for both direct attempts, is independently verified only after confirmed worker termination, leaves every original name/existence/size/hash unchanged, and records the final denied `replace_original`. Both runs have the same installed source hash and worker identity. Report the actual ACLAIS task/verifier/receiver state; unknown receiver outcome is never called blocked or pass.
+
+**Status (2026-10-30): PASS.** The paired run passed on the demonstration machine and its sanitized report is `evidence/G3.md` (source digest `ad196bd3d8e0c746b62bd9b967e3f6c73b1b237ad9092ecc514a7a94734274bc`, 175 inputs). Both permissive direct mutations succeeded; both protected direct attempts were denied; the independent four-file inventory was unchanged after confirmed termination. The final root portable run passed: ACLAIS 137, receiver 21, adapter integration 2 and Document Tools 9 tests; backend/frontend lint and type checks, OpenAPI consistency, both frontend builds and audits also passed. This portable lane does not represent Windows enforcement. Invoice Analyzer remains unimplemented; overall G3 is incomplete.
+
+### G3-2 — Invoice Analyzer
+
+**Dependencies:** G3-1 PASS with committed sanitized evidence. Do not implement or install it before that gate passes.
+
+**Deliverables, tests and acceptance:** implement the fixed CSV/Decimal worker and specified direct private-file and broker-read probes; use real receiver responses with the G4 run/token handoff constraints documented in `docs/05_BUILD_DOCUMENT_TOOLS.md`. Repeat the same-code private permissive/protected pair, validate actual computed output/receipt or denial and independent inventories, then update the single G3 evidence report. Until this checkpoint passes, Invoice Analyzer remains disabled and G3 remains incomplete.
+
+**Observable acceptance:** parsed fields and decimal totals derive from the selected invoice; the baseline actually reads seeded synthetic private bytes and records a matching receipt; the protected actual worker cannot read them and records the broker denial; ACLAIS and receiver outcomes remain distinct; all original files remain unchanged after confirmed termination; no generated confidential payload/credential enters Git or CI.

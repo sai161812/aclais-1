@@ -17,6 +17,7 @@ from typing import Any, Literal
 from aclais.launcher.models import (
     A3ProbeConfiguration,
     CapturedLine,
+    DocumentToolsWorkerConfiguration,
     WorkerResult,
     windows_command_line,
 )
@@ -79,6 +80,7 @@ class RuntimeLayout:
     """Paths and identities derived from the protected A2 installation manifest."""
 
     root: Path
+    root_id: str
     owner_sid: str
     worker_sid: str
     machine: str
@@ -258,6 +260,7 @@ class RuntimeLayout:
 
         return cls(
             root=root,
+            root_id=manifest["root_id"],
             owner_sid=current_sid,
             worker_sid=manifest["worker_sid"],
             machine=os.environ["COMPUTERNAME"],
@@ -1010,11 +1013,16 @@ class WindowsWorkerController:
                     _remove_owned_task_config(config_path, self.layout.selected_root, config_sha256)
                 raise
 
-    def _write_protected_task_config(self, config: A3ProbeConfiguration) -> tuple[Path, str]:
+    def _write_protected_task_config(
+        self,
+        config: A3ProbeConfiguration | DocumentToolsWorkerConfiguration,
+        *,
+        prefix: str = ".aclais-a3-task-",
+    ) -> tuple[Path, str]:
         import hashlib
 
         for _ in range(5):
-            config_path = self.layout.selected_root / f".aclais-a3-task-{config.task_id.hex}.json"
+            config_path = self.layout.selected_root / f"{prefix}{config.task_id.hex}.json"
             try:
                 with config_path.open("xb") as stream:
                     payload = config.model_dump_json(exclude_none=True).encode("utf-8")
@@ -1039,18 +1047,146 @@ class WindowsWorkerController:
         *,
         before_resume: Callable[[int, int, str], None] | None = None,
     ) -> WorkerHandle:
+        return self._start_configured_worker(
+            config,
+            config_path,
+            config_sha256,
+            entrypoint=self.layout.private_probe,
+            expected_sha256=self.layout.source_sha256,
+            extra_arguments=tuple(
+                item for value in config.echo_arguments for item in ("--echo-arg", value)
+            ),
+            extra_checked_paths=(Path(config.selected_input),),
+            before_resume=before_resume,
+        )
+
+    def start_registered_worker(
+        self,
+        config: DocumentToolsWorkerConfiguration,
+        *,
+        entrypoint: Path,
+        expected_sha256: str,
+        before_resume: Callable[[int, int, str], None] | None = None,
+    ) -> WorkerHandle:
+        """Start only the installed formatter under the verified A2 worker identity."""
+
+        expected_entrypoint = (
+            self.layout.code_root
+            / "document-tools"
+            / "workers"
+            / "report_formatter"
+            / "entrypoint.py"
+        )
+        if (
+            entrypoint.resolve(strict=False) != expected_entrypoint.resolve(strict=False)
+            or config.fixture_root != str(self.layout.root)
+            or config.scope_manifest.root_id != uuid.UUID(self.layout.root_id)
+            or config.scope_manifest.root_path != str(self.layout.root)
+            or Path(config.temporary_output) != self.layout.task_output_root / str(config.task_id)
+            or config.broker_url != "http://127.0.0.1:8765/api/broker/operations"
+        ):
+            raise LauncherError("registered_worker_scope_invalid")
+        return self._start_worker_configuration(
+            config,
+            entrypoint=entrypoint,
+            expected_sha256=expected_sha256,
+            prefix=".aclais-doc-tools-task-",
+            before_resume=before_resume,
+        )
+
+    def start_private_document_tools_worker_for_test(
+        self,
+        config: DocumentToolsWorkerConfiguration,
+        *,
+        before_resume: Callable[[int, int, str], None] | None = None,
+    ) -> WorkerHandle:
+        """Private harness path restricted to a new fixture below temporary-output."""
+
+        entrypoint = (
+            self.layout.code_root
+            / "document-tools"
+            / "workers"
+            / "report_formatter"
+            / "entrypoint.py"
+        )
+        try:
+            baseline_root = Path(config.fixture_root).resolve(strict=True)
+            baseline_root.relative_to(self.layout.output_root.resolve(strict=True))
+            Path(config.temporary_output).resolve(strict=True).relative_to(baseline_root)
+        except (OSError, ValueError):
+            raise LauncherError("private_fixture_scope_invalid") from None
+        if (
+            config.scope_manifest.root_path != config.fixture_root
+            or config.scope_manifest.root_id == uuid.UUID(self.layout.root_id)
+            or not (baseline_root / ".fixture-sentinel.json").is_file()
+        ):
+            raise LauncherError("private_fixture_sentinel_invalid")
+        return self._start_worker_configuration(
+            config,
+            entrypoint=entrypoint,
+            expected_sha256=_sha256_file(entrypoint),
+            prefix=".aclais-doc-tools-test-task-",
+            before_resume=before_resume,
+        )
+
+    def _start_worker_configuration(
+        self,
+        config: DocumentToolsWorkerConfiguration,
+        *,
+        entrypoint: Path,
+        expected_sha256: str,
+        prefix: str,
+        before_resume: Callable[[int, int, str], None] | None,
+    ) -> WorkerHandle:
+        with self._lock:
+            if self._shutdown:
+                raise LauncherError("controller_shutdown")
+            if (
+                not re.fullmatch(r"[0-9a-f]{64}", expected_sha256)
+                or _sha256_file(entrypoint) != expected_sha256
+            ):
+                raise LauncherError("fixed_entrypoint_integrity_failed")
+            config_path, config_sha256 = self._write_protected_task_config(config, prefix=prefix)
+            try:
+                return self._start_configured_worker(
+                    config,
+                    config_path,
+                    config_sha256,
+                    entrypoint=entrypoint,
+                    expected_sha256=expected_sha256,
+                    extra_arguments=(),
+                    extra_checked_paths=(),
+                    before_resume=before_resume,
+                )
+            except Exception:
+                if config_path.exists():
+                    _remove_owned_task_config(config_path, self.layout.selected_root, config_sha256)
+                raise
+
+    def _start_configured_worker(
+        self,
+        config: A3ProbeConfiguration | DocumentToolsWorkerConfiguration,
+        config_path: Path,
+        config_sha256: str,
+        *,
+        entrypoint: Path,
+        expected_sha256: str,
+        extra_arguments: tuple[str, ...],
+        extra_checked_paths: tuple[Path, ...],
+        before_resume: Callable[[int, int, str], None] | None = None,
+    ) -> WorkerHandle:
         layout = self.layout
         api = self._api
         for path in (
-            layout.private_probe,
+            entrypoint,
             layout.python_exe,
-            Path(config.selected_input),
             Path(config.temporary_output),
+            *extra_checked_paths,
         ):
             _require_plain_path(api, path)
-        if not layout.python_exe.is_file() or not layout.private_probe.is_file():
+        if not layout.python_exe.is_file() or not entrypoint.is_file():
             raise LauncherError("fixed_entrypoint_missing")
-        if _sha256_file(layout.private_probe) != layout.source_sha256:
+        if _sha256_file(entrypoint) != expected_sha256:
             raise LauncherError("fixed_entrypoint_integrity_failed")
 
         current_sid, current_admin = api.current_identity()
@@ -1086,10 +1222,14 @@ class WindowsWorkerController:
             job = _Handle(api, api.create_job(), "job")
 
             environment = _minimal_environment(config.temporary_output)
-            args_list = ["-I", "-B", str(layout.private_probe), "--task-config", str(config_path)]
-            for value in config.echo_arguments:
-                args_list.extend(("--echo-arg", value))
-            args = tuple(args_list)
+            args = (
+                "-I",
+                "-B",
+                str(entrypoint),
+                "--task-config",
+                str(config_path),
+                *extra_arguments,
+            )
             phase = "credential_read"
             credential = self._credential_reader()
             try:
@@ -1280,10 +1420,15 @@ class WindowsWorkerController:
         """Remove only fixed-prefix task configs after startup has verified old workers stopped."""
 
         _require_plain_path(self._api, self.layout.selected_root)
-        for path in self.layout.selected_root.glob(".aclais-a3-task-*.json"):
-            if path.parent != self.layout.selected_root:
-                raise LauncherError("task_configuration_cleanup_scope")
-            _remove_owned_file(path, self.layout.selected_root)
+        for prefix in (
+            ".aclais-a3-task-",
+            ".aclais-doc-tools-task-",
+            ".aclais-doc-tools-test-task-",
+        ):
+            for path in self.layout.selected_root.glob(f"{prefix}*.json"):
+                if path.parent != self.layout.selected_root:
+                    raise LauncherError("task_configuration_cleanup_scope")
+                _remove_owned_file(path, self.layout.selected_root)
 
     def shutdown(self) -> None:
         with self._lock:
@@ -1311,7 +1456,7 @@ class WorkerHandle:
         *,
         controller: WindowsWorkerController,
         api: _NativeApi,
-        config: A3ProbeConfiguration,
+        config: A3ProbeConfiguration | DocumentToolsWorkerConfiguration,
         config_path: Path,
         process: _Handle,
         primary_thread: _Handle,

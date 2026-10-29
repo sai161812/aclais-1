@@ -92,6 +92,7 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
     readiness.require_core()
     workspace = TaskWorkspace(layout)
     workspace.prepare_roots()
+    tool_registry = FixedToolRegistry(layout.root, root_id=layout.root_id)
     database = Database(layout.root / "state" / "controller.sqlite3")
     output_publisher = OutputPublisher(database, layout.verified_output_root)
     launcher = WindowsWorkerController(layout)
@@ -113,12 +114,12 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
         receiver_adapter=HttpReceiverAdapter(
             credential_file=layout.root / "state" / "receiver" / "admin.token"
         ),
+        tool_registry=tool_registry,
     )
     lifecycle.recover_before_serving()
     owner_auth = OwnerAuth(database, origin=runtime_settings.expected_origin)
     output_publisher.reconcile_all(scan_unknown=True)
     bootstrap_url = owner_auth.issue_bootstrap_url()
-    tool_registry = FixedToolRegistry(layout.root)
     frontend_dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     application = create_app(
         runtime_settings,
@@ -126,6 +127,7 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
         output_publisher=output_publisher,
         owner_auth=owner_auth,
         cancel_task=lifecycle.cancel,
+        approved_task_launcher=lifecycle.start_approved_task,
         tool_registry=tool_registry,
         frontend_dist=frontend_dist,
         health_provider=lambda: readiness.health(controller_accepting=lifecycle.accepting_tasks),

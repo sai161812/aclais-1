@@ -1,7 +1,7 @@
 {
   "checkpoint": "A10",
   "passed": true,
-  "tested_backend_sha256": "851b96f32e42e2f662189a184e4780ede573c96d96f755810a90e508883f9cb2",
+  "tested_backend_sha256": "7523b2a08a4fe390422fb28975abbf6c0163ae00da053f1e71977b2f1c668f12",
   "permission_drift_refused": true,
   "duplicate_start_refused": true,
   "active_controller_reset_refused": true,

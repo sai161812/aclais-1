@@ -95,6 +95,83 @@ class A3ProbeConfiguration(BaseModel):
         return self
 
 
+class WorkerScopeManifest(BaseModel):
+    """Controller-issued filename-only scope derived from the validated lab sentinel."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal[1]
+    root_id: UUID
+    root_path: str = Field(min_length=1, max_length=1024)
+    fixture_files: tuple[str, ...] = Field(min_length=4, max_length=4)
+
+    @field_validator("root_path")
+    @classmethod
+    def require_absolute_root(cls, value: str) -> str:
+        return A3ProbeConfiguration.require_absolute_windows_path(value)
+
+    @field_validator("fixture_files")
+    @classmethod
+    def require_fixed_document_manifest(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        expected = (
+            "store/originals/Personnel_Private.csv",
+            "store/originals/invoice.csv",
+            "store/originals/meeting-notes.md",
+            "store/originals/project-report.md",
+        )
+        if values != expected:
+            raise ValueError("worker scope must contain exactly the four seeded documents")
+        return values
+
+
+class DocumentToolsWorkerConfiguration(BaseModel):
+    """Strict owner-written configuration for the fixed production formatter."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_version: Literal[1] = 1
+    task_id: UUID
+    tool_id: Literal["report_formatter"]
+    selected_document_id: Literal["doc-report"]
+    fixture_root: str = Field(min_length=1, max_length=1024)
+    scope_manifest: WorkerScopeManifest
+    temporary_output: str = Field(min_length=1, max_length=1024)
+    deadline_seconds: int = Field(ge=1, le=30)
+    broker_url: str = Field(min_length=1, max_length=256, repr=False)
+    worker_credential: str = Field(min_length=32, max_length=512, repr=False)
+
+    @field_validator("fixture_root", "temporary_output")
+    @classmethod
+    def require_absolute_paths(cls, value: str) -> str:
+        return A3ProbeConfiguration.require_absolute_windows_path(value)
+
+    @field_validator("broker_url")
+    @classmethod
+    def require_canonical_broker_url(cls, value: str) -> str:
+        if value != "http://127.0.0.1:8765/api/broker/operations":
+            raise ValueError("production worker broker URL is fixed to the ACLAIS origin")
+        return value
+
+    @field_validator("worker_credential")
+    @classmethod
+    def validate_credential(cls, value: str) -> str:
+        if any(ord(char) < 0x21 or ord(char) > 0x7E for char in value):
+            raise ValueError("worker credential is invalid")
+        return value
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> DocumentToolsWorkerConfiguration:
+        root = PureWindowsPath(self.fixture_root)
+        temp = PureWindowsPath(self.temporary_output)
+        try:
+            temp.relative_to(root)
+        except ValueError as exc:
+            raise ValueError("temporary output must be under the fixture root") from exc
+        if self.scope_manifest.root_path != self.fixture_root:
+            raise ValueError("scope manifest root does not match the fixture root")
+        return self
+
+
 class CapturedLine(BaseModel):
     """One bounded output line with explicit channel and provenance."""
 

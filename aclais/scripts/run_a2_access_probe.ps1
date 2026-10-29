@@ -190,7 +190,7 @@ $repositoryFrontendIndexPath = Join-Path $componentRoot 'frontend\dist\index.htm
 $repositoryFrontendIndexHashBefore = $null
 $repositoryFrontendIndexHashAfter = $null
 $previousPythonPath = $env:PYTHONPATH
-$additionalSources = @('aclais\backend\.venv\Lib\site-packages\fastapi\__init__.py', 'aclais\scripts\manage.ps1', 'scripts\aclais.ps1', 'shared\openapi.json')
+$additionalSources = @('aclais\backend\.venv\Lib\site-packages\fastapi\__init__.py', 'aclais\scripts\manage.ps1', 'scripts\aclais.ps1', 'shared\openapi.json', 'document-tools\src\document_tools\worker.py', 'document-tools\workers\report_formatter\entrypoint.py', 'document-tools\frontend\src\main.tsx', 'document-tools\frontend\package-lock.json')
 $additionalHashes = @{}
 
 try {

@@ -19,6 +19,7 @@ from uuid import UUID
 from aclais.broker import BrokerService
 from aclais.concurrency import TaskLockRegistry
 from aclais.evidence import FixtureVerifier
+from aclais.launcher.models import DocumentToolsWorkerConfiguration, WorkerScopeManifest
 from aclais.launcher.windows import (
     LauncherError,
     RuntimeLayout,
@@ -44,10 +45,19 @@ from aclais.persistence.models import (
 )
 from aclais.publication import MAX_OUTPUT_BYTES, OutputPublisher
 from aclais.receiver_adapter import ReceiverAdapter
+from aclais.tool_registry import FixedToolRegistry, WorkerUnavailable
 
 
 class LifecycleError(RuntimeError):
     """Lifecycle failed closed; no success or verified-containment claim is implied."""
+
+
+_REPORT_FORMATTER_FIXTURE_PATHS = (
+    "store/originals/Personnel_Private.csv",
+    "store/originals/invoice.csv",
+    "store/originals/meeting-notes.md",
+    "store/originals/project-report.md",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,6 +202,7 @@ class LifecycleCoordinator:
         token_factory: Callable[[], str] | None = None,
         process_stopped: Callable[[TaskRecord], bool] | None = None,
         preflight: Callable[[], None] | None = None,
+        tool_registry: FixedToolRegistry | None = None,
     ) -> None:
         self.layout = layout
         self.database = database
@@ -209,6 +220,7 @@ class LifecycleCoordinator:
         self._token_factory = token_factory or (lambda: secrets.token_urlsafe(32))
         self._process_stopped = process_stopped
         self._preflight = preflight
+        self.tool_registry = tool_registry
         self._admission_lock = threading.Lock()
         self._active_lock = threading.RLock()
         self._active: dict[UUID, _ActiveTask] = {}
@@ -434,6 +446,146 @@ class LifecycleCoordinator:
                         broker_url=broker_url if broker_probe != "none" else None,
                         worker_credential=token if broker_probe != "none" else None,
                         broker_probe=broker_probe,
+                        before_resume=before_resume,
+                    )
+                    if not activated_at or not deadline_start:
+                        raise LifecycleError(
+                            "launcher resumed before worker identity was committed"
+                        )
+                    context = _ActiveTask(
+                        task_id=task.task_id,
+                        handle=handle,
+                        paths=paths,
+                        deadline_monotonic=deadline_start[0] + deadline_seconds,
+                        deadline_utc=activated_at[0] + timedelta(seconds=deadline_seconds),
+                        done=threading.Event(),
+                    )
+                    with self._active_lock:
+                        self._active[task.task_id] = context
+                    context.monitor = threading.Thread(
+                        target=self._monitor_task,
+                        args=(context,),
+                        name=f"aclais-task-monitor-{task.task_id.hex}",
+                        daemon=True,
+                    )
+                    context.monitor.start()
+                    return task.task_id
+                except Exception as exc:
+                    if context is not None:
+                        self._fail_closed()
+                        try:
+                            self._revoke_locked(context, RevocationCause.CONTROLLER_SHUTDOWN)
+                        except Exception:
+                            self._fail_closed()
+                    self._handle_start_failure(task.task_id, paths, exc)
+                    raise
+
+    def start_approved_task(
+        self,
+        request: CreateTaskRequest,
+        observed_origin: str | None,
+        observed_referer: str | None,
+    ) -> UUID:
+        """Start the one installed production worker through the owner approval route."""
+
+        if request.tool_id != "report_formatter" or request.selected_document_id != "doc-report":
+            raise LifecycleError("production worker registration is unavailable")
+        if self.tool_registry is None:
+            raise LifecycleError("fixed production worker registry is unavailable")
+        if not self.accepting_tasks:
+            raise LifecycleError("controller is not accepting task work")
+        try:
+            entrypoint = self.tool_registry.resolve_installed_entrypoint(request)
+            entrypoint_sha256 = self.tool_registry.entrypoint_sha256(request)
+        except WorkerUnavailable as exc:
+            raise LifecycleError("registered production worker is unavailable") from exc
+
+        deadline_seconds = 30
+        with self._admission_lock:
+            if not self.accepting_tasks:
+                raise LifecycleError("controller is not accepting task work")
+            if self._preflight is not None:
+                self._preflight()
+            try:
+                task = self.database.create_task(
+                    request,
+                    now=self._wall_clock(),
+                    require_single_worker=True,
+                    observed_origin=observed_origin,
+                    observed_referer=observed_referer,
+                )
+            except TaskAlreadyActive as exc:
+                raise LifecycleError("the single worker slot is occupied") from exc
+            with self.task_locks.hold(str(task.task_id)):
+                task = self.database.transition_task(
+                    task.task_id,
+                    TaskStatus.PREPARING,
+                    now=self._wall_clock(),
+                    event_kind="task_preparation_started",
+                    event_message="Controller prepared the registered Report Formatter action.",
+                )
+                paths: TaskWorkspacePaths | None = None
+                context: _ActiveTask | None = None
+                try:
+                    paths = self.workspace.prepare(task)
+                    if self.verifier is None:
+                        raise LifecycleError("trusted fixture verifier is unavailable")
+                    baseline = self.verifier.capture_baseline(task, paths.selected_input)
+                    if not baseline.manifest_match:
+                        raise LifecycleError(
+                            "pre-launch fixture inventory differs from A2 manifest"
+                        )
+                    expected_paths = {path for path, _digest in self.layout.fixture_hashes}
+                    if not set(_REPORT_FORMATTER_FIXTURE_PATHS).issubset(expected_paths):
+                        raise LifecycleError("trusted formatter fixture manifest is incomplete")
+                    contract = self.database.get_contract(task.task_id)
+                    if contract is None:
+                        raise LifecycleError("task action contract was not persisted")
+                    token = self._token_factory()
+                    if not isinstance(token, str) or not 32 <= len(token) <= 512:
+                        raise LifecycleError("credential generator returned an invalid token")
+                    token_hash = hashlib.sha256(token.encode("ascii", errors="strict")).hexdigest()
+                    activated_at: list[datetime] = []
+                    deadline_start: list[float] = []
+                    credential_expiry = min(
+                        contract.expires_at,
+                        self._wall_clock() + timedelta(seconds=deadline_seconds + 2),
+                    )
+
+                    def before_resume(pid: int, created: int, sid: str) -> None:
+                        now = self._wall_clock()
+                        self.database.activate_worker(
+                            task.task_id,
+                            token_hash,
+                            worker_pid=pid,
+                            worker_sid=sid,
+                            worker_creation_time_100ns=created,
+                            now=now,
+                            credential_expires_at=credential_expiry,
+                        )
+                        activated_at.append(now)
+                        deadline_start.append(self._monotonic())
+
+                    config = DocumentToolsWorkerConfiguration(
+                        task_id=task.task_id,
+                        tool_id="report_formatter",
+                        selected_document_id="doc-report",
+                        fixture_root=str(self.layout.root),
+                        scope_manifest=WorkerScopeManifest(
+                            schema_version=1,
+                            root_id=UUID(self.layout.root_id),
+                            root_path=str(self.layout.root),
+                            fixture_files=_REPORT_FORMATTER_FIXTURE_PATHS,
+                        ),
+                        temporary_output=str(paths.temporary_directory),
+                        deadline_seconds=deadline_seconds,
+                        broker_url="http://127.0.0.1:8765/api/broker/operations",
+                        worker_credential=token,
+                    )
+                    handle = self.launcher.start_registered_worker(
+                        config,
+                        entrypoint=entrypoint,
+                        expected_sha256=entrypoint_sha256,
                         before_resume=before_resume,
                     )
                     if not activated_at or not deadline_start:

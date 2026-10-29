@@ -11,7 +11,8 @@ import time
 from pathlib import Path
 
 from aclais.launcher.windows import RuntimeLayout, _NativeApi
-from aclais.persistence.models import HealthCheck, HealthResponse
+from aclais.persistence.models import CreateTaskRequest, HealthCheck, HealthResponse
+from aclais.tool_registry import FixedToolRegistry, WorkerUnavailable
 
 
 class ReadinessError(RuntimeError):
@@ -39,7 +40,10 @@ def boundary_check(
         command.append("-RequireIdle")
     if allow_retiring:
         command.append("-AllowRetiring")
-    result = subprocess.run(command, capture_output=True, timeout=45, env=environment, check=False)
+    timeout_seconds = 90 if require_idle else 60
+    result = subprocess.run(
+        command, capture_output=True, timeout=timeout_seconds, env=environment, check=False
+    )
     if len(result.stdout) > 65536:
         raise ReadinessError("boundary response exceeded its limit")
     body = json.loads(result.stdout)
@@ -133,13 +137,24 @@ class Readiness:
                 ),
             )
         core_ready = bool(checks) and all(item.status == "pass" for item in checks)
-        installed = all(
-            (self.layout.root / "code/document-tools/workers" / tool / "entrypoint.py").is_file()
-            for tool in ("report_formatter", "invoice_analyzer")
-        )
+        try:
+            FixedToolRegistry(
+                self.layout.root, root_id=getattr(self.layout, "root_id", None)
+            ).resolve_installed_entrypoint(
+                CreateTaskRequest(
+                    schema_version=1,
+                    tool_id="report_formatter",
+                    selected_document_id="doc-report",
+                    launch_source_claim="document_tools",
+                )
+            )
+            installed = True
+        except (WorkerUnavailable, OSError):
+            installed = False
         ready = core_ready and installed
         summary = (
-            "Local boundary checks passed; fixed workers are installed."
+            "Report Formatter is installed; Invoice Analyzer remains unavailable "
+            "in this checkpoint."
             if ready
             else "Core checks passed; production workers are pending G3 installation."
             if core_ready

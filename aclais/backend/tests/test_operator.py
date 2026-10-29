@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from aclais import operator
 from aclais.persistence.database import Database
 from aclais.persistence.models import CreateTaskRequest, HealthCheck
-from aclais.readiness import Readiness, ReadinessError
+from aclais.readiness import Readiness, ReadinessError, boundary_check
 
 pytestmark = pytest.mark.portable
 
@@ -28,14 +30,79 @@ def test_bootstrap_browser_failure_never_logs_exception_or_secret(monkeypatch, c
     assert "RuntimeError" not in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("require_idle", "expected_timeout"), ((False, 60), (True, 90))
+)
+def test_boundary_audit_retains_its_measured_bounded_timeout(
+    monkeypatch, require_idle: bool, expected_timeout: int
+):
+    observed = {}
+    response = {
+        "passed": True,
+        "checks": [
+            {
+                "id": "owner_and_worker_identity",
+                "status": "pass",
+                "summary": "Test fixture.",
+            }
+        ],
+    }
+
+    def run(_command, **kwargs):
+        observed.update(kwargs)
+        return SimpleNamespace(returncode=0, stdout=json.dumps(response).encode("utf-8"))
+
+    monkeypatch.setattr(subprocess, "run", run)
+    assert boundary_check(require_idle=require_idle) == (
+        HealthCheck(
+            id="owner_and_worker_identity", status="pass", summary="Test fixture."
+        ),
+    )
+    assert observed["timeout"] == expected_timeout
+    assert observed["capture_output"] is True
+
+
 def test_failed_controller_never_advertises_ready_even_with_installed_workers(
     tmp_path, monkeypatch
 ):
-    for tool in ("report_formatter", "invoice_analyzer"):
-        entry = tmp_path / "code/document-tools/workers" / tool / "entrypoint.py"
-        entry.parent.mkdir(parents=True)
+    code_root = tmp_path / "code/document-tools"
+    root_id = str(uuid.uuid4())
+    files = []
+    for relative in (
+        "src/document_tools/__init__.py",
+        "src/document_tools/broker.py",
+        "src/document_tools/worker.py",
+        "workers/report_formatter/entrypoint.py",
+    ):
+        entry = code_root / relative
+        entry.parent.mkdir(parents=True, exist_ok=True)
         entry.write_text("# readiness fixture only; never executed\n")
-    readiness = Readiness(type("Layout", (), {"root": tmp_path})())
+        content = entry.read_bytes()
+        files.append(
+            {
+                "path": relative,
+                "sha256": hashlib.sha256(content).hexdigest(),
+                "length": len(content),
+            }
+        )
+    (code_root / "tool-manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "root_id": root_id,
+                "tools": [
+                    {
+                        "tool_id": "report_formatter",
+                        "document_id": "doc-report",
+                        "entrypoint": "workers/report_formatter/entrypoint.py",
+                        "files": files,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    readiness = Readiness(type("Layout", (), {"root": tmp_path, "root_id": root_id})())
     monkeypatch.setattr(
         readiness,
         "check",
