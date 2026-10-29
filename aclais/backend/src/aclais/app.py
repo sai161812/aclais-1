@@ -72,7 +72,7 @@ def create_app(
                 HealthCheck(
                     id="g1_protection",
                     status="unknown",
-                    summary="Windows task containment and lifecycle integration are not complete.",
+                    summary="G1 verification and owner-session gates are incomplete.",
                 ),
             ),
         )

@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from aclais.app import create_app
 from aclais.config import Settings
 from aclais.logging_config import configure_logging
+from aclais.runtime import create_a6_runtime
 
 
 def main() -> None:
@@ -25,8 +26,11 @@ def main() -> None:
         "controller_starting",
         extra={"fields": {"host": settings.host, "port": settings.port}},
     )
+    application = (
+        create_a6_runtime(settings).app if settings.protected_runtime else create_app(settings)
+    )
     uvicorn.run(
-        create_app(settings),
+        application,
         host=settings.host,
         port=settings.port,
         access_log=False,

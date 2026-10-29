@@ -252,6 +252,23 @@ def test_a3_real_worker_identity_job_pipes_and_cleanup() -> None:
         _assert_stopped(child_handle.pid)
         assert child_handle.handles_closed
 
+        # A non-zero abrupt worker exit is still contained by the same job.
+        crash_controller = WindowsWorkerController(layout)
+        controllers.append(crash_controller)
+        crash_handle = crash_controller.start_a3_private_probe(
+            deadline_seconds=30, probe_case="child_crash"
+        )
+        task_ids.append(crash_handle.config.task_id.hex)
+        crash_child = _wait_json(
+            layout.output_root / f"a3-{crash_handle.config.task_id.hex}.child.json"
+        )
+        crash_result = crash_handle.wait()
+        assert crash_result.exit_code == 23
+        assert crash_result.termination_cause == "process_exit"
+        _assert_stopped(crash_handle.pid)
+        _assert_stopped(crash_child["pid"])
+        assert crash_handle.handles_closed
+
         # Explicit cancellation and deadline expiry both terminate the worker
         # and the child in its job, without touching a separately launched owner process.
         owner_marker = layout.output_root / f"a3-owner-sleeper-{uuid.uuid4().hex}.txt"
@@ -388,7 +405,9 @@ def test_a3_real_worker_identity_job_pipes_and_cleanup() -> None:
         if racing_child_path.exists():
             _assert_stopped(json.loads(racing_child_path.read_text(encoding="utf-8"))["pid"])
         assert racing_handle.handles_closed
-        assert unrelated.poll() is None, "launch/shutdown race terminated an unrelated owner process"
+        assert unrelated.poll() is None, (
+            "launch/shutdown race terminated an unrelated owner process"
+        )
 
         # A forced controller-process death closes its final Job Object handle;
         # Windows must terminate the worker and child as a kernel cleanup action.

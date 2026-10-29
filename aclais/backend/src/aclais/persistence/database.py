@@ -62,6 +62,10 @@ class CredentialInvalid(DatabaseError):
     """Worker credential, task state, or bound action contract is no longer active."""
 
 
+class TaskAlreadyActive(DatabaseError):
+    """A task was not admitted because the single-worker slot is occupied."""
+
+
 class RequestDisposition(StrEnum):
     NEW = "new"
     REPLAY = "replay"
@@ -174,7 +178,7 @@ def canonical_body_sha256(model: BaseModel) -> str:
 class Database:
     """Controller repository. The database location is supplied only by trusted startup code."""
 
-    schema_version = 1
+    schema_version = 2
 
     def __init__(self, path: Path) -> None:
         if not isinstance(path, Path) or not path.is_absolute():
@@ -403,6 +407,7 @@ class Database:
         *,
         run_id: UUID | str | None = None,
         now: datetime | None = None,
+        require_single_worker: bool = False,
     ) -> TaskRecord:
         """Create task, fixed action contract and its two grants atomically."""
 
@@ -412,8 +417,15 @@ class Database:
         trusted_run_id = _identifier(run_id) if run_id is not None else uuid4()
         created_at = _parse_timestamp(timestamp)
         assert created_at is not None
-        expires_at = _timestamp(created_at + timedelta(seconds=30))
+        expires_at = self._contract_expiry(created_at)
         with self._transaction() as connection:
+            if require_single_worker:
+                active = connection.execute(
+                    "SELECT 1 FROM tasks WHERE status IN "
+                    "('CREATED', 'PREPARING', 'RUNNING', 'REVOKING', 'VERIFYING') LIMIT 1"
+                ).fetchone()
+                if active is not None:
+                    raise TaskAlreadyActive("the single worker slot is occupied")
             connection.execute(
                 "INSERT INTO tasks(task_id, run_id, tool_id, selected_document_id, contract_id, "
                 "status, created_at, "
@@ -461,6 +473,23 @@ class Database:
         assert row is not None
         return self._model_from_task_row(row)
 
+    def _contract_expiry(self, created_at: datetime) -> str:
+        """Keep a 30-second contract within SQLite Julian-day comparison precision."""
+
+        with self._connection() as connection:
+            for correction_us in range(1001):
+                candidate = created_at + timedelta(
+                    seconds=30, microseconds=-correction_us
+                )
+                candidate_text = _timestamp(candidate)
+                within_bound = connection.execute(
+                    "SELECT julianday(?) <= julianday(?) + (30.0 / 86400.0)",
+                    (candidate_text, _timestamp(created_at)),
+                ).fetchone()
+                if within_bound is not None and within_bound[0]:
+                    return candidate_text
+        raise DatabaseError("SQLite could not represent the task contract deadline safely")
+
     def get_task(self, task_id: UUID | str) -> TaskRecord | None:
         identifier = _identifier(task_id)
         with self._connection() as connection:
@@ -468,6 +497,26 @@ class Database:
                 "SELECT * FROM tasks WHERE task_id = ?", (str(identifier),)
             ).fetchone()
         return None if row is None else self._model_from_task_row(row)
+
+    def worker_process_creation_time(self, task_id: UUID | str) -> int | None:
+        identifier = str(_identifier(task_id))
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT creation_time_100ns FROM task_process_identities WHERE task_id=?",
+                (identifier,),
+            ).fetchone()
+        return None if row is None else int(row["creation_time_100ns"])
+
+    def tasks_in_progress(self) -> tuple[TaskRecord, ...]:
+        """Return every task whose state can still own work or credentials."""
+
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM tasks WHERE status IN "
+                "('CREATED', 'PREPARING', 'RUNNING', 'REVOKING', 'VERIFYING') "
+                "ORDER BY created_at, task_id"
+            ).fetchall()
+        return tuple(self._model_from_task_row(row) for row in rows)
 
     def task_summaries(self, limit: int = 20) -> tuple[TaskSummary, ...]:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 50:
@@ -587,6 +636,7 @@ class Database:
                 TerminalCause.WORKER_EXIT_SUCCESS,
                 TerminalCause.WORKER_EXIT_FAILURE,
                 TerminalCause.VERIFICATION_FAILED,
+                TerminalCause.RECOVERY_INTERRUPTED,
             },
         }.get(from_status, set())
         if terminal_cause not in allowed:
@@ -607,6 +657,10 @@ class Database:
         now: datetime | None = None,
         revocation_cause: RevocationCause | None = None,
         terminal_cause: TerminalCause | None = None,
+        event_kind: str | None = None,
+        event_message: str | None = None,
+        revoke_worker_credential: bool = False,
+        incident_containment_status: str | None = None,
     ) -> TaskRecord:
         if not isinstance(to_status, TaskStatus):
             raise ValueError("unknown task state")
@@ -675,8 +729,328 @@ class Database:
                 "cause, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
                 (identifier, seq, current.status.value, to_status.value, cause, timestamp),
             )
+            if revoke_worker_credential:
+                connection.execute(
+                    "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) "
+                    "WHERE task_id=?",
+                    (timestamp, identifier),
+                )
+            if incident_containment_status is not None:
+                if incident_containment_status not in {"terminated", "failed"}:
+                    raise ValueError("unknown incident containment status")
+                connection.execute(
+                    "UPDATE incidents SET containment_status=?, integrity_status='unknown', "
+                    "confidentiality_status='unknown' WHERE task_id=?",
+                    (incident_containment_status, identifier),
+                )
+            if (event_kind is None) != (event_message is None):
+                raise ValueError("lifecycle event kind and message must be supplied together")
+            if event_kind is not None and event_message is not None:
+                self._insert_event_row(
+                    connection,
+                    identifier,
+                    timestamp=event_time,
+                    source="controller",
+                    kind=event_kind,
+                    operation=None,
+                    target_document_id=None,
+                    decision=None,
+                    reason_code=None,
+                    message=event_message,
+                )
             row = connection.execute(
                 "SELECT * FROM tasks WHERE task_id = ?", (identifier,)
+            ).fetchone()
+        assert row is not None
+        return self._model_from_task_row(row)
+
+    def activate_worker(
+        self,
+        task_id: UUID | str,
+        token_sha256: str,
+        *,
+        worker_pid: int,
+        worker_sid: str,
+        worker_creation_time_100ns: int,
+        now: datetime,
+        credential_expires_at: datetime,
+    ) -> TaskRecord:
+        """Commit the verified suspended process identity and credential before resume."""
+
+        identifier = str(_identifier(task_id))
+        timestamp = _timestamp(now)
+        credential = CredentialHashRecord(
+            task_id=identifier,
+            token_sha256=token_sha256,
+            created_at=now,
+            expires_at=credential_expires_at,
+            revoked_at=None,
+        )
+        if worker_pid <= 0 or worker_creation_time_100ns <= 0 or not worker_sid:
+            raise ValueError("verified worker identity is incomplete")
+        with self._transaction() as connection:
+            current_row = connection.execute(
+                "SELECT * FROM tasks WHERE task_id=?", (identifier,)
+            ).fetchone()
+            if current_row is None:
+                raise KeyError("task not found")
+            current = self._model_from_task_row(current_row)
+            if current.status != TaskStatus.PREPARING or current.revocation_cause is not None:
+                raise DatabaseError("task is not prepared for worker activation")
+            contract = connection.execute(
+                "SELECT expires_at FROM action_contracts WHERE task_id=?", (identifier,)
+            ).fetchone()
+            if contract is None or credential.expires_at > _parse_timestamp(contract["expires_at"]):
+                raise ValueError("worker credential expiry exceeds the action contract")
+            if credential.created_at < current.created_at:
+                raise ValueError("worker activation cannot precede task creation")
+            seq = int(
+                connection.execute(
+                    "SELECT COALESCE(MAX(seq), 0) + 1 FROM task_state_transitions "
+                    "WHERE task_id=?",
+                    (identifier,),
+                ).fetchone()[0]
+            )
+            connection.execute(
+                "UPDATE tasks SET status='RUNNING', started_at=?, worker_pid=?, worker_sid=? "
+                "WHERE task_id=?",
+                (timestamp, worker_pid, worker_sid, identifier),
+            )
+            connection.execute(
+                "INSERT INTO task_process_identities(task_id, creation_time_100ns, recorded_at) "
+                "VALUES (?, ?, ?)",
+                (identifier, worker_creation_time_100ns, timestamp),
+            )
+            connection.execute(
+                "INSERT INTO task_state_transitions(task_id, seq, from_status, to_status, "
+                "cause, timestamp) VALUES (?, ?, 'PREPARING', 'RUNNING', NULL, ?)",
+                (identifier, seq, timestamp),
+            )
+            connection.execute(
+                "INSERT INTO worker_credentials(task_id, token_sha256, created_at, expires_at) "
+                "VALUES (?, ?, ?, ?)",
+                (
+                    identifier,
+                    credential.token_sha256,
+                    timestamp,
+                    _timestamp(credential.expires_at),
+                ),
+            )
+            self._insert_event_row(
+                connection,
+                identifier,
+                timestamp=now,
+                source="controller",
+                kind="worker_started",
+                operation=None,
+                target_document_id=None,
+                decision="allow",
+                reason_code=None,
+                message="Verified worker identity was committed before process resume.",
+            )
+            row = connection.execute(
+                "SELECT * FROM tasks WHERE task_id=?", (identifier,)
+            ).fetchone()
+        assert row is not None
+        return self._model_from_task_row(row)
+
+    def revoke_task(
+        self,
+        task_id: UUID | str,
+        cause: RevocationCause,
+        *,
+        now: datetime,
+        event_kind: str,
+        event_message: str,
+    ) -> tuple[TaskRecord, bool]:
+        """Durably revoke one active task; an earlier cause is immutable."""
+
+        identifier = str(_identifier(task_id))
+        timestamp = _timestamp(now)
+        if cause == RevocationCause.POLICY_DENIED:
+            raise ValueError("broker policy denial must use record_policy_denial")
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM tasks WHERE task_id=?", (identifier,)
+            ).fetchone()
+            if row is None:
+                raise KeyError("task not found")
+            current = self._model_from_task_row(row)
+            if current.revocation_cause is not None:
+                return current, False
+            if current.status not in {
+                TaskStatus.CREATED,
+                TaskStatus.PREPARING,
+                TaskStatus.RUNNING,
+            }:
+                return current, False
+            if (
+                current.status == TaskStatus.CREATED
+                and cause != RevocationCause.CONTROLLER_SHUTDOWN
+            ):
+                return current, False
+            latest = connection.execute(
+                "SELECT seq, timestamp FROM task_state_transitions "
+                "WHERE task_id=? ORDER BY seq DESC LIMIT 1",
+                (identifier,),
+            ).fetchone()
+            if latest is not None and timestamp < latest["timestamp"]:
+                raise ValueError("revocation time cannot precede the latest task transition")
+            seq = int(latest["seq"] + 1) if latest is not None else 1
+            connection.execute(
+                "UPDATE tasks SET status='REVOKING', revocation_cause=? WHERE task_id=?",
+                (cause.value, identifier),
+            )
+            connection.execute(
+                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) "
+                "WHERE task_id=?",
+                (timestamp, identifier),
+            )
+            connection.execute(
+                "INSERT INTO task_state_transitions(task_id, seq, from_status, to_status, "
+                "cause, timestamp) VALUES (?, ?, ?, 'REVOKING', ?, ?)",
+                (identifier, seq, current.status.value, cause.value, timestamp),
+            )
+            self._insert_event_row(
+                connection,
+                identifier,
+                timestamp=now,
+                source="controller",
+                kind=event_kind,
+                operation=None,
+                target_document_id=None,
+                decision="deny",
+                reason_code=(
+                    "WORKER_TIMEOUT"
+                    if cause == RevocationCause.WORKER_TIMEOUT
+                    else "CONTROLLER_SHUTDOWN"
+                    if cause == RevocationCause.CONTROLLER_SHUTDOWN
+                    else "TASK_REVOKED"
+                ),
+                message=event_message,
+            )
+            row = connection.execute(
+                "SELECT * FROM tasks WHERE task_id=?", (identifier,)
+            ).fetchone()
+        assert row is not None
+        return self._model_from_task_row(row), True
+
+    def finish_interrupted_task(
+        self,
+        task_id: UUID | str,
+        *,
+        now: datetime,
+        event_kind: str,
+        event_message: str,
+        worker_stopped: bool,
+    ) -> TaskRecord:
+        """Reconcile a startup task only after its retained process identity is stopped."""
+
+        identifier = str(_identifier(task_id))
+        if worker_stopped is not True:
+            raise DatabaseError("interrupted worker process is not verified stopped")
+        timestamp = _timestamp(now)
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT * FROM tasks WHERE task_id=?", (identifier,)
+            ).fetchone()
+            if row is None:
+                raise KeyError("task not found")
+            current = self._model_from_task_row(row)
+            if current.status in _TERMINAL:
+                return current
+            terminal_cause = (
+                TerminalCause(current.revocation_cause.value)
+                if current.revocation_cause is not None
+                else TerminalCause.RECOVERY_INTERRUPTED
+            )
+            latest = connection.execute(
+                "SELECT seq, timestamp FROM task_state_transitions "
+                "WHERE task_id=? ORDER BY seq DESC LIMIT 1",
+                (identifier,),
+            ).fetchone()
+            if latest is not None and timestamp < latest["timestamp"]:
+                raise ValueError("recovery time cannot precede the latest task transition")
+            sequence = int(latest["seq"] + 1) if latest is not None else 1
+            verification_from = current.status
+            if current.status in {TaskStatus.RUNNING, TaskStatus.REVOKING}:
+                connection.execute(
+                    "UPDATE tasks SET status='VERIFYING' WHERE task_id=?",
+                    (identifier,),
+                )
+                connection.execute(
+                    "INSERT INTO task_state_transitions(task_id, seq, from_status, to_status, "
+                    "cause, timestamp) VALUES (?, ?, ?, 'VERIFYING', ?, ?)",
+                    (
+                        identifier,
+                        sequence,
+                        current.status.value,
+                        current.revocation_cause.value
+                        if current.revocation_cause is not None
+                        else TerminalCause.RECOVERY_INTERRUPTED.value,
+                        timestamp,
+                    ),
+                )
+                self._insert_event_row(
+                    connection,
+                    identifier,
+                    timestamp=now,
+                    source="controller",
+                    kind="task_restart_verification_started",
+                    operation=None,
+                    target_document_id=None,
+                    decision="deny",
+                    reason_code=None,
+                    message=(
+                        "Recorded process identity and publication recovery were checked "
+                        "before terminalizing the interrupted task."
+                    ),
+                )
+                verification_from = TaskStatus.VERIFYING
+            self._validate_terminal_cause(
+                verification_from, TaskStatus.FAILED, None, terminal_cause
+            )
+            connection.execute(
+                "UPDATE tasks SET status='FAILED', finished_at=?, terminal_cause=? WHERE task_id=?",
+                (timestamp, terminal_cause.value, identifier),
+            )
+            connection.execute(
+                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) "
+                "WHERE task_id=?",
+                (timestamp, identifier),
+            )
+            connection.execute(
+                "INSERT INTO task_state_transitions(task_id, seq, from_status, to_status, "
+                "cause, timestamp) VALUES (?, ?, ?, 'FAILED', ?, ?)",
+                (
+                    identifier,
+                    sequence + int(verification_from != current.status),
+                    verification_from.value,
+                    terminal_cause.value,
+                    timestamp,
+                ),
+            )
+            self._insert_event_row(
+                connection,
+                identifier,
+                timestamp=now,
+                source="controller",
+                kind=event_kind,
+                operation=None,
+                target_document_id=None,
+                decision="deny",
+                reason_code=None,
+                message=event_message,
+            )
+            if current.incident_id is not None:
+                connection.execute(
+                    "UPDATE incidents SET containment_status='terminated', "
+                    "integrity_status='unknown', confidentiality_status='unknown' "
+                    "WHERE incident_id=?",
+                    (str(current.incident_id),),
+                )
+            row = connection.execute(
+                "SELECT * FROM tasks WHERE task_id=?", (identifier,)
             ).fetchone()
         assert row is not None
         return self._model_from_task_row(row)
@@ -1013,6 +1387,11 @@ class Database:
                 "UPDATE tasks SET status = 'REVOKING', revocation_cause = 'POLICY_DENIED' "
                 "WHERE task_id = ?",
                 (task_key,),
+            )
+            connection.execute(
+                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) "
+                "WHERE task_id=?",
+                (timestamp, task_key),
             )
             transition_seq = int(latest["seq"] + 1) if latest is not None else 1
             connection.execute(
@@ -1504,6 +1883,25 @@ class Database:
         if row is None:
             return None
         return self._output_model(row)
+
+    def outputs_for_task(self, task_id: UUID | str) -> tuple[OutputJournalRecord, ...]:
+        identifier = str(_identifier(task_id))
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM output_records WHERE task_id=? ORDER BY created_at, output_id",
+                (identifier,),
+            ).fetchall()
+        return tuple(self._output_model(row) for row in rows)
+
+    def request_body_sha256(self, task_id: UUID | str, request_id: UUID | str) -> str | None:
+        task_key, request_key = str(_identifier(task_id)), str(_identifier(request_id))
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT canonical_body_sha256 FROM request_deduplication "
+                "WHERE task_id=? AND request_id=?",
+                (task_key, request_key),
+            ).fetchone()
+        return None if row is None else str(row["canonical_body_sha256"])
 
     def published_output(self, output_id: UUID | str) -> OutputMetadata | None:
         identifier = str(_identifier(output_id))

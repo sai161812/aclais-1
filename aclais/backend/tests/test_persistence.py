@@ -59,10 +59,10 @@ def test_fresh_database_reopen_and_seeded_registry(tmp_path: Path) -> None:
     path = tmp_path / "state.sqlite3"
     db = Database(path)
     with db._connection() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
         assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
         assert connection.execute("PRAGMA synchronous").fetchone()[0] == 2
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 2
         assert connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 4
 
     public_documents = db.documents().model_dump_json()
@@ -153,6 +153,17 @@ def test_task_contract_grants_are_fixed_and_paths_are_controller_owned(tmp_path:
             "WHERE task_id=?",
             (str(created.task_id),),
         )
+
+
+def test_contract_deadline_stays_within_sqlite_bound_at_fractional_second_precision(
+    tmp_path: Path,
+) -> None:
+    db = Database(tmp_path / "state.sqlite3")
+    created_at = datetime(2026, 10, 29, 3, 43, 20, 151754, tzinfo=UTC)
+    created = task(db, now=created_at)
+    contract = db.get_contract(created.task_id)
+    assert contract is not None
+    assert timedelta(0) < contract.expires_at - contract.created_at <= timedelta(seconds=30)
     with (
         db._connection() as connection,
         pytest.raises(

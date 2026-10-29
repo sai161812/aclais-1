@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0 through A3 and repository-structure checkpoint R0 are complete. R0 passed local portable and actual Windows A2/A3 checks after relocation; GitHub Actions runs 7 and 8 passed for its implementation and status commits. The R0 follow-up closes the remaining root-startup gap and passed local startup/shutdown, portable checks and hosted CI run 9. A4's implementation commit `db4c372719fba250764084800383d25859fb596f` was pushed to `origin/aclais-prototype`; GitHub Actions run 11 passed for that exact revision. This is portable CI only; A4 adds no Windows enforcement path. Later production controller components remain unimplemented.
+As of 2026-10-29. A0–A6 and repository-structure checkpoint R0 are locally complete. A6 passed the portable checks and actual Windows demonstration-machine lifecycle suite; its implementation push and hosted CI inspection are pending. G1 remains incomplete, and later production components remain unimplemented.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
@@ -37,7 +37,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | A3 — launcher and containment | PASS | Actual Windows demonstration-machine launcher checks and local portable checks passed; sanitized evidence is in `evidence/A3.md` and `evidence/a3-launcher-summary.json`. GitHub CI is portable only. |
 | A4 — persistence and contracts | PASS | Requires A3 PASS and the separate R0 repository-structure checkpoint; see `evidence/A4.md` and [GitHub Actions run 11](https://github.com/sai161812/aclais-1/actions/runs/40774065632). |
 | A5 — broker and publication | PASS | A2–A4 prerequisites pass; local portable and Windows publication checks pass; [GitHub Actions run 40810541367](https://github.com/sai161812/aclais-1/actions/runs/40810541367) passed for the implementation revision. |
-| A6 — lifecycle and recovery | NOT_STARTED | Requires A3–A5 PASS. |
+| A6 — lifecycle and recovery | PASS | Local portable checks and actual Windows demonstration-machine tests passed; see `evidence/A6.md`. Hosted CI is pending the checkpoint push. |
 | A7 — verification and evidence | NOT_STARTED | Requires A2, A4–A6 PASS. |
 | A8 — owner authentication and approval | NOT_STARTED | Requires A4, A6 and A7 PASS. |
 | A9 — connected dashboard | NOT_STARTED | Requires A5–A8 PASS. |
@@ -122,8 +122,19 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - A5 tests used disposable databases and files. No runtime database, credential material, password or confidential fixture was staged.
 - Implementation commit `4a8a12d232aa9171824f145ee1a3597250a3eebd` was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the commit. The working tree was clean after the implementation commit.
 - [GitHub Actions run 40810541367](https://github.com/sai161812/aclais-1/actions/runs/40810541367) passed for that exact commit. Both portable backend and frontend jobs succeeded; Windows publication enforcement remains a separate demonstration-machine check.
-- Remaining issues: A6 must provision per-task selected-copy ACLs, integrate broker admission with lifecycle arbitration, clean up task copies and reconcile journals on startup. A8 must supply real owner authentication before the product output route is mounted.
+- Remaining issues: A7 trusted verification remains required before a policy denial can become `BLOCKED`; A8 must supply real owner authentication before the product output route is mounted.
+
+## A6 checkpoint
+
+- Status: PASS for local portable and actual Windows demonstration-machine checks. Hosted CI and push verification are pending.
+- Connected lifecycle admission, the A5 broker/publication path and A4 persistence through one shared per-task lock and SQLite single-worker admission. Task-scoped selected input/output ACLs, persisted process PID/SID/creation time and hash-only credential are committed before resume. Completion, denial, cancellation, timeout, crash, shutdown and restart now share the persisted state machine.
+- Revocation is committed before worker termination; broker authorization revalidates under the same lock. Previously authorized publication can finish before a queued denial/timeout, with event ordering preserved; no later effect can begin after revocation. Restart recovery verifies process identity by SID, PID and creation time, reconciles journals, verifies interrupted tasks through `VERIFYING`, and fails closed when process or durable output state is inconsistent.
+- Local portable acceptance: root `scripts/check.ps1` passed from `C:\Windows\Temp`; Ruff, 84 portable backend tests, OpenAPI/type generation consistency, frontend typecheck/lint/build and npm audit (0 vulnerabilities) passed. Windows enforcement tests are not part of this portable check.
+- Demonstration-machine acceptance: `aclais/scripts/check_a6_windows.ps1` passed from `C:\Windows\Temp`; its A3 precondition passed (1 actual Windows test), followed by 3 actual A6 tests. Worker and child process identities were checked stopped using Windows process handles and process creation times after cancellation, timeout, worker crash, orderly shutdown and abrupt controller death. Original fixture hashes were unchanged. See `evidence/A6.md` for identities, scenarios and reproduction commands.
+- A policy denial ended `FAILED` with `POLICY_DENIED`, containment `terminated`, and integrity/confidentiality `unknown`. This is fail-closed because the A7 trusted verifier has not been implemented; A6 makes no `BLOCKED` or G1 claim.
+- Remaining issue before A8: A2 manifest registry path `doc-report` does not resolve to the seeded original in the lab. A6 used the existing manifest-verified protected selected input explicitly in private probes; align the fixture before enabling owner task creation.
+- Implementation commit, remote synchronization and hosted CI revision will be added after the checkpoint push and CI inspection.
 
 ## Next step
 
-A5 is complete. A6 lifecycle and recovery is next, after which A7 verification/evidence and A8 owner authentication must pass before the dashboard or later component gates. A5 does not complete G1 or authorize receiver G2.
+A7 verification and evidence is next. A6 does not complete G1 or authorize owner authentication, the connected dashboard, receiver G2, or Document Tools G3.

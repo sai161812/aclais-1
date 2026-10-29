@@ -139,6 +139,54 @@ def test_exact_retry_recovers_each_publication_crash_boundary(
         )
 
 
+def test_restart_aborts_only_an_unwritten_output_reservation(tmp_path: Path) -> None:
+    database, task, _, _, publisher, _ = _harness(tmp_path)
+    request = BrokerPublishOutputRequest.model_validate_json(_body())
+    body_hash = canonical_body_sha256(request)
+    database.begin_request(
+        task.task_id, request.request_id, body_hash, now=NOW + timedelta(seconds=3)
+    )
+    content = request.output_text.encode("utf-8")
+    record = database.reserve_output(
+        task.task_id,
+        request.request_id,
+        hashlib.sha256(content).hexdigest(),
+        len(content),
+        now=NOW + timedelta(seconds=3),
+    )
+
+    assert publisher.reconcile_task(task.task_id) == ("aborted",)
+    assert database.output_journal(record.output_id).state == JournalState.ABORTED
+
+
+def test_restart_marks_a_missing_durable_stage_inconsistent(tmp_path: Path) -> None:
+    database, task, _, _, publisher, _ = _harness(tmp_path)
+    request = BrokerPublishOutputRequest.model_validate_json(_body())
+    body_hash = canonical_body_sha256(request)
+    database.begin_request(
+        task.task_id, request.request_id, body_hash, now=NOW + timedelta(seconds=3)
+    )
+    content = request.output_text.encode("utf-8")
+    record = database.reserve_output(
+        task.task_id,
+        request.request_id,
+        hashlib.sha256(content).hexdigest(),
+        len(content),
+        now=NOW + timedelta(seconds=3),
+    )
+    staging, _ = publisher.paths(record)
+    staging.parent.mkdir()
+    staging.write_bytes(content)
+    database.transition_output(
+        record.output_id, JournalState.STAGED, now=NOW + timedelta(seconds=4)
+    )
+    staging.unlink()
+
+    with pytest.raises(OutputUnavailable, match="durably staged output"):
+        publisher.reconcile_task(task.task_id)
+    assert database.output_journal(record.output_id).state == JournalState.INCONSISTENT
+
+
 def test_exact_retry_after_durable_output_reservation_uses_database_state(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

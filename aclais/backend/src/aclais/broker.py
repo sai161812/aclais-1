@@ -6,7 +6,7 @@ import hashlib
 import logging
 import sqlite3
 import stat
-import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 from pydantic import TypeAdapter, ValidationError
 
 from aclais.api_contracts import BrokerOperationRequest, BrokerOperationResponse
+from aclais.concurrency import TaskLockRegistry
 from aclais.persistence.database import (
     TRUSTED_DOCUMENTS,
     CredentialInvalid,
@@ -102,6 +103,11 @@ class BrokerService:
         database: Database,
         selected_copy_root: Path,
         output_publisher: OutputPublisher,
+        *,
+        task_locks: TaskLockRegistry | None = None,
+        before_admission: Callable[[TaskRecord, datetime], bool] | None = None,
+        on_policy_denial: Callable[[TaskRecord], None] | None = None,
+        on_protection_failure: Callable[[TaskRecord], None] | None = None,
     ) -> None:
         if not selected_copy_root.is_absolute() or not selected_copy_root.is_dir():
             raise ValueError("selected-copy root must exist and be an absolute trusted path")
@@ -109,7 +115,10 @@ class BrokerService:
         self.database = database
         self.selected_copy_root = selected_copy_root
         self.output_publisher = output_publisher
-        self._admission_lock = threading.RLock()
+        self._task_locks = task_locks or TaskLockRegistry()
+        self._before_admission = before_admission
+        self._on_policy_denial = on_policy_denial
+        self._on_protection_failure = on_protection_failure
 
     def _parse(self, body: bytes) -> tuple[BrokerOperationRequest | None, BrokerResult | None]:
         if not isinstance(body, bytes):
@@ -152,8 +161,52 @@ class BrokerService:
             return parse_error
         assert request is not None
         at = now or utc_now()
-        with self._admission_lock:
-            return self._execute_validated(token, request, at)
+        try:
+            task = self.database.active_task_for_credential(token or "", at=at)
+        except (DatabaseError, sqlite3.Error):
+            return _error(
+                503,
+                "PROTECTION_UNAVAILABLE",
+                "Worker authorization state is unavailable.",
+                request.request_id,
+            )
+        if task is None:
+            return _error(
+                401,
+                "AUTH_INVALID",
+                "Worker credential is invalid or expired.",
+                request.request_id,
+            )
+        with self._task_locks.hold(str(task.task_id)):
+            if self._before_admission is not None:
+                try:
+                    if not self._before_admission(task, at):
+                        return _error(
+                            503,
+                            "PROTECTION_UNAVAILABLE",
+                            "Task lifecycle admission is unavailable.",
+                            request.request_id,
+                        )
+                except Exception:
+                    self._signal_protection_failure(task)
+                    return _error(
+                        503,
+                        "PROTECTION_UNAVAILABLE",
+                        "Task lifecycle admission is unavailable.",
+                        request.request_id,
+                    )
+            result = self._execute_validated(token, request, at)
+            if result.status_code == 503:
+                self._signal_protection_failure(task)
+            return result
+
+    def _signal_protection_failure(self, task: TaskRecord) -> None:
+        if self._on_protection_failure is None:
+            return
+        try:
+            self._on_protection_failure(task)
+        except Exception:
+            _LOGGER.error("broker_fail_closed_cleanup_failed")
 
     def _execute_validated(
         self, token: str | None, request: BrokerOperationRequest, at: datetime
@@ -267,6 +320,17 @@ class BrokerService:
                 message=message,
                 now=at,
             )
+            if self._on_policy_denial is not None:
+                try:
+                    self._on_policy_denial(task)
+                except Exception:
+                    _LOGGER.error("broker_denial_containment_failed")
+                    return _error(
+                        503,
+                        "PROTECTION_UNAVAILABLE",
+                        "The denied task could not be safely contained.",
+                        request.request_id,
+                    )
             return BrokerResult(403, response)
         except RequestConflict:
             return _error(
@@ -290,6 +354,7 @@ class BrokerService:
                 request.request_id,
             )
         except sqlite3.Error:
+            self._signal_protection_failure(task)
             return _error(
                 503,
                 "PROTECTION_UNAVAILABLE",

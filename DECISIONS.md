@@ -1,6 +1,6 @@
 # Decisions
 
-This log records the A0 specification decisions, A1 foundation choices, A2 protected-fixture decisions, A3 launcher choices, and repository-structure checkpoint. Later production controller components remain unimplemented.
+This log records the A0 specification decisions, A1 foundation choices, A2 protected-fixture decisions, A3 launcher choices, repository-structure checkpoint, and A6 lifecycle/recovery decisions. Later production controller components remain unimplemented.
 
 ## D-001 — Preserve the supplied specification pack
 
@@ -125,3 +125,11 @@ The broker reads only `work/selected-inputs/<task UUID>/<document ID><extension 
 ## D-031 — Inject broker routes only from trusted startup assembly
 
 `create_app` mounts the worker broker route only when a trusted `BrokerService` is injected. The output download route requires both an `OutputPublisher` and an owner-authorizer dependency; no output route is mounted by the default app, and A8 supplies the product owner session/CSRF implementation. Route tests inject a private test authorizer and do not claim owner authentication is complete. The broker's durable credential, task, contract and expiry checks remain authoritative for worker operations.
+
+## D-032 — Persist verified worker identity before resume and reconcile only stopped identities
+
+The lifecycle coordinator and broker share one per-task reentrant lock. Task admission checks the single-worker slot in the same SQLite transaction that creates the task. After the launcher verifies the alternate-user SID and assigns the suspended process to its kill-on-close Job Object, SQLite commits the task as `RUNNING`, the worker PID/SID/Windows creation time, and only the credential hash before `ResumeThread`. Every authorized broker operation revalidates under the shared lock. Denial, cancellation, timeout, and shutdown commit revocation and credential invalidation before Job Object termination; revoked paths then enter `VERIFYING` before terminalization. Startup revokes all nonterminal credentials, verifies PID plus creation time and SID are stopped without terminating a possibly recycled PID, reconciles output journals, moves interrupted `RUNNING` or `REVOKING` tasks through `VERIFYING`, records them as `FAILED`, removes only their task directories, then accepts broker traffic. An abrupt restart with no prior cause ends as `RECOVERY_INTERRUPTED`; an already committed revocation cause remains terminal. Missing durable staged output becomes inconsistent and keeps the controller unavailable. If a live identity cannot be verified stopped, startup remains closed.
+
+## D-033 — Keep the persisted 30-second contract within SQLite's time comparison precision
+
+SQLite `julianday()` uses floating-point day values, so two ISO timestamps exactly 30 seconds apart can compare a few microseconds beyond the schema's 30-second upper bound. Task creation checks the proposed expiry using the same SQLite expression and, only when needed, moves expiry backward by the smallest microsecond count that satisfies the persisted bound. The contract never exceeds 30 seconds; fixed-time tests continue to retain an exact 30-second interval where SQLite represents it safely.

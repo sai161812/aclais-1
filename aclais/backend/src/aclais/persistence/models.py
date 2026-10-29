@@ -241,6 +241,8 @@ class TaskRecord(StrictModel):
 
     @model_validator(mode="after")
     def validate_lifecycle_fields(self) -> TaskRecord:
+        if (self.worker_pid is None) != (self.worker_sid is None):
+            raise ValueError("worker PID and SID must be present together")
         if not _supported_tool_document(self.tool_id, self.selected_document_id):
             raise ValueError("tool and selected document are not a supported pair")
         terminal = self.status in {

@@ -9,6 +9,7 @@ import re
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -37,6 +38,8 @@ _STARTF_USESTDHANDLES = 0x00000100
 _HANDLE_FLAG_INHERIT = 0x00000001
 _JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
 _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+_DACL_SECURITY_INFORMATION = 0x00000004
+_PROTECTED_DACL_SECURITY_INFORMATION = 0x80000000
 _WAIT_OBJECT_0 = 0
 _WAIT_TIMEOUT = 258
 _WAIT_FAILED = 0xFFFFFFFF
@@ -82,10 +85,14 @@ class RuntimeLayout:
     selected_input: Path
     selected_root: Path
     output_root: Path
+    selected_copy_root: Path
+    task_output_root: Path
+    verified_output_root: Path
     code_root: Path
     python_exe: Path
     private_probe: Path
     source_sha256: str
+    fixture_hashes: tuple[tuple[str, str], ...]
 
     @classmethod
     def open(cls, root: Path = _LAB_ROOT) -> RuntimeLayout:
@@ -103,6 +110,9 @@ class RuntimeLayout:
         manifest_path = root / "state" / "installation.json"
         selected_root = root / "store" / "selected"
         output_root = root / "work" / "temporary-output"
+        selected_copy_root = root / "work" / "selected-inputs"
+        task_output_root = root / "work" / "task-output"
+        verified_output_root = root / "work" / "verified-output"
         code_root = root / "code"
         python_runtime = code_root / "python-runtime"
         python_exe = python_runtime / "python.exe"
@@ -217,10 +227,58 @@ class RuntimeLayout:
             selected_input=selected_input,
             selected_root=selected_root,
             output_root=output_root,
+            selected_copy_root=selected_copy_root,
+            task_output_root=task_output_root,
+            verified_output_root=verified_output_root,
             code_root=code_root,
             python_exe=python_exe,
             private_probe=private_probe,
             source_sha256=runtime_record["sha256"],
+            fixture_hashes=tuple(
+                sorted(
+                    (item["path"], item["sha256"])
+                    for item in manifest.get("fixtures", [])
+                    if isinstance(item, dict)
+                    and isinstance(item.get("path"), str)
+                    and isinstance(item.get("sha256"), str)
+                )
+            ),
+        )
+
+    def prepare_task_roots(self, api: _NativeApi | None = None) -> None:
+        """Create or reassert A6 roots using protected, controller-owned DACLs."""
+
+        native = api or _NativeApi()
+        roots = (
+            (self.selected_copy_root, "GX"),
+            (self.task_output_root, "GX"),
+            (self.verified_output_root, None),
+        )
+        for path, worker_rights in roots:
+            if not path.exists():
+                path.mkdir()
+            _require_plain_path(native, path)
+            if not path.is_dir():
+                raise LauncherError("managed_root_not_directory")
+            native.set_protected_directory_acl(
+                path,
+                owner_sid=self.owner_sid,
+                worker_sid=self.worker_sid if worker_rights else None,
+                worker_rights=worker_rights,
+            )
+
+    def protect_task_directory(
+        self, path: Path, *, worker_rights: Literal["GRGX", "GRGWGX"]
+    ) -> None:
+        if path.parent not in {self.selected_copy_root, self.task_output_root}:
+            raise LauncherError("task_directory_cleanup_scope")
+        native = _NativeApi()
+        _require_plain_path(native, path)
+        native.set_protected_directory_acl(
+            path,
+            owner_sid=self.owner_sid,
+            worker_sid=self.worker_sid,
+            worker_rights=worker_rights,
         )
 
 
@@ -376,6 +434,8 @@ class _NativeApi:
         k.CreatePipe.restype = bool_t
         k.GetFileAttributesW.argtypes = [lpcwstr]
         k.GetFileAttributesW.restype = dword
+        k.OpenProcess.argtypes = [dword, bool_t, dword]
+        k.OpenProcess.restype = handle
         k.SetHandleInformation.argtypes = [handle, dword, dword]
         k.SetHandleInformation.restype = bool_t
         k.CreateFileW.argtypes = [
@@ -467,6 +527,15 @@ class _NativeApi:
         a.ConvertSidToStringSidW.restype = bool_t
         a.ConvertStringSidToSidW.argtypes = [lpcwstr, ctypes.POINTER(handle)]
         a.ConvertStringSidToSidW.restype = bool_t
+        a.ConvertStringSecurityDescriptorToSecurityDescriptorW.argtypes = [
+            lpcwstr,
+            dword,
+            ctypes.POINTER(handle),
+            ctypes.POINTER(dword),
+        ]
+        a.ConvertStringSecurityDescriptorToSecurityDescriptorW.restype = bool_t
+        a.SetFileSecurityW.argtypes = [lpcwstr, dword, handle]
+        a.SetFileSecurityW.restype = bool_t
         a.CheckTokenMembership.argtypes = [handle, handle, ctypes.POINTER(bool_t)]
         a.CheckTokenMembership.restype = bool_t
 
@@ -529,6 +598,41 @@ class _NativeApi:
             self._raise_last_error("job_verify")
         return information.BasicLimitInformation.LimitFlags == _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
 
+    def set_protected_directory_acl(
+        self,
+        path: Path,
+        *,
+        owner_sid: str,
+        worker_sid: str | None,
+        worker_rights: str | None,
+    ) -> None:
+        if (worker_sid is None) != (worker_rights is None):
+            raise ValueError("worker SID and access rights must be supplied together")
+        sddl = (
+            f"D:P(A;OICI;FA;;;{owner_sid})(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
+        )
+        if worker_sid is not None and worker_rights is not None:
+            if worker_rights not in {"GX", "GRGX", "GRGWGX"}:
+                raise ValueError("unsupported scoped worker directory right")
+            inherit = "OICI" if worker_rights in {"GRGX", "GRGWGX"} else ""
+            sddl += f"(A;{inherit};{worker_rights};;;{worker_sid})"
+        descriptor = ctypes.c_void_p()
+        descriptor_size = ctypes.c_uint32()
+        if not self.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            sddl, 1, ctypes.byref(descriptor), ctypes.byref(descriptor_size)
+        ):
+            self._raise_last_error("directory_acl_descriptor")
+        try:
+            security_information = (
+                _DACL_SECURITY_INFORMATION | _PROTECTED_DACL_SECURITY_INFORMATION
+            )
+            if not self.advapi32.SetFileSecurityW(
+                str(path), security_information, descriptor
+            ):
+                self._raise_last_error("directory_acl_apply")
+        finally:
+            self.kernel32.LocalFree(descriptor)
+
     def assign_process_to_job(self, job: ctypes.c_void_p, process: ctypes.c_void_p) -> None:
         if not self.kernel32.AssignProcessToJobObject(job, process):
             self._raise_last_error("job_assign")
@@ -550,6 +654,12 @@ class _NativeApi:
             return self._token_identity(token)
         finally:
             self.close_handle(token)
+
+    def open_process(self, pid: int) -> ctypes.c_void_p | None:
+        handle = self.kernel32.OpenProcess(
+            0x00100000 | 0x00001000, False, pid
+        )  # SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION
+        return ctypes.c_void_p(handle) if handle else None
 
     def process_identity(self, process: ctypes.c_void_p) -> tuple[str, bool]:
         token = ctypes.c_void_p()
@@ -800,26 +910,44 @@ class WindowsWorkerController:
         self,
         *,
         deadline_seconds: int = 30,
-        probe_case: Literal["normal", "child_exit", "child_wait", "capture"] = "normal",
+        probe_case: Literal[
+            "normal", "child_exit", "child_wait", "child_crash", "capture"
+        ] = "normal",
         echo_arguments: tuple[str, ...] = (),
+        task_id: uuid.UUID | None = None,
+        selected_input: Path | None = None,
+        temporary_output: Path | None = None,
+        selected_document_id: Literal["doc-report", "doc-invoice"] | None = None,
+        tool_id: Literal["report_formatter", "invoice_analyzer"] | None = None,
+        broker_url: str | None = None,
+        worker_credential: str | None = None,
+        broker_probe: Literal["none", "allow_and_publish", "policy_denial"] = "none",
+        before_resume: Callable[[int, int, str], None] | None = None,
     ) -> WorkerHandle:
         with self._lock:
             if self._shutdown:
                 raise LauncherError("controller_shutdown")
             config = A3ProbeConfiguration(
-                task_id=uuid.uuid4(),
-                selected_input=str(self.layout.selected_input),
-                temporary_output=str(self.layout.output_root),
+                task_id=task_id or uuid.uuid4(),
+                selected_input=str(selected_input or self.layout.selected_input),
+                temporary_output=str(temporary_output or self.layout.output_root),
                 deadline_seconds=deadline_seconds,
                 probe_case=probe_case,
                 echo_arguments=echo_arguments,
+                selected_document_id=selected_document_id,
+                tool_id=tool_id,
+                broker_url=broker_url,
+                worker_credential=worker_credential,
+                broker_probe=broker_probe,
             )
             config_path, config_sha256 = self._write_protected_task_config(config)
             try:
                 # Serialize launch admission with shutdown so no process can be
                 # created in the gap between shutdown's active-job snapshot and
                 # registration of this new handle.
-                return self._start_configured_probe(config, config_path, config_sha256)
+                return self._start_configured_probe(
+                    config, config_path, config_sha256, before_resume=before_resume
+                )
             except Exception:
                 if config_path.exists():
                     _remove_owned_task_config(config_path, self.layout.selected_root, config_sha256)
@@ -832,7 +960,7 @@ class WindowsWorkerController:
             config_path = self.layout.selected_root / f".aclais-a3-task-{config.task_id.hex}.json"
             try:
                 with config_path.open("xb") as stream:
-                    payload = config.model_dump_json().encode("utf-8")
+                    payload = config.model_dump_json(exclude_none=True).encode("utf-8")
                     stream.write(payload)
                     stream.flush()
                     os.fsync(stream.fileno())
@@ -847,15 +975,20 @@ class WindowsWorkerController:
         raise LauncherError("task_configuration_collision")
 
     def _start_configured_probe(
-        self, config: A3ProbeConfiguration, config_path: Path, config_sha256: str
+        self,
+        config: A3ProbeConfiguration,
+        config_path: Path,
+        config_sha256: str,
+        *,
+        before_resume: Callable[[int, int, str], None] | None = None,
     ) -> WorkerHandle:
         layout = self.layout
         api = self._api
         for path in (
             layout.private_probe,
             layout.python_exe,
-            layout.selected_input,
-            layout.output_root,
+            Path(config.selected_input),
+            Path(config.temporary_output),
         ):
             _require_plain_path(api, path)
         if not layout.python_exe.is_file() or not layout.private_probe.is_file():
@@ -895,7 +1028,7 @@ class WindowsWorkerController:
             stdin_null = _Handle(api, api.create_null_input(), "stdin_null")
             job = _Handle(api, api.create_job(), "job")
 
-            environment = _minimal_environment(str(layout.output_root))
+            environment = _minimal_environment(config.temporary_output)
             args_list = ["-I", "-B", str(layout.private_probe), "--task-config", str(config_path)]
             for value in config.echo_arguments:
                 args_list.extend(("--echo-arg", value))
@@ -909,7 +1042,7 @@ class WindowsWorkerController:
                     layout.python_exe,
                     args,
                     environment,
-                    layout.output_root,
+                    Path(config.temporary_output),
                     stdin_null.raw,
                     stdout_write.raw,
                     stderr_write.raw,
@@ -954,6 +1087,10 @@ class WindowsWorkerController:
             launch_sequence.append("assigned")
             creation_time = api.process_creation_time(process.raw)
 
+            if before_resume is not None:
+                phase = "pre_resume_commit"
+                before_resume(pid, creation_time, observed_sid)
+
             phase = "job_resume"
             previous_suspend_count = api.resume_thread(primary_thread.raw)
             if previous_suspend_count != 1:
@@ -963,7 +1100,9 @@ class WindowsWorkerController:
             handle = WorkerHandle(
                 controller=self,
                 api=api,
-                config=config,
+                config=config.model_copy(
+                    update={"broker_url": None, "worker_credential": None}
+                ),
                 config_path=config_path,
                 process=process,
                 primary_thread=primary_thread,
@@ -1061,6 +1200,38 @@ class WindowsWorkerController:
         with self._lock:
             self._active.discard(handle)
 
+    def verify_stored_process_stopped(
+        self, pid: int, creation_time_100ns: int, worker_sid: str
+    ) -> bool:
+        """Check a retained PID without signaling or terminating a recycled process."""
+
+        process = self._api.open_process(pid)
+        if process is None:
+            error = ctypes.get_last_error()
+            if error in (6, 87, 1168):  # INVALID_HANDLE, INVALID_PARAMETER, NOT_FOUND
+                return True
+            return False
+        try:
+            if self._api.process_creation_time(process) != creation_time_100ns:
+                return True
+            observed_sid, is_admin = self._api.process_identity(process)
+            if observed_sid != worker_sid or is_admin:
+                return False
+            return self._api.wait(process, 0) == _WAIT_OBJECT_0
+        except LauncherError:
+            return False
+        finally:
+            self._api.close_handle(process)
+
+    def cleanup_stale_task_configurations(self) -> None:
+        """Remove only fixed-prefix task configs after startup has verified old workers stopped."""
+
+        _require_plain_path(self._api, self.layout.selected_root)
+        for path in self.layout.selected_root.glob(".aclais-a3-task-*.json"):
+            if path.parent != self.layout.selected_root:
+                raise LauncherError("task_configuration_cleanup_scope")
+            _remove_owned_file(path, self.layout.selected_root)
+
     def shutdown(self) -> None:
         with self._lock:
             self._shutdown = True
@@ -1117,7 +1288,10 @@ class WorkerHandle:
         self._lock = threading.RLock()
         self._finalize_lock = threading.Lock()
         self._termination_cause: (
-            Literal["process_exit", "cancelled", "timeout", "controller_shutdown"] | None
+            Literal[
+                "process_exit", "cancelled", "timeout", "controller_shutdown", "policy_denied"
+            ]
+            | None
         ) = None
         self._result: WorkerResult | None = None
         self._started = time.monotonic()
@@ -1130,6 +1304,32 @@ class WorkerHandle:
     @property
     def handles_closed(self) -> bool:
         return self._closed_handles
+
+    def wait_for_process_exit(self, milliseconds: int) -> bool:
+        """Wait for the worker process handle without choosing or finalizing its cause."""
+
+        if isinstance(milliseconds, bool) or not isinstance(milliseconds, int) or milliseconds < 0:
+            raise ValueError("process wait duration must be a non-negative integer")
+        if self._result is not None:
+            return True
+        if self.process.closed or self.process.raw is None:
+            return self._result is not None
+        status = self.api.wait(self.process.raw, milliseconds)
+        if status == _WAIT_OBJECT_0:
+            return True
+        if status != _WAIT_TIMEOUT:
+            raise LauncherError("worker_wait_status")
+        return False
+
+    def process_exit_observed(self) -> bool:
+        return self.wait_for_process_exit(0)
+
+    def finish_process_exit(self) -> WorkerResult:
+        """Finalize a process exit already admitted by the shared task lock."""
+
+        if not self.process_exit_observed():
+            raise LauncherError("worker_exit_not_observed")
+        return self._finalize("process_exit")
 
     def wait(self) -> WorkerResult:
         while True:
@@ -1149,7 +1349,11 @@ class WorkerHandle:
             if status == _WAIT_OBJECT_0:
                 with self._lock:
                     if self._termination_cause is None:
-                        self._termination_cause = "process_exit"
+                        self._termination_cause = (
+                            "timeout"
+                            if time.monotonic() >= self.deadline_at
+                            else "process_exit"
+                        )
                 continue
             if status != _WAIT_TIMEOUT:
                 raise LauncherError("worker_wait_status")
@@ -1158,7 +1362,10 @@ class WorkerHandle:
         return self.terminate("cancelled")
 
     def terminate(
-        self, cause: Literal["cancelled", "timeout", "controller_shutdown"]
+        self,
+        cause: Literal[
+            "cancelled", "timeout", "controller_shutdown", "policy_denied"
+        ],
     ) -> WorkerResult:
         with self._lock:
             if self._result is not None:
@@ -1169,7 +1376,10 @@ class WorkerHandle:
         return self._finalize(effective_cause)
 
     def _finalize(
-        self, cause: Literal["process_exit", "cancelled", "timeout", "controller_shutdown"]
+        self,
+        cause: Literal[
+            "process_exit", "cancelled", "timeout", "controller_shutdown", "policy_denied"
+        ],
     ) -> WorkerResult:
         with self._finalize_lock:
             with self._lock:

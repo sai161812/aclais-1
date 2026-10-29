@@ -19,8 +19,10 @@ from aclais.persistence.database import (
     utc_now,
 )
 from aclais.persistence.models import (
+    ApiError,
     BrokerOutputAllowed,
     BrokerPublishOutputRequest,
+    ErrorResponse,
     JournalState,
     OutputJournalRecord,
     OutputMetadata,
@@ -295,6 +297,116 @@ class OutputPublisher:
             self.database.transition_output(
                 record.output_id, JournalState.INCONSISTENT, now=utc_now()
             )
+
+    def reconcile_task(self, task_id: UUID | str) -> tuple[str, ...]:
+        """Finish only hash-verified durable publications; abort incomplete staging."""
+
+        recovered: list[str] = []
+        for record in self.database.outputs_for_task(task_id):
+            if record.state in {
+                JournalState.PUBLISHED,
+                JournalState.ABORTED,
+                JournalState.INCONSISTENT,
+            }:
+                continue
+            staging, final = self.paths(record)
+            has_staging, has_final = _exists(staging), _exists(final)
+            if has_staging and has_final:
+                self._mark_inconsistent(record)
+                raise OutputUnavailable("recovery found both staging and final output files")
+
+            if has_final:
+                _require_plain_tree(final)
+                if _hash_file(final) != (record.content_sha256, record.decoded_bytes):
+                    self._mark_inconsistent(record)
+                    raise OutputUnavailable("recovery found mismatched final output content")
+            elif has_staging:
+                _require_plain_tree(staging)
+                if _hash_file(staging) != (record.content_sha256, record.decoded_bytes):
+                    self._remove_partial_staging(staging, record)
+                    self._abort_recovered_request(record)
+                    recovered.append("aborted")
+                    continue
+                with staging.open("r+b") as stream:
+                    _flush_to_disk(stream)
+                if record.state == JournalState.RESERVED:
+                    record = self.database.transition_output(
+                        record.output_id, JournalState.STAGED, now=utc_now()
+                    )
+                _move_without_replace(staging, final)
+                _require_plain_tree(final)
+                if _hash_file(final) != (record.content_sha256, record.decoded_bytes):
+                    self._mark_inconsistent(record)
+                    raise OutputUnavailable("recovered output changed during finalization")
+            else:
+                if record.state == JournalState.RESERVED:
+                    self._abort_recovered_request(record)
+                    recovered.append("aborted")
+                    continue
+                self._mark_inconsistent(record)
+                raise OutputUnavailable(
+                    "durably staged output is missing from both managed locations"
+                )
+
+            if record.state == JournalState.RESERVED:
+                record = self.database.transition_output(
+                    record.output_id, JournalState.STAGED, now=utc_now()
+                )
+            body_hash = self.database.request_body_sha256(record.task_id, record.request_id)
+            if body_hash is None:
+                self._mark_inconsistent(record)
+                raise OutputUnavailable("recovered output has no request journal")
+            response = BrokerOutputAllowed(
+                schema_version=1,
+                decision="allow",
+                output_id=record.output_id,
+                sha256=record.content_sha256,
+            )
+            self.database.finalize_output_publication(
+                record.output_id, body_hash, response, now=utc_now()
+            )
+            recovered.append("published")
+        return tuple(recovered)
+
+    def _remove_partial_staging(self, staging: Path, record: OutputJournalRecord) -> None:
+        try:
+            _require_plain_tree(staging)
+            expected, _ = self.paths(record)
+            if staging != expected or not staging.is_file():
+                raise PublicationError("recovery staging path is not controller-derived")
+            staging.unlink()
+        except (OSError, PublicationError):
+            self._mark_inconsistent(record)
+            raise OutputUnavailable(
+                "recovery could not remove incomplete staging content"
+            ) from None
+
+    def _abort_recovered_request(self, record: OutputJournalRecord) -> None:
+        if record.state != JournalState.ABORTED:
+            self.database.transition_output(record.output_id, JournalState.ABORTED, now=utc_now())
+        body_hash = self.database.request_body_sha256(record.task_id, record.request_id)
+        if body_hash is None:
+            return
+        error = ErrorResponse(
+            schema_version=1,
+            error=ApiError(
+                code="PUBLICATION_INCONSISTENT",
+                message="Output publication did not complete before controller recovery.",
+                request_id=str(record.request_id),
+            ),
+        )
+        self.database.complete_request(
+            record.task_id,
+            record.request_id,
+            body_hash,
+            error,
+            now=utc_now(),
+            event_kind="publication_recovery_aborted",
+            event_operation="publish_output",
+            event_decision="deny",
+            event_reason_code="PUBLICATION_INCONSISTENT",
+            event_message="Incomplete output staging was withheld during restart recovery.",
+        )
 
     def read_published(self, output_id: UUID | str) -> tuple[OutputMetadata, bytes]:
         metadata = self.database.published_output(output_id)

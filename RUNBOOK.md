@@ -50,7 +50,7 @@ Open `http://127.0.0.1:5173`. Vite proxies same-origin `/api` requests to the AP
 
 ## Configuration and logging
 
-Supported environment variables are `ACLAIS_HOST`, `ACLAIS_PORT`, and `ACLAIS_LOG_LEVEL`. Defaults are `127.0.0.1`, `8765`, and `INFO`. The host is restricted to `127.0.0.1`; the port must be decimal and in the range 1024–65535; log level must be DEBUG, INFO, WARNING, or ERROR. Unknown `ACLAIS_` variable names and invalid values stop startup. A `.env` file is not loaded.
+Supported environment variables are `ACLAIS_HOST`, `ACLAIS_PORT`, `ACLAIS_LOG_LEVEL`, and `ACLAIS_PROTECTED_RUNTIME`. Defaults are `127.0.0.1`, `8765`, `INFO`, and `false`. The host is restricted to `127.0.0.1`; the port must be decimal and in the range 1024–65535; log level must be DEBUG, INFO, WARNING, or ERROR; protected runtime accepts only `true` or `false`. Unknown `ACLAIS_` variable names and invalid values stop startup. A `.env` file is not loaded.
 
 PowerShell example:
 
@@ -58,7 +58,10 @@ PowerShell example:
 $env:ACLAIS_HOST = '127.0.0.1'
 $env:ACLAIS_PORT = '8765'
 $env:ACLAIS_LOG_LEVEL = 'INFO'
+$env:ACLAIS_PROTECTED_RUNTIME = 'false'
 ```
+
+On the provisioned A2/A3 Windows machine, `ACLAIS_PROTECTED_RUNTIME=true` assembles the A6 worker controller, broker and persistence, runs restart reconciliation before the API serves requests, and keeps the broker unavailable if recovery fails. This does not add owner task-creation or cancellation routes; those belong to A8. The health response remains `unknown` for overall G1 protection until A7–A10 verification gates pass.
 
 Logs are one-line JSON records on stderr. Structured fields with names containing authorization, cookie, token, password, secret, credential, canary, payload, private, or API key are replaced with `[REDACTED]`; common bearer and `key=value`/header patterns in messages are also redacted. Exception text and tracebacks are omitted. Do not log request bodies, headers, credentials, canary values, private document contents, or arbitrary user input. The redactor is defense in depth and does not make unsafe logging of arbitrary strings acceptable.
 
@@ -132,4 +135,16 @@ Set-Location 'D:\Workspace\IDL\ACLAIS-1\aclais\backend'
 uv run --locked pytest -m windows_enforcement tests/test_publication.py --tb=short
 ```
 
-The A5 broker API is mounted only by injecting a trusted `BrokerService`; output downloads additionally require an owner-authorizer dependency. The default app remains health-only until trusted startup assembly is added. Tests use private injected dependencies and do not claim A8 owner authentication. A6 must create the fixed per-task selected-input copy directory with its worker ACL, pass that path to the fixed launcher registration, and remove it during verified cleanup.
+The A5 broker API is mounted only by injecting a trusted `BrokerService`; output downloads additionally require an owner-authorizer dependency. Output downloads still require the A8 owner-authorizer dependency. Tests use private injected services and do not claim A8 owner authentication.
+
+## A6 lifecycle and recovery checks
+
+Run the target-machine lane from the ordinary, non-elevated owner session on the provisioned demonstration machine:
+
+```powershell
+& 'D:\Workspace\IDL\ACLAIS-1\aclais\scripts\check_a6_windows.ps1'
+```
+
+The script refreshes and reruns the fixed A3 worker probe, then runs the real A6 lifecycle tests. Those tests exercise brokered completion, denial and credential revocation, per-task selected-copy/output ACLs, single-worker admission, cancellation, deadline, a worker crash with a child, orderly shutdown, cancellation/process-exit and timeout/completion races, and abrupt controller death followed by startup reconciliation. They record worker/child PID, SID and process creation identities only in temporary owner-protected test state and verify actual process exit with Windows process handles. Test databases, task workspaces, task configuration and marker files are removed after the run; no credential values or runtime fixture contents are committed. A failure to start, stop or reconcile is a failed enforcement check. Portable CI does not run this lane.
+
+The sanitized A6 report is `evidence/A6.md`; it separates local portable results from actual Windows evidence and records the remaining fixture mismatch and unimplemented A7 verifier.

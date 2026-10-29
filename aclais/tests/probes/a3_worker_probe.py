@@ -8,6 +8,9 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -45,13 +48,134 @@ def _read_config(path: Path) -> dict[str, Any]:
         "probe_case",
         "echo_arguments",
     }
-    if not isinstance(raw, dict) or set(raw) != expected or raw["schema_version"] != 1:
+    extended = expected | {
+        "selected_document_id",
+        "tool_id",
+        "broker_url",
+        "worker_credential",
+        "broker_probe",
+    }
+    if (
+        not isinstance(raw, dict)
+        or frozenset(raw) not in {frozenset(expected | {"broker_probe"}), frozenset(extended)}
+        or raw["schema_version"] != 1
+    ):
         raise ValueError("task_config_schema_invalid")
-    if raw["probe_case"] not in {"normal", "child_exit", "child_wait", "capture"}:
+    if raw["probe_case"] not in {
+        "normal",
+        "child_exit",
+        "child_wait",
+        "child_crash",
+        "capture",
+    }:
         raise ValueError("task_config_probe_case_invalid")
     if not isinstance(raw["echo_arguments"], list) or len(raw["echo_arguments"]) > 16:
         raise ValueError("task_config_arguments_invalid")
     return raw
+
+
+def _post_broker(config: dict[str, Any], body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    request = urllib.request.Request(
+        config["broker_url"],
+        data=json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+        headers={
+            "Authorization": "Bearer " + config["worker_credential"],
+            "Content-Type": "application/json",
+            "Host": config["broker_url"].split("//", 1)[1].split("/", 1)[0],
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return response.status, json.loads(response.read(2_097_153).decode("utf-8"))
+    except urllib.error.HTTPError as response:
+        return response.code, json.loads(response.read(2_097_153).decode("utf-8"))
+
+
+def _broker_lifecycle_probe(config: dict[str, Any]) -> None:
+    mode = config.get("broker_probe", "none")
+    if mode == "none":
+        return
+    if mode == "policy_denial":
+        _post_broker(
+            config,
+            {
+                "schema_version": 1,
+                "request_id": str(uuid.uuid4()),
+                "operation": "read_document",
+                "document_id": "doc-private",
+            },
+        )
+        return
+    status, response = _post_broker(
+        config,
+        {
+            "schema_version": 1,
+            "request_id": str(uuid.uuid4()),
+            "operation": "read_document",
+            "document_id": config["selected_document_id"],
+        },
+    )
+    if status != 200 or response.get("decision") != "allow":
+        raise RuntimeError("private_broker_read_failed")
+    if config["tool_id"] == "report_formatter":
+        output_kind = "formatted_markdown"
+        output_text = "# A6 private lifecycle probe\n\nSynthetic broker output.\n"
+    else:
+        output_kind = "invoice_json"
+        output_text = (
+            '{"vendor":"Synthetic Vendor","invoice_number":"A6-001",'
+            '"date":"2026-10-29","line_total":"1.00","grand_total":"1.00"}'
+        )
+    status, response = _post_broker(
+        config,
+        {
+            "schema_version": 1,
+            "request_id": str(uuid.uuid4()),
+            "operation": "publish_output",
+            "output_kind": output_kind,
+            "output_text": output_text,
+        },
+    )
+    if status != 200 or response.get("decision") != "allow":
+        raise RuntimeError("private_broker_publish_failed")
+
+
+def _creation_time_100ns(pid: int) -> int:
+    import ctypes
+
+    class FILETIME(ctypes.Structure):
+        _fields_ = [("low", ctypes.c_uint32), ("high", ctypes.c_uint32)]
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+    kernel32.OpenProcess.restype = ctypes.c_void_p
+    kernel32.GetProcessTimes.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+        ctypes.POINTER(FILETIME),
+    ]
+    kernel32.GetProcessTimes.restype = ctypes.c_int
+    kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel32.CloseHandle.restype = ctypes.c_int
+    handle = kernel32.OpenProcess(0x1000, False, pid)
+    if not handle:
+        raise OSError(ctypes.get_last_error(), "OpenProcess failed")
+    try:
+        created, exited, kernel, user = FILETIME(), FILETIME(), FILETIME(), FILETIME()
+        if not kernel32.GetProcessTimes(
+            handle,
+            ctypes.byref(created),
+            ctypes.byref(exited),
+            ctypes.byref(kernel),
+            ctypes.byref(user),
+        ):
+            raise OSError(ctypes.get_last_error(), "GetProcessTimes failed")
+        return (int(created.high) << 32) | int(created.low)
+    finally:
+        kernel32.CloseHandle(handle)
 
 
 def _try_denial(name: str, operation: Any) -> dict[str, Any]:
@@ -103,7 +227,14 @@ def _launch_child(config: dict[str, Any], marker: Path) -> int:
 
 
 def _child(marker: Path) -> int:
-    _write_json(marker, {"pid": os.getpid(), "in_job": _in_any_job()})
+    _write_json(
+        marker,
+        {
+            "pid": os.getpid(),
+            "creation_time_100ns": _creation_time_100ns(os.getpid()),
+            "in_job": _in_any_job(),
+        },
+    )
     time.sleep(600)
     return 0
 
@@ -146,6 +277,27 @@ def _probe(task_config_path: Path, echo_arguments: list[str]) -> int:
             lambda: task_config_path.rename(task_config_path.with_suffix(".renamed")),
         ),
     ]
+    if config.get("broker_probe", "none") != "none":
+        selected_parent = selected_input.parent
+        selected_root = selected_parent.parent
+        temporary_root = output_root.parent
+        protected_checks.extend(
+            (
+                _try_denial(
+                    "selected_input_write_denied",
+                    lambda: _open_config_for_write(selected_input),
+                ),
+                _try_denial("selected_input_delete_denied", lambda: selected_input.unlink()),
+                _try_denial(
+                    "selected_input_rename_denied",
+                    lambda: selected_input.rename(selected_input.with_suffix(".renamed")),
+                ),
+                _try_denial("selected_parent_list_denied", lambda: list(selected_root.iterdir())),
+                _try_denial(
+                    "temporary_parent_list_denied", lambda: list(temporary_root.iterdir())
+                ),
+            )
+        )
     # If a boundary unexpectedly permits a change, the check fails and the owner
     # harness restores/deletes only this run's disposable configuration file.
     config_unchanged = (
@@ -177,13 +329,17 @@ def _probe(task_config_path: Path, echo_arguments: list[str]) -> int:
         flush=True,
     )
 
+    _broker_lifecycle_probe(config)
+
     if config["probe_case"] == "capture":
         _capture_burst()
-    elif config["probe_case"] in {"child_exit", "child_wait"}:
+    elif config["probe_case"] in {"child_exit", "child_wait", "child_crash"}:
         child_pid = _launch_child(config, child_marker)
         print(json.dumps({"event": "child_started", "pid": child_pid}), flush=True)
         if config["probe_case"] == "child_wait":
             time.sleep(600)
+        elif config["probe_case"] == "child_crash":
+            os._exit(23)
     return 0
 
 

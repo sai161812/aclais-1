@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import PureWindowsPath
 from typing import Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class A3ProbeConfiguration(BaseModel):
@@ -19,8 +20,13 @@ class A3ProbeConfiguration(BaseModel):
     selected_input: str = Field(min_length=1, max_length=1024)
     temporary_output: str = Field(min_length=1, max_length=1024)
     deadline_seconds: int = Field(ge=1, le=600)
-    probe_case: Literal["normal", "child_exit", "child_wait", "capture"]
+    probe_case: Literal["normal", "child_exit", "child_wait", "child_crash", "capture"]
     echo_arguments: tuple[str, ...] = Field(default=(), max_length=16)
+    selected_document_id: Literal["doc-report", "doc-invoice"] | None = None
+    tool_id: Literal["report_formatter", "invoice_analyzer"] | None = None
+    broker_url: str | None = Field(default=None, max_length=256, repr=False)
+    worker_credential: str | None = Field(default=None, max_length=512, repr=False)
+    broker_probe: Literal["none", "allow_and_publish", "policy_denial"] = "none"
 
     @field_validator("selected_input", "temporary_output")
     @classmethod
@@ -44,6 +50,49 @@ class A3ProbeConfiguration(BaseModel):
         if any("\x00" in value or len(value) > 2048 for value in values):
             raise ValueError("probe argument is invalid or too large")
         return values
+
+    @field_validator("broker_url")
+    @classmethod
+    def require_loopback_broker_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "http"
+            or parsed.hostname != "127.0.0.1"
+            or parsed.port is None
+            or not 1024 <= parsed.port <= 65535
+            or parsed.path != "/api/broker/operations"
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("private worker broker URL must use the fixed loopback endpoint")
+        return value
+
+    @model_validator(mode="after")
+    def validate_broker_probe(self) -> A3ProbeConfiguration:
+        configured = (
+            self.selected_document_id,
+            self.tool_id,
+            self.broker_url,
+            self.worker_credential,
+        )
+        if self.broker_probe == "none":
+            if any(value is not None for value in configured):
+                raise ValueError("broker fields require an explicit private broker probe mode")
+            return self
+        if any(value is None for value in configured):
+            raise ValueError("private broker probe fields are incomplete")
+        if (self.tool_id, self.selected_document_id) not in {
+            ("report_formatter", "doc-report"),
+            ("invoice_analyzer", "doc-invoice"),
+        }:
+            raise ValueError("private broker probe tool and document do not match")
+        if not 32 <= len(self.worker_credential or "") <= 512:
+            raise ValueError("private worker credential has an invalid length")
+        return self
 
 
 class CapturedLine(BaseModel):
@@ -69,7 +118,9 @@ class WorkerResult(BaseModel):
     job_kill_on_close: Literal[True]
     task_configuration_unchanged: Literal[True]
     exit_code: int
-    termination_cause: Literal["process_exit", "cancelled", "timeout", "controller_shutdown"]
+    termination_cause: Literal[
+        "process_exit", "cancelled", "timeout", "controller_shutdown", "policy_denied"
+    ]
     process_tree_stopped: Literal[True]
     stdout: tuple[CapturedLine, ...]
     stderr: tuple[CapturedLine, ...]
