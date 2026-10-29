@@ -16,6 +16,7 @@ from aclais.owner_auth import OwnerAuth
 from aclais.persistence.database import Database
 from aclais.publication import OutputPublisher
 from aclais.readiness import Readiness
+from aclais.receiver_adapter import HttpReceiverAdapter
 from aclais.tool_registry import FixedToolRegistry
 
 
@@ -109,6 +110,9 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
         workspace=workspace,
         verifier=verifier,
         preflight=readiness.require_core,
+        receiver_adapter=HttpReceiverAdapter(
+            credential_file=layout.root / "state" / "receiver" / "admin.token"
+        ),
     )
     lifecycle.recover_before_serving()
     owner_auth = OwnerAuth(database, origin=runtime_settings.expected_origin)

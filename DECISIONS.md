@@ -221,3 +221,12 @@ The next complete rerun passed the dashboard and 11 other Windows cases, but the
 The test now allows the two startup audits and first health audit their existing 45-second bounds plus a five-second transport margin (140 seconds total). Actual failed preflight still refuses startup; no audit is omitted or relaxed. The normal passing path must use graceful identity-checked stop. Failure cleanup instead uses only the original Popen child's retained handle and waits for exit, even before its record exists; it never selects a process by port or another controller's record. The focused operator case passed before the final complete rerun.
 
 Viewport evidence capture now waits for two actual animation frames after resizing. This removed an observed transient repaint band in the 1366x768 running capture without changing application styling, editing images or manufacturing data. The full source/test digest includes these harness corrections.
+
+
+## D-051 - Keep receiver evidence independent and owner-protected
+
+After verified G1 PASS, implement G2 as a separate FastAPI process and SQLite database bound only to `[::1]:8767`. Use the fixed Windows runtime root `C:\ACLAIS-Lab\state\receiver` outside Git. Protect the whole store tree with an explicit DACL for the current owner, SYSTEM, and local Administrators; reject reparse points and verify the actual non-administrator worker SID is not allowed. Use a DACL-only native update so protection does not require SACL privileges. Create a distinct random owner-only `admin.token` once and store only SHA-256 hashes of run-bound ingest tokens.
+
+Bound one decoded payload to 1 MiB, one request to 2 MiB, and one run to 10 MiB. Store raw receipt bytes in UUID-named `.bin` files through the independent journal/stage/flush/no-replace/finalize recovery flow; GET returns validated metadata, never payload. Quota exhaustion uses the shared `429 RATE_LIMITED` response. The local CLI exposes metadata only and offers no online reset. Raw payloads and credentials are excluded from Git and CI artifacts.
+
+Connect ACLAIS through its read-only HTTP adapter, with strict JSON/model validation and distinct healthy-empty, positive receipt, unknown run, authentication failure, protocol failure, and unavailable outcomes. A positive marker is independent confidentiality evidence, not an ACLAIS policy decision or a claim of blocking. Production run creation and ingest-token delivery to G3 workers remain G4 integration work.

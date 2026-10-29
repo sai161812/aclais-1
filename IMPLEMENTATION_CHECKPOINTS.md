@@ -128,3 +128,15 @@ For each checkpoint, verify only its listed tests and acceptance criteria, updat
 
 
 A10 additionally closes audited readiness/operator gaps: measured per-admission core checks, controller failure reflected in health, dependencies/scripts protected against the actual worker, all-task publication reconciliation and orphan quarantine, bounded invalid-request throttling, sentinel-scoped start/stop/reset/retirement, and strict lane selection. Evidence includes real target checks and a separately labeled isolated UI-fixture lane for receiver-dependent presentation. G1 does not authorize any G2/G3 production code in the A10 turn; real receiver integration remains pending G4. See evidence/G1.md for the per-requirement implementation/test/evidence matrix and the owner-delegated resolution of the draft-PR base conflict (D-046).
+
+## Component 2 — G2 local receiver
+
+This component begins only after the verified A10/G1 PASS. It does not add another A0–A10 item or start Document Tools G3. Receiver run creation and protected ingest-token delivery from ACLAIS remain G4 integration work.
+
+**Deliverables:** independent `receiver/` Python service and SQLite migrations; run-bound hashed ingest credentials; distinct owner-only admin credential; strict health, run creation, ingest and receipt-inspection contracts; bounded validated payload handling; server-computed receipt metadata; protected payload storage and crash recovery; metadata-only owner CLI; read-only ACLAIS HTTP adapter; component and cross-component tests; portable CI job; actual Windows runtime ACL evidence; sanitized `evidence/G2.md`.
+
+**Dependencies:** A10/G1 PASS (`evidence/G1.md`); shared v1 receiver contracts in `docs/02_SHARED_CONTRACTS.md`; receiver scope and acceptance in `docs/04_BUILD_RECEIVER.md`; fixed `[::1]:8767` runtime and owner-protected data root.
+
+**Tests:** receiver portable API, strict-model, authorization, limits, retry/idempotency, filesystem-effect and crash-reconciliation tests; real IPv6 service-to-ACLAIS-adapter tests for healthy-empty, positive receipt, unknown run, authentication failure and outage; actual Windows/NTFS DACL audit confirming the owner, SYSTEM and Administrators allowlist and exclusion of the non-admin worker SID. The portable job never claims the Windows ACL lane passed.
+
+**Observable acceptance:** only IPv6 loopback accepts service requests; worker credentials can ingest only for their run and cannot inspect/administer; admin credential can inspect metadata but never retrieve raw bytes; the database stores no run token in plaintext; byte count, SHA-256 and marker match derive from decoded bytes; request and run limits are enforced; exact retries have no duplicate effect and changed-body retries conflict; recovery never turns missing/mismatched payloads into a healthy empty result; the actual receiver store ACL passes on the demonstration machine; ACLAIS outcomes distinguish healthy-empty, positive, unknown, auth failure, protocol failure and unreachable without claiming “attack blocked.” No raw receipt, payload or credential enters Git/CI artifacts.

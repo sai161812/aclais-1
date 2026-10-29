@@ -1,17 +1,17 @@
 # Build status
 
-As of 2026-10-29. A0 through A9 and repository-structure checkpoint R0 passed their required checks. A9 implementation commit e726c84309d7d532010d51a0027d16c133926b84 is pushed and its hosted portable CI passed. A10 is not started; G1 remains incomplete and later production components remain gated.
+As of 2026-10-29. A0–A10 and repository-structure checkpoint R0 passed their required checks; G1 is PASS. Component 2 / G2 receiver implementation is in progress under the separate request recorded below. Document Tools G3 remains gated on G2, and G4 integrated run creation/worker credential delivery remains pending.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
 ## Current state
 
-- Latest checkpoint: **A10 / G1 PASS after complete revalidation and exact-revision hosted CI**. The A10 section and evidence/G1.md supersede the historical checkpoint limitations below; receiver integration remains pending G4.
+- Latest completed prerequisite: **A10 / G1 PASS after complete revalidation and exact-revision hosted CI**. The G2 receiver implementation is now the active checkpoint; see `evidence/G2.md` after completion. Production run creation and worker ingest-credential delivery remain pending G4.
 
 - All nine specification files in `docs/` have been reviewed in the prescribed order and reconciled for consistent implementation.
 - The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` before the first push and `aclais-prototype` afterward; A10 owner delegation restored the unchanged documentation baseline as remote `main` and verified it as the default (D-046).
 - The working branch remains `aclais-prototype`, tracking `origin/aclais-prototype`; R0 startup implementation commit `860070068607acb7004a2cc001a5b7e39854bce8` was pushed, the local and remote heads matched, and [run 9](https://github.com/sai161812/aclais-1/actions/runs/40769494744) passed for that revision. Synchronization and CI for its final documentation-only evidence commit are reported separately in the completion report.
-- Current source is organized under `aclais/`, `receiver/`, and `document-tools/`; root `tests/` is cross-component only, root `scripts/` is orchestration only, and `shared/` holds schemas/minimal protocol notes. Receiver and Document Tools contain reservation notes only. The existing `docs/` arrangement and protected `C:\ACLAIS-Lab` runtime location were retained. A2/A3 Windows checks were rerun after the move; both portable CI jobs passed on the R0 implementation commit.
+- Current source is organized under `aclais/`, `receiver/`, and `document-tools/`; root `tests/` is cross-component only, root `scripts/` is orchestration only, and `shared/` holds schemas/minimal protocol notes. Receiver now contains the G2 service, component tests and scripts; Document Tools remains a reservation. The protected `C:\ACLAIS-Lab` runtime location is retained.
 - A3 now provides the fixed private Windows probe launcher, Credential Manager retrieval, suspended alternate-user creation, pre-resume Job Object assignment, bounded output capture and scoped deadline/shutdown cleanup. Its real target-machine checks pass; portable checks remain a separate lane. This checkpoint does not complete G1.
 - The remote was genuinely empty: GitHub reported repository size 0 and no branches, its refs endpoint reported an empty repository, and `git ls-remote --heads` returned no refs. A documentation-only baseline was committed to local `main` as `0752747004fc689e07f8e55435964bf4d267fd12`; working branch `aclais-prototype` was created from it. Only `aclais-prototype` was pushed; it tracks `origin/aclais-prototype`, and the local and GitHub branch heads matched after the final status push.
 - Initial A0 environment inventory: Windows 11 Home Single Language 10.0.26200, 64-bit; C: and D: are NTFS. Python 3.12.10/pip 25.0.1, Node.js v24.19.0/npm 11.17.0, Git 2.55.0.windows.4. Chrome 156.0.8078.48 and Edge 156.0.4314.50 are installed. Globally visible Python packages: FastAPI 0.115.0, Pydantic 2.9.2 and pytest 8.3.3; pywin32 is absent. The shell is not elevated. `C:\ACLAIS-Lab` and local account `AclaisWorker` are absent. At that inventory, no project source, project virtual environment or lockfile existed; A1 now establishes the isolated backend/frontend sources, environments and locks below. Global npm package inventory failed because `%APPDATA%\npm` does not exist; `npm --version` succeeds. Provisioning capability has not been tested.
@@ -24,8 +24,8 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | Gate | Status | Evidence / prerequisite |
 |---|---|---|
 | G0 — environment and contract review | PASS | All nine specs and the environment were reviewed; repository metadata was verified; local `main` documentation baseline created; `aclais-prototype` pushed and matched against the GitHub branch head. |
-| G1 — ACLAIS | IN_PROGRESS | A1–A7 pass their current checkpoint checks; A8–A10 and the complete G1 audit remain. |
-| G2 — receiver | NOT_STARTED | Requires passing G1. |
+| G1 — ACLAIS | PASS | A10 repeat audit passed; see `evidence/G1.md` and the exact-revision CI links below. |
+| G2 — receiver | IN_PROGRESS | G1 prerequisite verified; service, adapter, tests and target-machine ACL lane are implemented. Await final portable/regression run, exact-head CI and checkpoint synchronization recorded in the G2 section. |
 | G3 — Document Tools | NOT_STARTED | Requires passing G1 and G2. |
 | G4 — integrated release audit | NOT_STARTED | Requires passing G1, G2, and G3. |
 
@@ -43,7 +43,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | A7 — verification and evidence | PASS | A2, A4–A6 prerequisites pass; 107 portable tests and the actual Windows A3/A6 prerequisite suite pass; implementation commit is synchronized and hosted CI passed. See `evidence/A7.md` and `evidence/a7-sanitized-summary.json`. |
 | A8 — owner authentication and approval | PASS | Actual Windows browser/containment and portable checks passed; see `evidence/A8.md`. |
 | A9 — connected dashboard | PASS | Connected Chrome dashboard, actual backend flows, A2 access probe, portable checks, Windows enforcement, and hosted CI passed; see `evidence/A9.md`. |
-| A10 — complete G1 audit | NOT_STARTED | Requires A1–A9 PASS; all verification lanes required. |
+| A10 — complete G1 audit | PASS | All required lanes passed; see `evidence/G1.md` and repeated audit record below. |
 
 ## R0 repository-structure checkpoint
 
@@ -201,3 +201,13 @@ The current A10 / G1 revalidation is complete. Receiver G2 is eligible only unde
 - Final portable command exited 0: 133 tests, Ruff, OpenAPI/generated-type consistency, frontend typecheck/lint/build and npm audit zero vulnerabilities. Final target wrapper exited 0: 13 actual Windows tests, zero skips; separate typed UI fixture 1 pass; 75 actual-worker checks and 14 verified fixture preconditions; final core doctor pass. Isolated idle check pass; zero nonterminal production tasks, live worker credentials and test-service listeners.
 - Tested source/test digest `57ee9a0a54ace19142c1129eb3de8e6fdc6b63c406e16a0ae3180400025ac08f` (111 files), base 09cee7d plus corrections. Updated sanitized summaries and actual captures identify this run; raw evidence, credentials, runtime databases and confidential fixtures remain local.
 - Receiver integration remains PENDING_G4; production workers remain pending G3. No later component was implemented. Revalidation commit `48a20d41d61c80181911347e408b8df81b452fba` was pushed and independently matched by git ls-remote. [Push CI 40886301163](https://github.com/sai161812/aclais-1/actions/runs/40886301163) and PR CI 40886311782 passed for that exact head SHA; both hosted push jobs and steps were inspected. Draft PR #1 remains draft against verified main with no reviewers or merge. An evidence-only followup records the outcome without changing the tested inputs; its own pushed head/CI is separately verified in completion and the PR.
+
+
+## Component 2 — G2 local receiver
+
+- Status: local portable and actual Windows/NTFS receiver-storage acceptance passed; hosted CI and final synchronization are pending.
+- Implementation is in `receiver/` with locked dependencies, a strict IPv6-only service, independent SQLite migrations and receipt journal, owner-protected runtime storage, a separate one-time admin credential, and metadata-only inspection. The ACLAIS adapter is read-only and connected to actual receiver responses; automatic run creation and worker-token delivery remain G4.
+- Root portable run from `C:\Windows\Temp`: 133 ACLAIS portable backend tests passed (5 cases deselected by the ACLAIS selector), 21 receiver tests passed (1 Windows ACL case deselected), and 2 live IPv6 ACLAIS-adapter integration tests passed. Ruff, OpenAPI and TypeScript consistency, frontend typecheck/lint/build passed; npm audit reported zero vulnerabilities.
+- Actual target command `receiver/scripts/check_windows.ps1` passed 1 configured-runtime ACL test with 21 portable tests deselected. The non-elevated owner context, actual store tree, current owner/SYSTEM/Administrators allowlist and configured `AclaisWorker` SID exclusion were checked. An actual foreground service health request returned ready on `[::1]:8767`; the OS reported only the IPv6 loopback listener, refused IPv4, and confirmed process/listener cleanup after Ctrl+C. The ACLAIS adapter loaded the protected admin file and correctly left an unregistered run unknown.
+- Tested source/input digest (38 files): `960932bd89d34e4632e32ed5290c7da5214740928354c0925f525b7f0dafbd2e`; method and evidence are in `evidence/G2.md`. Initial target failures due to SACL privilege use and pytest working directory were fixed; only the final passing target run is counted.
+- No raw payload, receipt, generated credential, runtime database or unsanitized log is tracked or uploaded. G3 remains gated on G2; G4 production run/credential integration remains pending.

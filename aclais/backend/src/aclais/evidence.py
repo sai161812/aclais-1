@@ -578,6 +578,7 @@ class FixtureVerifier:
             differences.append("final_inventory_deferred_until_containment_is_confirmed")
             receiver = ReceiverAssessment(
                 status="unknown",
+                outcome="not_evaluated",
                 reason="Receiver evidence was not evaluated before worker termination.",
             )
             checks.append(

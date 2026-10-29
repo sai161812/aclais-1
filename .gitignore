@@ -43,6 +43,15 @@ node_modules/
 **/raw-receipts/
 **/receipts/raw/
 receiver/data/
+receiver/runtime/
+receiver/evidence/raw/
+receiver/raw-receipts/
+receiver/**/payloads/
+receiver/**/staging/
+receiver/**/quarantine/
+receiver/**/*.bin
+receiver/**/*.stage
+receiver/**/*.quarantined
 *.receipt.bin
 **/receiver/evidence/**/*.bin
 **/fixtures/generated/
