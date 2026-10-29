@@ -36,6 +36,7 @@ def test_bootstrap_browser_failure_never_logs_exception_or_secret(monkeypatch, c
 def test_boundary_audit_retains_its_measured_bounded_timeout(
     monkeypatch, require_idle: bool, expected_timeout: int
 ):
+    monkeypatch.setenv("SystemRoot", r"C:\Windows")
     observed = {}
     response = {
         "passed": True,

@@ -6,7 +6,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 
 ## Current state
 
-- Latest completed gates: **A10 / G1 PASS** (rechecked on 2026-10-30 against source digest `bfb1e11173aafcfb18e5a8aa505bb17a1358bd33ff916ff1c3963d8f470e50f3`, 175 implementation inputs), **Component 2 / G2 PASS**, and **G3-1 Report Formatter PASS**. G1 evidence is in `evidence/G1.md`; G2 results are in `evidence/G2.md`; paired target and sanitized evidence for the formatter are in `evidence/G3.md`. Invoice Analyzer has not started; G3 overall and G4 integration remain incomplete.
+- Latest completed gates: **A10 / G1 PASS** (rechecked on 2026-10-30 against source digest `ac74070615b6f24af1a596f5a0ea298cc330faec030c69a3617b637507ae7d1e`, 175 implementation inputs), **Component 2 / G2 PASS**, and **G3-1 Report Formatter PASS**. G1 evidence is in `evidence/G1.md`; G2 results are in `evidence/G2.md`; paired target and sanitized evidence for the formatter are in `evidence/G3.md`. Invoice Analyzer has not started; G3 overall and G4 integration remain incomplete.
 
 - All nine specification files in `docs/` have been reviewed in the prescribed order and reconciled for consistent implementation.
 - The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` before the first push and `aclais-prototype` afterward; A10 owner delegation restored the unchanged documentation baseline as remote `main` and verified it as the default (D-046).
