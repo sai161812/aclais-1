@@ -20,7 +20,6 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
-from aclais.receiver_adapter import HttpReceiverAdapter, assess_receiver
 
 from receiver.config import ReceiverSettings
 from receiver.credentials import read_admin_credential
@@ -387,6 +386,7 @@ def _close_handle(handle: int) -> None:
 def test_live_receiver_http_and_persistent_receipt_audit() -> None:
     if sys.platform != "win32" or os.environ.get("ACLAIS_G2_LIVE_AUDIT") != "1":
         pytest.skip("requires the explicit Windows demonstration-machine audit wrapper")
+    from aclais.receiver_adapter import HttpReceiverAdapter, assess_receiver
 
     repository_root = Path(__file__).resolve().parents[2]
     component_root = repository_root / "receiver"
