@@ -1,12 +1,12 @@
 # Build status
 
-As of 2026-10-29. A0–A10 and repository-structure checkpoint R0 passed their required checks; G1 is PASS. Component 2 / G2 receiver implementation is in progress under the separate request recorded below. Document Tools G3 remains gated on G2, and G4 integrated run creation/worker credential delivery remains pending.
+As of 2026-10-29. A0-A10 and repository-structure checkpoint R0 passed their required checks; G1 and G2 are PASS. Document Tools G3 may begin under a separate instruction; G4 integrated run creation/worker credential delivery remains pending.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
 ## Current state
 
-- Latest completed prerequisite: **A10 / G1 PASS after complete revalidation and exact-revision hosted CI**. The G2 receiver implementation is now the active checkpoint; see `evidence/G2.md` after completion. Production run creation and worker ingest-credential delivery remain pending G4.
+- Latest completed checkpoints: **A10 / G1 PASS** and **Component 2 / G2 PASS**. G1 evidence is in `evidence/G1.md`; G2 implementation, target-machine results, and exact-revision CI are in `evidence/G2.md`. Production run creation and worker ingest-credential delivery remain pending G4.
 
 - All nine specification files in `docs/` have been reviewed in the prescribed order and reconciled for consistent implementation.
 - The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` before the first push and `aclais-prototype` afterward; A10 owner delegation restored the unchanged documentation baseline as remote `main` and verified it as the default (D-046).
@@ -25,7 +25,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 |---|---|---|
 | G0 — environment and contract review | PASS | All nine specs and the environment were reviewed; repository metadata was verified; local `main` documentation baseline created; `aclais-prototype` pushed and matched against the GitHub branch head. |
 | G1 — ACLAIS | PASS | A10 repeat audit passed; see `evidence/G1.md` and the exact-revision CI links below. |
-| G2 — receiver | IN_PROGRESS | G1 prerequisite verified; service, adapter, tests and target-machine ACL lane are implemented. Await final portable/regression run, exact-head CI and checkpoint synchronization recorded in the G2 section. |
+| G2 receiver | PASS | Independent receiver, read-only ACLAIS adapter, 21 portable component tests, 2 live HTTP integration tests, actual Windows runtime ACL check, and exact-revision push CI passed; see `evidence/G2.md`. |
 | G3 — Document Tools | NOT_STARTED | Requires passing G1 and G2. |
 | G4 — integrated release audit | NOT_STARTED | Requires passing G1, G2, and G3. |
 
@@ -205,9 +205,9 @@ The current A10 / G1 revalidation is complete. Receiver G2 is eligible only unde
 
 ## Component 2 — G2 local receiver
 
-- Status: local portable and actual Windows/NTFS receiver-storage acceptance passed; hosted CI and final synchronization are pending.
+- Status: PASS. Local portable, actual Windows/NTFS receiver-storage acceptance, hosted CI and branch synchronization passed.
 - Implementation is in `receiver/` with locked dependencies, a strict IPv6-only service, independent SQLite migrations and receipt journal, owner-protected runtime storage, a separate one-time admin credential, and metadata-only inspection. The ACLAIS adapter is read-only and connected to actual receiver responses; automatic run creation and worker-token delivery remain G4.
 - Root portable run from `C:\Windows\Temp`: 133 ACLAIS portable backend tests passed (5 cases deselected by the ACLAIS selector), 21 receiver tests passed (1 Windows ACL case deselected), and 2 live IPv6 ACLAIS-adapter integration tests passed. Ruff, OpenAPI and TypeScript consistency, frontend typecheck/lint/build passed; npm audit reported zero vulnerabilities.
 - Actual target command `receiver/scripts/check_windows.ps1` passed 1 configured-runtime ACL test with 21 portable tests deselected. The non-elevated owner context, actual store tree, current owner/SYSTEM/Administrators allowlist and configured `AclaisWorker` SID exclusion were checked. An actual foreground service health request returned ready on `[::1]:8767`; the OS reported only the IPv6 loopback listener, refused IPv4, and confirmed process/listener cleanup after Ctrl+C. The ACLAIS adapter loaded the protected admin file and correctly left an unregistered run unknown.
 - Tested source/input digest (38 files): `960932bd89d34e4632e32ed5290c7da5214740928354c0925f525b7f0dafbd2e`; method and evidence are in `evidence/G2.md`. Initial target failures due to SACL privilege use and pytest working directory were fixed; only the final passing target run is counted.
-- No raw payload, receipt, generated credential, runtime database or unsanitized log is tracked or uploaded. G3 remains gated on G2; G4 production run/credential integration remains pending.
+- Implementation commit `e328004012ff88625ad0b5dc2daf813a6a682ab9` is synchronized to `origin/aclais-prototype`; exact push workflow [40896797905](https://github.com/sai161812/aclais-1/actions/runs/40896797905) passed for that SHA across backend, frontend, and receiver/adapter integration jobs. No raw payload, receipt, generated credential, runtime database or unsanitized log is tracked or uploaded. G3 may begin under a separate instruction; G4 production run/credential integration remains pending.
