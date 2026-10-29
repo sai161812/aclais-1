@@ -6,7 +6,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 
 ## Current state
 
-- Latest checkpoint: **A10 / G1 PASS**. The A10 section and evidence/G1.md supersede the historical checkpoint limitations below; receiver integration remains pending G4.
+- Latest checkpoint: **A10 / G1 local revalidation PASS; new-revision hosted CI pending**. The A10 section and evidence/G1.md supersede the historical checkpoint limitations below; receiver integration remains pending G4.
 
 - All nine specification files in `docs/` have been reviewed in the prescribed order and reconciled for consistent implementation.
 - The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` before the first push and `aclais-prototype` afterward; A10 owner delegation restored the unchanged documentation baseline as remote `main` and verified it as the default (D-046).
@@ -176,7 +176,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 
 ## Next step
 
-A10 / G1 is complete. Receiver G2 is eligible only under a separate implementation request; Document Tools G3 still requires G2. Real receiver integration and paired production-tool demonstrations remain G4 work. No later component was started in A10.
+The current A10 revalidation awaits its own hosted CI. After that passes, receiver G2 is eligible only under a separate implementation request; Document Tools G3 still requires G2. Real receiver integration and paired production-tool demonstrations remain G4 work. No later component was started in A10.
 
 
 ## A10 / G1 audit
@@ -191,3 +191,13 @@ A10 / G1 is complete. Receiver G2 is eligible only under a separate implementati
 - [Draft PR #1](https://github.com/sai161812/aclais-1/pull/1) targets verified default main from aclais-prototype. It remains draft with no reviewers requested and no merge/deployment. The original documentation baseline was published unchanged to main under the owner-delegated correction (D-046).
 - An evidence-only followup records this PASS/CI/PR outcome without changing the tested implementation-input digest. Completion separately verifies its pushed head and hosted CI, and records the exact final head/run in the draft PR and completion report.
 - Final isolated no_active_worker check passed; production nonterminal tasks and unrevoked/unexpired worker credentials were both zero, and no test-service listener remained.
+
+
+## A10 repeated G1 audit
+
+- Status: local PASS; current revalidation push/hosted CI pending. The prior completed audit remains historical and does not substitute for checks of the changed test tree.
+- Rechecked every mandatory G1 acceptance bullet against the 29-row implementation/test/evidence matrix; added an explicit 16-bullet cross-reference in evidence/G1.md. Repository/default/working branch and draft PR #1 were independently verified; no remote or repository setting changed in this repeat audit.
+- Reproduced dashboard reconnect and operator-startup harness timing failures, fixed their response synchronization and bounded startup/failure-cleanup behavior (D-049/D-050), and stabilized actual viewport capture. The private UI probe uses the existing 30-second product ceiling; production limits/grants and native checks remain unchanged. Earlier failures are recorded, not called passed.
+- Final portable command exited 0: 133 tests, Ruff, OpenAPI/generated-type consistency, frontend typecheck/lint/build and npm audit zero vulnerabilities. Final target wrapper exited 0: 13 actual Windows tests, zero skips; separate typed UI fixture 1 pass; 75 actual-worker checks and 14 verified fixture preconditions; final core doctor pass. Isolated idle check pass; zero nonterminal production tasks, live worker credentials and test-service listeners.
+- Tested source/test digest `57ee9a0a54ace19142c1129eb3de8e6fdc6b63c406e16a0ae3180400025ac08f` (111 files), base 09cee7d plus corrections. Updated sanitized summaries and actual captures identify this run; raw evidence, credentials, runtime databases and confidential fixtures remain local.
+- Receiver integration remains PENDING_G4; production workers remain pending G3. No later component was implemented. Commit, synchronization and new exact-revision CI are pending the reviewed checkpoint push.

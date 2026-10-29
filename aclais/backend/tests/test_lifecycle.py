@@ -288,6 +288,20 @@ def harness(tmp_path: Path):
     )
 
 
+@pytest.mark.parametrize("deadline", [True, 0, 31])
+def test_private_probe_rejects_deadlines_outside_the_product_bound(harness, deadline):
+    coordinator = harness.coordinator()
+    try:
+        with pytest.raises(ValueError):
+            coordinator.start_private_probe(
+                "http://127.0.0.1:8765/api/broker/operations", deadline_seconds=deadline
+            )
+        assert harness.database.task_summaries() == ()
+        assert harness.launcher.handles == {}
+    finally:
+        coordinator.shutdown()
+
+
 def test_failed_preflight_prevents_task_and_worker_creation(harness):
     def denied():
         raise LifecycleError("private readiness failure")

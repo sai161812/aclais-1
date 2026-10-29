@@ -205,3 +205,19 @@ The independent A2 harness holds equivalent native guards. Its worker tests requ
 ## D-048 ? Refuse operator junctions and redact bootstrap-open failures
 
 Operator path checks inspect lstat metadata (and Windows junction identity), not stat metadata that follows the target. A real NTFS junction under a disposable owned fixture must be refused before any external target is touched. A browser-open exception is handled with a fixed event name only; its text/traceback and bootstrap URL never reach logs. Portable synthetic-secret failure tests and the actual Windows junction test verify these behaviors. These are failure-path corrections, not new product scope.
+
+
+## D-049 - Synchronize G1 reconnect evidence with real native checks
+
+A repeat audit of 09cee7d passed 12 Windows checks but the connected-dashboard test timed out while waiting five seconds for reconnection. Its readiness request performs the real native audit with a 45-second bound; the five-second test wait began before that response. Await an actual successful health response with a bounded 50-second transport allowance, then retain the five-second rendered-state assertion. Do not fabricate readiness or omit native checks.
+
+Cancel the actual worker through the owner UI while health transport is disconnected, and confirm process identity/termination before the subsequent health-only presentation checks. Use the existing 30-second contract ceiling for this private UI probe; the private lifecycle helper's former 20-second ceiling is aligned to 30. Production deadline, credential lifetime and grants are unchanged. Portable behavioral tests reject boolean, zero and greater-than-30 private deadlines before task/process creation. The original failing result is not called passed; the focused corrected browser run passed and all mandatory lanes must pass again before renewed G1 acceptance.
+
+
+## D-050 - Bound operator startup checks and retain failure-cleanup identity
+
+The next complete rerun passed the dashboard and 11 other Windows cases, but the operator test's 35-second startup wait expired during sequential native readiness work. Its failure cleanup then tried to read a controller record that had not yet been written, leaving that test-owned startup process running. The recorded controller was subsequently stopped with the identity-checked operator command, and listener absence was verified.
+
+The test now allows the two startup audits and first health audit their existing 45-second bounds plus a five-second transport margin (140 seconds total). Actual failed preflight still refuses startup; no audit is omitted or relaxed. The normal passing path must use graceful identity-checked stop. Failure cleanup instead uses only the original Popen child's retained handle and waits for exit, even before its record exists; it never selects a process by port or another controller's record. The focused operator case passed before the final complete rerun.
+
+Viewport evidence capture now waits for two actual animation frames after resizing. This removed an observed transient repaint band in the 1366x768 running capture without changing application styling, editing images or manufacturing data. The full source/test digest includes these harness corrections.

@@ -3,7 +3,7 @@
     "checkpoint":  "A2",
     "passed":  true,
     "elevated":  false,
-    "source_revision":  "76179ed8b763823684cc3364ad4592e1aa15912f",
+    "source_revision":  "09cee7db3e031dc6c0c6ab39acb7a58f20da164a",
     "tested_probe_sha256":  "f5eee4d5b08c11d96a036bb3cff38331da0aa93636c310621ba82a09e4d3c544",
     "tested_harness_sha256":  "f6655642dc0014b48a275e370db731cef846c0c7c97f7b609a2c7fd62b3b7296",
     "worker_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006",

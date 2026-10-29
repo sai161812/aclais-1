@@ -344,8 +344,8 @@ class LifecycleCoordinator:
     ) -> UUID:
         """Start the fixed harmless probe; this is internal verification code, not a tool API."""
 
-        if isinstance(deadline_seconds, bool) or not 1 <= deadline_seconds <= 20:
-            raise ValueError("private lifecycle probe deadline must be between 1 and 20 seconds")
+        if isinstance(deadline_seconds, bool) or not 1 <= deadline_seconds <= 30:
+            raise ValueError("private lifecycle probe deadline must be between 1 and 30 seconds")
         if not self.accepting_tasks:
             raise LifecycleError("controller is not accepting task work")
         request = request or CreateTaskRequest(

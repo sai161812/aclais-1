@@ -216,3 +216,6 @@ The frontend preview binds to `127.0.0.2:5173` and has no API proxy. Only the bu
 
 
 Source protection includes the owned checkout root and Git metadata. Controller-held Windows directory handles prevent source-ancestor rename while workers can run; their handles are non-inheritable and close after verified shutdown. The audit changes no ACL outside the owned project. Repeated package installation can produce mixed ACL ordering; the scoped protector canonicalizes existing ACEs without dropping their rights before reapplying worker denial. Do not bypass this protection because source-file reads alone pass.
+
+
+For G1 browser revalidation, distinguish native readiness-response time from browser rendering time. The private UI test awaits the real bounded health response before checking reconnection; it retains the five-second DOM-state assertion. It uses the specified 30-second worker ceiling and explicitly cancels/observes process termination before later health-state presentation checks. No worker deadline is paused or extended while the UI is disconnected, and no health or enforcement result is substituted for the real native checks. See D-049 for the reproduced failure and correction.

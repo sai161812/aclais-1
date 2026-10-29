@@ -119,6 +119,7 @@ def _wait_for_server(server: uvicorn.Server, thread: threading.Thread) -> None:
 def _build_private_approval_runtime(
     probe_modes_by_tool: dict[str, tuple[str, str]] | None = None,
     hold_policy_verification: bool = False,
+    private_worker_deadline: int = 20,
 ):
     settings = Settings()
     layout = RuntimeLayout.open()
@@ -178,7 +179,7 @@ def _build_private_approval_runtime(
             return lifecycle.start_private_probe(
                 "http://127.0.0.1:8765/api/broker/operations",
                 request=request,
-                deadline_seconds=20,
+                deadline_seconds=private_worker_deadline,
                 probe_case=probe_case,
                 broker_probe=broker_probe,
                 use_trusted_document=True,
@@ -412,6 +413,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
     app, lifecycle, database, auth, bootstrap_url = _build_private_approval_runtime(
         {"invoice_analyzer": ("child_wait", "policy_denial")},
         hold_policy_verification=True,
+        private_worker_deadline=30,
     )
     config = uvicorn.Config(
         app,
@@ -436,6 +438,10 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
     def capture(page, screen: str) -> None:
         for width, height in ((1366, 768), (1920, 1080)):
             page.set_viewport_size({"width": width, "height": height})
+            page.evaluate(
+                "() => new Promise(resolve => requestAnimationFrame("
+                "() => requestAnimationFrame(resolve)))"
+            )
             page.screenshot(
                 path=str(screenshot_root / f"{screen}-{width}x{height}.png"),
                 full_page=False,
@@ -567,7 +573,26 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         assert page.locator(".live-tag").inner_text().strip() == "Connection lost"
         assert page.get_by_text("Live", exact=True).count() == 0
         page.unroute("**/api/health")
-        page.get_by_role("button", name="Refresh workspace").click()
+        # Stop the real worker before subsequent health-only presentation checks.
+        # Await the bounded native audit response, then retain the 5s render check.
+        with page.expect_response("**/api/health", timeout=50_000) as reconnect_health:
+            with page.expect_response("**/cancel") as cancellation_response:
+                page.get_by_role("button", name="Stop task").click()
+            cancellation = cancellation_response.value
+            assert cancellation.status == 200, (
+                f"cancellation endpoint returned {cancellation.status}; "
+                f"private cancel exception={getattr(app.state, 'private_cancel_exception', 'none')}"
+            )
+            cancelled_status = cancellation.json()["status"]
+            cancelled = lifecycle.wait(task_id, timeout=30)
+            assert cancelled.status.value == cancelled_status
+            assert cancelled.status == TaskStatus.CANCELLED
+            creation_time = database.worker_process_creation_time(task_id)
+            assert creation_time is not None and cancelled.worker_pid is not None
+            assert lifecycle.launcher.verify_stored_process_stopped(
+                cancelled.worker_pid, creation_time, cancelled.worker_sid
+            )
+        assert reconnect_health.value.status == 200
         page.get_by_text("Connected", exact=True).wait_for(timeout=5_000)
         assert page.get_by_text("Verification pending").first.is_visible()
 
@@ -583,32 +608,19 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             route.fulfill(response=response, json=payload)
 
         page.route("**/api/health", failed_preflight)
-        page.get_by_role("button", name="Refresh workspace").click()
+        with page.expect_response("**/api/health", timeout=50_000) as failed_health:
+            page.get_by_role("button", name="Refresh workspace").click()
+        assert failed_health.value.status == 200
         page.get_by_text("Protection unavailable", exact=True).first.wait_for(timeout=5_000)
         assert page.locator(".health-card.health-unavailable .health-tag").all_inner_texts() == [
             "UNAVAILABLE",
             "UNAVAILABLE",
         ]
         page.unroute("**/api/health")
-        page.get_by_role("button", name="Refresh workspace").click()
+        with page.expect_response("**/api/health", timeout=50_000) as recovered_health:
+            page.get_by_role("button", name="Refresh workspace").click()
+        assert recovered_health.value.status == 200
         page.get_by_text("Verification pending").first.wait_for(timeout=5_000)
-
-        with page.expect_response("**/cancel") as cancellation_response:
-            page.get_by_role("button", name="Stop task").click()
-        cancellation = cancellation_response.value
-        assert cancellation.status == 200, (
-            f"cancellation endpoint returned {cancellation.status}; "
-            f"private cancel exception={getattr(app.state, 'private_cancel_exception', 'none')}"
-        )
-        cancelled_status = cancellation.json()["status"]
-        cancelled = lifecycle.wait(task_id, timeout=30)
-        assert cancelled.status.value == cancelled_status
-        assert cancelled.status == TaskStatus.CANCELLED
-        creation_time = database.worker_process_creation_time(task_id)
-        assert creation_time is not None and cancelled.worker_pid is not None
-        assert lifecycle.launcher.verify_stored_process_stopped(
-            cancelled.worker_pid, creation_time, cancelled.worker_sid
-        )
 
         page.get_by_role("button", name="Workspace", exact=True).click()
         invoice_action = page.get_by_role("button", name="Review Invoice Analyzer approval")

@@ -183,7 +183,8 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
             controller = subprocess.Popen(
                 [sys.executable, "-c", code], cwd=tmp_path, stdout=capture, stderr=capture
             )
-            deadline = time.monotonic() + 35
+            # Two startup audits and the first health audit are each bounded at 45s.
+            deadline = time.monotonic() + 3 * 45 + 5
             health = None
             while time.monotonic() < deadline:
                 if controller.poll() is not None:
@@ -222,7 +223,9 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
             assert not plain(layout.root, "state/controller-instance.json").exists()
         finally:
             if controller is not None and controller.poll() is None:
-                stop_controller()
+                # Failure cleanup uses only this retained test child's handle, even
+                # before its record exists. The passing path must use graceful stop.
+                controller.terminate()
                 controller.wait(timeout=20)
     unrelated = subprocess.Popen([sys.executable, "-c", "import time;time.sleep(15)"])
     record = plain(layout.root, "state/controller-instance.json")
