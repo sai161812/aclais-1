@@ -276,3 +276,8 @@ The A9 target test now waits for the real health and task-list responses after a
 ## D-059 - Keep G3 fixture identifiers and content hashes in raw evidence only
 
 Validate complete fixed before/after inventories inside the owner-side sanitizer, then emit only aggregate record counts and changed/unchanged outcomes. The tracked G3 summary may contain source and worker-code hashes, actual OS error fields, broker decisions, and verification status, but it omits individual fixture names, per-file hashes, output-content hashes, raw paths, worker text, and credentials. Keep the sanitizer and its privacy tests in `document-tools/`; whole-system target orchestration remains at the repository root. Raw inventory and payload evidence remains under the owner-protected runtime evidence root.
+
+
+## D-060 - Pin portable CI to the Python 3.12.10-compatible runner
+
+The first hosted push and pull-request runs on `ubuntu-latest` resolved to Ubuntu 26.04, where `actions/setup-python` could not find the repository's exact Python 3.12.10 pin; all Python jobs failed before dependency installation, while frontend-only checks passed. Pin all portable jobs to `ubuntu-24.04` so the workflow retains the existing exact Python patch and lockfile environment. Keep the hosted workflow read-only, bounded, and separate from Windows enforcement; do not broaden its permissions or treat the failed runner setup as a code-test result.

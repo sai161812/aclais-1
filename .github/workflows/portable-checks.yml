@@ -12,7 +12,7 @@ permissions:
 jobs:
   backend:
     name: Portable backend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out source
@@ -49,7 +49,7 @@ jobs:
 
   frontend:
     name: Portable frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out source
@@ -87,7 +87,7 @@ jobs:
 
   receiver:
     name: Portable receiver and adapter integration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out source
@@ -126,7 +126,7 @@ jobs:
 
   document-tools:
     name: Portable Document Tools
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out source
