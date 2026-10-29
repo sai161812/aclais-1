@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0–A6 and repository-structure checkpoint R0 are locally complete. A6 passed the portable checks and actual Windows demonstration-machine lifecycle suite; its implementation push and hosted CI inspection are pending. G1 remains incomplete, and later production components remain unimplemented.
+As of 2026-10-29. A0–A6 and repository-structure checkpoint R0 are complete. A6 passed the portable checks, the actual Windows demonstration-machine lifecycle suite, its push verification, and hosted portable CI. G1 remains incomplete, and later production components remain unimplemented.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
@@ -37,7 +37,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | A3 — launcher and containment | PASS | Actual Windows demonstration-machine launcher checks and local portable checks passed; sanitized evidence is in `evidence/A3.md` and `evidence/a3-launcher-summary.json`. GitHub CI is portable only. |
 | A4 — persistence and contracts | PASS | Requires A3 PASS and the separate R0 repository-structure checkpoint; see `evidence/A4.md` and [GitHub Actions run 11](https://github.com/sai161812/aclais-1/actions/runs/40774065632). |
 | A5 — broker and publication | PASS | A2–A4 prerequisites pass; local portable and Windows publication checks pass; [GitHub Actions run 40810541367](https://github.com/sai161812/aclais-1/actions/runs/40810541367) passed for the implementation revision. |
-| A6 — lifecycle and recovery | PASS | Local portable checks and actual Windows demonstration-machine tests passed; see `evidence/A6.md`. Hosted CI is pending the checkpoint push. |
+| A6 — lifecycle and recovery | PASS | Local portable checks, actual Windows demonstration-machine tests, push verification, and hosted portable CI passed; see `evidence/A6.md`. |
 | A7 — verification and evidence | NOT_STARTED | Requires A2, A4–A6 PASS. |
 | A8 — owner authentication and approval | NOT_STARTED | Requires A4, A6 and A7 PASS. |
 | A9 — connected dashboard | NOT_STARTED | Requires A5–A8 PASS. |
@@ -126,14 +126,15 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 
 ## A6 checkpoint
 
-- Status: PASS for local portable and actual Windows demonstration-machine checks. Hosted CI and push verification are pending.
+- Status: PASS for local portable and actual Windows demonstration-machine checks, synchronized to the verified remote, and hosted portable CI.
 - Connected lifecycle admission, the A5 broker/publication path and A4 persistence through one shared per-task lock and SQLite single-worker admission. Task-scoped selected input/output ACLs, persisted process PID/SID/creation time and hash-only credential are committed before resume. Completion, denial, cancellation, timeout, crash, shutdown and restart now share the persisted state machine.
 - Revocation is committed before worker termination; broker authorization revalidates under the same lock. Previously authorized publication can finish before a queued denial/timeout, with event ordering preserved; no later effect can begin after revocation. Restart recovery verifies process identity by SID, PID and creation time, reconciles journals, verifies interrupted tasks through `VERIFYING`, and fails closed when process or durable output state is inconsistent.
 - Local portable acceptance: root `scripts/check.ps1` passed from `C:\Windows\Temp`; Ruff, 84 portable backend tests, OpenAPI/type generation consistency, frontend typecheck/lint/build and npm audit (0 vulnerabilities) passed. Windows enforcement tests are not part of this portable check.
 - Demonstration-machine acceptance: `aclais/scripts/check_a6_windows.ps1` passed from `C:\Windows\Temp`; its A3 precondition passed (1 actual Windows test), followed by 3 actual A6 tests. Worker and child process identities were checked stopped using Windows process handles and process creation times after cancellation, timeout, worker crash, orderly shutdown and abrupt controller death. Original fixture hashes were unchanged. See `evidence/A6.md` for identities, scenarios and reproduction commands.
+- Implementation commit `7b387df0b9c6ca1a73d6f4f4dff6c3ed9f2f5343` was pushed to `origin/aclais-prototype`; `git ls-remote --heads origin aclais-prototype` matched this exact commit. The post-push Windows run deployed the A3 probe with this source revision and passed its prerequisite plus all 3 A6 tests.
+- [GitHub Actions run 40816068549](https://github.com/sai161812/aclais-1/actions/runs/40816068549) passed for that exact commit. Both portable backend and frontend jobs succeeded. CI did not run Windows enforcement.
 - A policy denial ended `FAILED` with `POLICY_DENIED`, containment `terminated`, and integrity/confidentiality `unknown`. This is fail-closed because the A7 trusted verifier has not been implemented; A6 makes no `BLOCKED` or G1 claim.
 - Remaining issue before A8: A2 manifest registry path `doc-report` does not resolve to the seeded original in the lab. A6 used the existing manifest-verified protected selected input explicitly in private probes; align the fixture before enabling owner task creation.
-- Implementation commit, remote synchronization and hosted CI revision will be added after the checkpoint push and CI inspection.
 
 ## Next step
 
