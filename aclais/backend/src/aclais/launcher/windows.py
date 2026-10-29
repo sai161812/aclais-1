@@ -88,10 +88,12 @@ class RuntimeLayout:
     selected_copy_root: Path
     task_output_root: Path
     verified_output_root: Path
+    raw_evidence_root: Path
     code_root: Path
     python_exe: Path
     private_probe: Path
     source_sha256: str
+    source_revision: str | None
     fixture_hashes: tuple[tuple[str, str], ...]
 
     @classmethod
@@ -113,6 +115,7 @@ class RuntimeLayout:
         selected_copy_root = root / "work" / "selected-inputs"
         task_output_root = root / "work" / "task-output"
         verified_output_root = root / "work" / "verified-output"
+        raw_evidence_root = root / "evidence" / "raw"
         code_root = root / "code"
         python_runtime = code_root / "python-runtime"
         python_exe = python_runtime / "python.exe"
@@ -124,6 +127,7 @@ class RuntimeLayout:
             manifest_path,
             root / "store",
             selected_root,
+            root / "evidence",
             root / "work",
             output_root,
             code_root,
@@ -230,10 +234,17 @@ class RuntimeLayout:
             selected_copy_root=selected_copy_root,
             task_output_root=task_output_root,
             verified_output_root=verified_output_root,
+            raw_evidence_root=raw_evidence_root,
             code_root=code_root,
             python_exe=python_exe,
             private_probe=private_probe,
             source_sha256=runtime_record["sha256"],
+            source_revision=(
+                a3_runtime.get("source_revision")
+                if isinstance(a3_runtime.get("source_revision"), str)
+                and re.fullmatch(r"[0-9a-f]{7,40}", a3_runtime["source_revision"])
+                else None
+            ),
             fixture_hashes=tuple(
                 sorted(
                     (item["path"], item["sha256"])
@@ -253,6 +264,7 @@ class RuntimeLayout:
             (self.selected_copy_root, "GX"),
             (self.task_output_root, "GX"),
             (self.verified_output_root, None),
+            (self.raw_evidence_root, None),
         )
         for path, worker_rights in roots:
             if not path.exists():

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from aclais.app import create_app
 from aclais.config import Settings
+from aclais.evidence import FixtureVerifier
 from aclais.launcher.windows import RuntimeLayout, WindowsWorkerController
 from aclais.lifecycle import LifecycleCoordinator, TaskWorkspace
 from aclais.persistence.database import Database
@@ -32,12 +33,20 @@ def create_a6_runtime(settings: Settings | None = None) -> A6Runtime:
     database = Database(layout.root / "state" / "controller.sqlite3")
     output_publisher = OutputPublisher(database, layout.verified_output_root)
     launcher = WindowsWorkerController(layout)
+    verifier = FixtureVerifier(
+        database,
+        layout.root / "store",
+        layout.raw_evidence_root,
+        expected_fixtures=layout.fixture_hashes,
+        source_revision=None,
+    )
     lifecycle = LifecycleCoordinator(
         layout,
         database,
         output_publisher,
         launcher=launcher,
         workspace=workspace,
+        verifier=verifier,
     )
     lifecycle.recover_before_serving()
     application = create_app(

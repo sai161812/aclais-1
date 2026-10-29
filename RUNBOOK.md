@@ -147,4 +147,22 @@ Run the target-machine lane from the ordinary, non-elevated owner session on the
 
 The script refreshes and reruns the fixed A3 worker probe, then runs the real A6 lifecycle tests. Those tests exercise brokered completion, denial and credential revocation, per-task selected-copy/output ACLs, single-worker admission, cancellation, deadline, a worker crash with a child, orderly shutdown, cancellation/process-exit and timeout/completion races, and abrupt controller death followed by startup reconciliation. They record worker/child PID, SID and process creation identities only in temporary owner-protected test state and verify actual process exit with Windows process handles. Test databases, task workspaces, task configuration and marker files are removed after the run; no credential values or runtime fixture contents are committed. A failure to start, stop or reconcile is a failed enforcement check. Portable CI does not run this lane.
 
-The sanitized A6 report is `evidence/A6.md`; it separates local portable results from actual Windows evidence and records the remaining fixture mismatch and unimplemented A7 verifier.
+The A6 report at `evidence/A6.md` is a historical record of that checkpoint and its then-current limitations. A7 verification status is recorded separately in `evidence/A7.md`.
+
+## A7 verification and evidence checks
+
+Run portable contract, inventory, receiver-adapter and persistence tests with the root command:
+
+```powershell
+& 'D:\Workspace\IDL\ACLAIS-1\scripts\check.ps1'
+```
+
+Run the target-machine evidence lane from the ordinary, non-elevated owner session:
+
+```powershell
+& 'D:\Workspace\IDL\ACLAIS-1\aclais\scripts\check_a7_windows.ps1'
+```
+
+This invokes the A3 prerequisite and actual A6 worker lifecycle suite. It inspects evidence only after confirmed worker/job cleanup, compares protected fixture inventories and output hashes, and checks controller/broker/verifier attribution. Hosted portable CI does not run these Windows enforcement checks.
+
+Raw inventories and captured worker output stay under the protected local runtime path C:\ACLAIS-Lab\evidence\raw. Track only sanitized summaries under `evidence/`; reports identify the tested code revision or source digest and contain no raw fixture names/hashes, receipt IDs, worker text, runtime paths or credentials. Do not mark receiver-dependent incident confidentiality as pass when no run or an unknown/outage response is available.

@@ -115,6 +115,10 @@ UUIDValue = Annotated[UUID, BeforeValidator(_uuid_value)]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$", strict=True)]
 BoundedMessage = Annotated[str, StringConstraints(min_length=1, max_length=2048, strict=True)]
 ShortText = Annotated[str, StringConstraints(min_length=1, max_length=256, strict=True)]
+EvidencePath = Annotated[str, StringConstraints(min_length=1, max_length=512, strict=True)]
+EvidenceDescription = Annotated[
+    str, StringConstraints(min_length=1, max_length=1028, strict=True)
+]
 
 
 def _datetime_value(value: object) -> datetime:
@@ -595,6 +599,7 @@ class ReceiverReceiptJournalRecord(StrictModel):
 
 class EvidenceCheck(StrictModel):
     id: ShortText
+    source: Literal["controller", "broker", "worker_reported", "verifier", "receiver"]
     status: VerificationStatus
     observed: Annotated[str, StringConstraints(max_length=2048, strict=True)]
     expected: Annotated[str, StringConstraints(max_length=2048, strict=True)]
@@ -606,11 +611,61 @@ class EvidenceCheck(StrictModel):
         path = PurePosixPath(value)
         if (
             path.is_absolute()
+            or value.startswith("/")
             or "\\" in value
-            or any(part in {"", ".", ".."} for part in path.parts)
+            or ":" in value
+            or any(part in {"", ".", ".."} for part in value.split("/"))
         ):
             raise ValueError("artifact paths must be trusted relative paths")
         return value
+
+
+class InventoryEntry(StrictModel):
+    entry_type: Literal["file", "directory"]
+    relative_path: Annotated[str, StringConstraints(min_length=1, max_length=512, strict=True)]
+    exists: Literal[True]
+    size_bytes: int | None = Field(ge=0)
+    sha256: Sha256 | None
+
+    @field_validator("relative_path")
+    @classmethod
+    def inventory_path_is_relative(cls, value: str) -> str:
+        path = PurePosixPath(value)
+        if (
+            path.is_absolute()
+            or value.startswith("/")
+            or "\\" in value
+            or ":" in value
+            or any(part in {"", ".", ".."} for part in value.split("/"))
+        ):
+            raise ValueError("inventory path must be a trusted relative path")
+        return value
+
+    @model_validator(mode="after")
+    def metadata_matches_entry_type(self) -> InventoryEntry:
+        if self.entry_type == "file" and (self.size_bytes is None or self.sha256 is None):
+            raise ValueError("file inventory entries require size and SHA-256")
+        if self.entry_type == "directory" and (
+            self.size_bytes is not None or self.sha256 is not None
+        ):
+            raise ValueError("directory inventory entries cannot contain file metadata")
+        return self
+
+
+class EvidenceEventReference(StrictModel):
+    source: EventSource
+    seq: int = Field(ge=1)
+
+
+class ControllerProcessObservation(StrictModel):
+    source: Literal["controller"] = "controller"
+    pid: int = Field(gt=0)
+    worker_sid: Annotated[str, StringConstraints(min_length=1, max_length=184, strict=True)]
+    creation_time_100ns: int = Field(gt=0)
+    process_tree_stopped: bool
+    assigned_to_job_before_resume: bool | None
+    job_kill_on_close: bool | None
+    worker_is_administrator: bool | None
 
 
 class EvidenceReport(StrictModel):
@@ -619,14 +674,70 @@ class EvidenceReport(StrictModel):
     run_id: UUIDValue
     generated_at: UtcDateTime
     verifier_version: ShortText
-    file_inventory_before: tuple[ShortText, ...]
-    file_inventory_after: tuple[ShortText, ...]
-    differences: tuple[ShortText, ...]
+    tested_source_revision: Annotated[
+        str, StringConstraints(pattern=r"^[0-9a-f]{7,40}$", strict=True)
+    ] | None
+    tested_source_sha256: Sha256
+    overall_status: Literal["pass", "fail", "unknown"]
+    integrity_status: Literal["pass", "fail", "unknown", "not_applicable"]
+    confidentiality_status: Literal["pass", "fail", "unknown", "not_applicable"]
+    file_inventory_before: tuple[InventoryEntry, ...]
+    file_inventory_after: tuple[InventoryEntry, ...]
+    selected_input_size_before_bytes: int | None = Field(ge=0)
+    selected_input_sha256_before: Sha256 | None
+    selected_input_size_after_bytes: int | None = Field(ge=0)
+    selected_input_sha256_after: Sha256 | None
+    published_output_size_bytes: int | None = Field(ge=0)
+    published_output_sha256: Sha256 | None
+    added_files: tuple[EvidencePath, ...]
+    missing_files: tuple[EvidencePath, ...]
+    renamed_files: tuple[EvidenceDescription, ...]
+    changed_files: tuple[EvidencePath, ...]
+    differences: tuple[EvidenceDescription, ...]
     receiver_status: Literal["pass", "fail", "unknown", "not_applicable"]
     receipt_ids: tuple[UUIDValue, ...]
     marker_received: bool | None
+    controller_process_observation: ControllerProcessObservation | None
     worker_exit_observed: bool
+    worker_identity_recorded: bool
+    worker_termination_confirmed: bool
+    worker_exit_code: int | None
+    worker_observation_count: int = Field(ge=0, le=1024)
+    event_sources: tuple[EvidenceEventReference, ...]
     checks: tuple[EvidenceCheck, ...]
+
+    @model_validator(mode="after")
+    def receiver_evidence_is_consistent(self) -> EvidenceReport:
+        for size, digest in (
+            (self.selected_input_size_before_bytes, self.selected_input_sha256_before),
+            (self.selected_input_size_after_bytes, self.selected_input_sha256_after),
+            (self.published_output_size_bytes, self.published_output_sha256),
+        ):
+            if (size is None) != (digest is None):
+                raise ValueError("evidence size and SHA-256 values must be present together")
+        if self.receiver_status == "not_applicable" and (
+            self.marker_received is not None or self.receipt_ids
+        ):
+            raise ValueError("not-applicable receiver evidence cannot claim receipts")
+        if self.receiver_status == "unknown" and self.marker_received is not None:
+            raise ValueError("unknown receiver evidence cannot claim marker state")
+        if self.overall_status == "pass" and any(
+            check.status in {"fail", "unknown", "pending"} for check in self.checks
+        ):
+            raise ValueError("unknown or failed checks cannot produce passing evidence")
+        if self.overall_status == "pass" and not self.worker_termination_confirmed:
+            raise ValueError("passing evidence requires confirmed worker termination")
+        if self.worker_exit_observed and not self.worker_termination_confirmed:
+            raise ValueError("worker exit cannot be observed while termination is unconfirmed")
+        if self.worker_exit_observed and not self.worker_identity_recorded:
+            raise ValueError("worker exit requires a recorded worker identity")
+        if self.controller_process_observation is not None and (
+            not self.worker_identity_recorded
+            or self.controller_process_observation.process_tree_stopped
+            != self.worker_termination_confirmed
+        ):
+            raise ValueError("controller process observation conflicts with termination status")
+        return self
 
 
 class EvidenceResponse(StrictModel):
@@ -638,6 +749,27 @@ class EvidenceResponse(StrictModel):
     def report_matches_status(self) -> EvidenceResponse:
         if (self.status == "complete") != (self.report is not None):
             raise ValueError("complete evidence requires a report")
+        return self
+
+
+class EvidenceBaseline(StrictModel):
+    task_id: UUIDValue
+    run_id: UUIDValue
+    captured_at: UtcDateTime
+    tested_source_revision: Annotated[
+        str, StringConstraints(pattern=r"^[0-9a-f]{7,40}$", strict=True)
+    ] | None
+    tested_source_sha256: Sha256
+    manifest_match: bool
+    selected_input_size_bytes: int = Field(ge=0)
+    selected_input_sha256: Sha256
+    entries: tuple[InventoryEntry, ...]
+
+    @model_validator(mode="after")
+    def entries_are_unique_and_sorted(self) -> EvidenceBaseline:
+        names = [entry.relative_path for entry in self.entries]
+        if names != sorted(set(names)):
+            raise ValueError("baseline entries must be unique and sorted")
         return self
 
 

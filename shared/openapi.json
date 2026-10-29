@@ -431,6 +431,81 @@
         "title": "ContractSummary",
         "type": "object"
       },
+      "ControllerProcessObservation": {
+        "additionalProperties": false,
+        "properties": {
+          "assigned_to_job_before_resume": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Job Before Resume"
+          },
+          "creation_time_100ns": {
+            "exclusiveMinimum": 0,
+            "title": "Creation Time 100Ns",
+            "type": "integer"
+          },
+          "job_kill_on_close": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Kill On Close"
+          },
+          "pid": {
+            "exclusiveMinimum": 0,
+            "title": "Pid",
+            "type": "integer"
+          },
+          "process_tree_stopped": {
+            "title": "Process Tree Stopped",
+            "type": "boolean"
+          },
+          "source": {
+            "const": "controller",
+            "default": "controller",
+            "title": "Source",
+            "type": "string"
+          },
+          "worker_is_administrator": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Is Administrator"
+          },
+          "worker_sid": {
+            "maxLength": 184,
+            "minLength": 1,
+            "title": "Worker Sid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pid",
+          "worker_sid",
+          "creation_time_100ns",
+          "process_tree_stopped",
+          "assigned_to_job_before_resume",
+          "job_kill_on_close",
+          "worker_is_administrator"
+        ],
+        "title": "ControllerProcessObservation",
+        "type": "object"
+      },
       "CreateRunRequest": {
         "additionalProperties": false,
         "properties": {
@@ -874,6 +949,17 @@
             "title": "Observed",
             "type": "string"
           },
+          "source": {
+            "enum": [
+              "controller",
+              "broker",
+              "worker_reported",
+              "verifier",
+              "receiver"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
           "status": {
             "enum": [
               "pending",
@@ -888,6 +974,7 @@
         },
         "required": [
           "id",
+          "source",
           "status",
           "observed",
           "expected",
@@ -896,9 +983,53 @@
         "title": "EvidenceCheck",
         "type": "object"
       },
+      "EvidenceEventReference": {
+        "additionalProperties": false,
+        "properties": {
+          "seq": {
+            "minimum": 1,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "controller",
+              "broker",
+              "worker_reported",
+              "verifier"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "seq"
+        ],
+        "title": "EvidenceEventReference",
+        "type": "object"
+      },
       "EvidenceReport": {
         "additionalProperties": false,
         "properties": {
+          "added_files": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Added Files",
+            "type": "array"
+          },
+          "changed_files": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Changed Files",
+            "type": "array"
+          },
           "checks": {
             "items": {
               "$ref": "#/components/schemas/EvidenceCheck"
@@ -906,29 +1037,52 @@
             "title": "Checks",
             "type": "array"
           },
+          "confidentiality_status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Confidentiality Status",
+            "type": "string"
+          },
+          "controller_process_observation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ControllerProcessObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "differences": {
             "items": {
-              "maxLength": 256,
+              "maxLength": 1028,
               "minLength": 1,
               "type": "string"
             },
             "title": "Differences",
             "type": "array"
           },
+          "event_sources": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceEventReference"
+            },
+            "title": "Event Sources",
+            "type": "array"
+          },
           "file_inventory_after": {
             "items": {
-              "maxLength": 256,
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/components/schemas/InventoryEntry"
             },
             "title": "File Inventory After",
             "type": "array"
           },
           "file_inventory_before": {
             "items": {
-              "maxLength": 256,
-              "minLength": 1,
-              "type": "string"
+              "$ref": "#/components/schemas/InventoryEntry"
             },
             "title": "File Inventory Before",
             "type": "array"
@@ -936,6 +1090,16 @@
           "generated_at": {
             "format": "date-time",
             "title": "Generated At",
+            "type": "string"
+          },
+          "integrity_status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Integrity Status",
             "type": "string"
           },
           "marker_received": {
@@ -948,6 +1112,48 @@
               }
             ],
             "title": "Marker Received"
+          },
+          "missing_files": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Missing Files",
+            "type": "array"
+          },
+          "overall_status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "Overall Status",
+            "type": "string"
+          },
+          "published_output_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Output Sha256"
+          },
+          "published_output_size_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Output Size Bytes"
           },
           "receipt_ids": {
             "items": {
@@ -967,6 +1173,15 @@
             "title": "Receiver Status",
             "type": "string"
           },
+          "renamed_files": {
+            "items": {
+              "maxLength": 1028,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Renamed Files",
+            "type": "array"
+          },
           "report_id": {
             "format": "uuid",
             "title": "Report Id",
@@ -977,9 +1192,74 @@
             "title": "Run Id",
             "type": "string"
           },
+          "selected_input_sha256_after": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Sha256 After"
+          },
+          "selected_input_sha256_before": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Sha256 Before"
+          },
+          "selected_input_size_after_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Size After Bytes"
+          },
+          "selected_input_size_before_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Size Before Bytes"
+          },
           "task_id": {
             "format": "uuid",
             "title": "Task Id",
+            "type": "string"
+          },
+          "tested_source_revision": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{7,40}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tested Source Revision"
+          },
+          "tested_source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Tested Source Sha256",
             "type": "string"
           },
           "verifier_version": {
@@ -988,8 +1268,33 @@
             "title": "Verifier Version",
             "type": "string"
           },
+          "worker_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Exit Code"
+          },
           "worker_exit_observed": {
             "title": "Worker Exit Observed",
+            "type": "boolean"
+          },
+          "worker_identity_recorded": {
+            "title": "Worker Identity Recorded",
+            "type": "boolean"
+          },
+          "worker_observation_count": {
+            "maximum": 1024,
+            "minimum": 0,
+            "title": "Worker Observation Count",
+            "type": "integer"
+          },
+          "worker_termination_confirmed": {
+            "title": "Worker Termination Confirmed",
             "type": "boolean"
           }
         },
@@ -999,13 +1304,34 @@
           "run_id",
           "generated_at",
           "verifier_version",
+          "tested_source_revision",
+          "tested_source_sha256",
+          "overall_status",
+          "integrity_status",
+          "confidentiality_status",
           "file_inventory_before",
           "file_inventory_after",
+          "selected_input_size_before_bytes",
+          "selected_input_sha256_before",
+          "selected_input_size_after_bytes",
+          "selected_input_sha256_after",
+          "published_output_size_bytes",
+          "published_output_sha256",
+          "added_files",
+          "missing_files",
+          "renamed_files",
+          "changed_files",
           "differences",
           "receiver_status",
           "receipt_ids",
           "marker_received",
+          "controller_process_observation",
           "worker_exit_observed",
+          "worker_identity_recorded",
+          "worker_termination_confirmed",
+          "worker_exit_code",
+          "worker_observation_count",
+          "event_sources",
           "checks"
         ],
         "title": "EvidenceReport",
@@ -1235,6 +1561,63 @@
           "payload_base64"
         ],
         "title": "IngestRequest",
+        "type": "object"
+      },
+      "InventoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "entry_type": {
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "title": "Entry Type",
+            "type": "string"
+          },
+          "exists": {
+            "const": true,
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "relative_path": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          }
+        },
+        "required": [
+          "entry_type",
+          "relative_path",
+          "exists",
+          "size_bytes",
+          "sha256"
+        ],
+        "title": "InventoryEntry",
         "type": "object"
       },
       "InvoiceResult": {

@@ -90,11 +90,11 @@ For each checkpoint, verify only its listed tests and acceptance criteria, updat
 
 **Dependencies:** A2, A4, A5 and A6 PASS.
 
-**Deliverables:** Trusted full-inventory verifier, input/output hashes, evidence reports, explicit `pass|fail|unknown|not_applicable` receiver status and truthful source attribution. Add a typed receiver adapter interface with test-only injected response models. Do not implement the production receiver in G1.
+**Deliverables:** Capture a trusted full fixture inventory before launch and compare names, existence, sizes and hashes only after controller-confirmed worker/job termination. Compare selected-input and published-output hashes; persist immutable baseline/report records and a source digest. Keep controller observations, broker decisions, worker-reported output, verifier results and receiver results separately attributed. Preserve owner-protected raw local evidence separately from sanitized Git-trackable summaries. Add a typed receiver adapter interface and test-only response fixtures. Do not implement the production receiver in G1.
 
-**Tests:** Inventory changes/missing/new/rename/hash cases; verifier timeout; event provenance; evidence persistence and retrieval; injected receiver healthy-empty/positive/unknown/outage cases; no canary in general logs; no green status when checks are unknown or fail.
+**Tests:** Inventory changes/missing/new/rename/hash cases; selected-input/output hashes; verifier timeout and unavailable baseline; no final scan before confirmed termination; event provenance; evidence persistence/reopen and integrity; sanitized-summary redaction; injected receiver healthy-empty/positive/unknown/outage cases; no canary or worker claims in general logs; no green status when a check is unknown or failed. Run the A6 worker lifecycle suite on the actual Windows target and inspect reports after process cleanup.
 
-**Observable acceptance:** Evidence comes from trusted controller/verifier data and real inventory; worker reports remain separate; receiver test data is visibly fixture-only; a missing receiver or unknown run never means zero receipt/leakage; failed verification cannot report protected success.
+**Observable acceptance:** Final verification follows actual worker/job termination; evidence identifies its tested source revision or source digest; raw names, file hashes, receipt identifiers and worker text remain local; sanitized summaries contain only status, counts and source attribution. Worker claims cannot establish enforcement. Receiver fixtures are visibly test-only; unknown stays unknown and absent-run is not applicable; failed or incomplete verification cannot report protected success.
 
 ## A8 — Owner authentication and approval
 

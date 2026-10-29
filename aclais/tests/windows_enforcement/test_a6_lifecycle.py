@@ -22,6 +22,7 @@ import uvicorn
 
 from aclais.app import create_app
 from aclais.config import Settings
+from aclais.evidence import FixtureVerifier
 from aclais.launcher.windows import RuntimeLayout, WindowsWorkerController
 from aclais.lifecycle import LifecycleCoordinator, LifecycleError, TaskWorkspace
 from aclais.persistence.database import Database
@@ -95,12 +96,21 @@ class _Runtime:
 
         self.launcher.start_a3_private_probe = capture_handle
         self.workspace = TaskWorkspace(layout)
+        self.verifier = FixtureVerifier(
+            self.database,
+            layout.root / "store",
+            layout.raw_evidence_root,
+            expected_fixtures=layout.fixture_hashes,
+            source_root=Path(__file__).resolve().parents[2] / "backend" / "src" / "aclais",
+            source_revision=None,
+        )
         self.coordinator = LifecycleCoordinator(
             layout,
             self.database,
             self.publisher,
             launcher=self.launcher,
             workspace=self.workspace,
+            verifier=self.verifier,
         )
         self.coordinator.recover_before_serving()
 
@@ -270,6 +280,45 @@ def test_a6_windows_completion_denial_revocation_cancel_timeout_shutdown_and_adm
         assert len(records) == 1 and records[0].state.value == "published"
         _metadata, content = runtime.publisher.read_published(records[0].output_id)
         assert content.startswith(b"# A6 private lifecycle probe")
+        evidence = runtime.database.evidence_response(complete_id)
+        assert evidence.status == "complete" and evidence.report is not None
+        assert evidence.report.overall_status == "pass"
+        assert evidence.report.integrity_status == "pass"
+        assert evidence.report.worker_exit_observed is True
+        assert evidence.report.worker_termination_confirmed is True
+        assert evidence.report.selected_input_size_before_bytes == (
+            evidence.report.selected_input_size_after_bytes
+        )
+        assert evidence.report.selected_input_sha256_before == (
+            evidence.report.selected_input_sha256_after
+        )
+        process_observation = evidence.report.controller_process_observation
+        assert process_observation is not None
+        assert process_observation.source == "controller"
+        assert process_observation.pid == complete_handle.pid
+        assert process_observation.creation_time_100ns == complete_handle.creation_time
+        assert process_observation.worker_sid == layout.worker_sid
+        assert process_observation.assigned_to_job_before_resume is True
+        assert process_observation.job_kill_on_close is True
+        assert process_observation.worker_is_administrator is False
+        assert evidence.report.file_inventory_before == evidence.report.file_inventory_after
+        assert evidence.report.published_output_sha256 == _metadata.sha256
+        assert evidence.report.published_output_size_bytes == len(content)
+        event_sequences = {
+            event.kind: event.seq for event in runtime.database.events(complete_id)
+        }
+        assert event_sequences["worker_exit_observed"] < event_sequences[
+            "independent_verification_started"
+        ]
+        assert event_sequences["independent_verification_started"] < event_sequences[
+            "independent_verification_completed"
+        ]
+        assert evidence.report.tested_source_sha256 == runtime.verifier.source_sha256
+        assert {item.source for item in evidence.report.event_sources} >= {
+            "controller",
+            "broker",
+            "verifier",
+        }
         assert runtime.database.worker_process_creation_time(complete_id) == (
             complete_handle.creation_time
         )
@@ -344,7 +393,7 @@ def test_a6_windows_completion_denial_revocation_cancel_timeout_shutdown_and_adm
                 "FROM incidents WHERE task_id=?",
                 (str(denial_id),),
             ).fetchone()
-        assert tuple(incident) == ("terminated", "unknown", "unknown")
+        assert tuple(incident) == ("terminated", "pass", "unknown")
 
         # Deadline expiration terminates both the selected worker and its child.
         timeout_id = runtime.coordinator.start_private_probe(

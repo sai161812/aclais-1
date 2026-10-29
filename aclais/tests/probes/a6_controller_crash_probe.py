@@ -25,25 +25,33 @@ def main() -> int:
 
     from aclais.app import create_app
     from aclais.config import Settings
+    from aclais.evidence import FixtureVerifier
     from aclais.launcher.windows import RuntimeLayout, WindowsWorkerController
     from aclais.lifecycle import LifecycleCoordinator, TaskWorkspace
     from aclais.persistence.database import Database
     from aclais.publication import OutputPublisher
 
-    layout = replace(
-        RuntimeLayout.open(), verified_output_root=Path(arguments.verified_output_root)
-    )
+    layout = replace(RuntimeLayout.open(), verified_output_root=Path(arguments.verified_output_root))
     workspace = TaskWorkspace(layout)
     workspace.prepare_roots()
     database = Database(Path(arguments.database))
     publisher = OutputPublisher(database, layout.verified_output_root)
     launcher = WindowsWorkerController(layout)
+    verifier = FixtureVerifier(
+        database,
+        layout.root / "store",
+        layout.raw_evidence_root,
+        expected_fixtures=layout.fixture_hashes,
+        source_root=Path(arguments.backend_source).resolve() / "aclais",
+        source_revision=None,
+    )
     coordinator = LifecycleCoordinator(
         layout,
         database,
         publisher,
         launcher=launcher,
         workspace=workspace,
+        verifier=verifier,
         token_factory=lambda: "synthetic-a6-controller-crash-token-not-a-secret",
     )
     coordinator.recover_before_serving()

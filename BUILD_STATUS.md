@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0–A6 and repository-structure checkpoint R0 are complete. A6 passed the portable checks, the actual Windows demonstration-machine lifecycle suite, its push verification, and hosted portable CI. G1 remains incomplete, and later production components remain unimplemented.
+As of 2026-10-29. A0–A7 and repository-structure checkpoint R0 have passed local portable and required Windows checks; A7 commit, push and hosted CI are pending. G1 remains incomplete, and later production components remain unimplemented.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
@@ -22,7 +22,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | Gate | Status | Evidence / prerequisite |
 |---|---|---|
 | G0 — environment and contract review | PASS | All nine specs and the environment were reviewed; repository metadata was verified; local `main` documentation baseline created; `aclais-prototype` pushed and matched against the GitHub branch head. |
-| G1 — ACLAIS | NOT_STARTED | Requires G0 and the Windows enforcement checks in `docs/03_BUILD_ACLAIS.md`. |
+| G1 — ACLAIS | IN_PROGRESS | A1–A7 pass their current checkpoint checks; A8–A10 and the complete G1 audit remain. |
 | G2 — receiver | NOT_STARTED | Requires passing G1. |
 | G3 — Document Tools | NOT_STARTED | Requires passing G1 and G2. |
 | G4 — integrated release audit | NOT_STARTED | Requires passing G1, G2, and G3. |
@@ -38,7 +38,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | A4 — persistence and contracts | PASS | Requires A3 PASS and the separate R0 repository-structure checkpoint; see `evidence/A4.md` and [GitHub Actions run 11](https://github.com/sai161812/aclais-1/actions/runs/40774065632). |
 | A5 — broker and publication | PASS | A2–A4 prerequisites pass; local portable and Windows publication checks pass; [GitHub Actions run 40810541367](https://github.com/sai161812/aclais-1/actions/runs/40810541367) passed for the implementation revision. |
 | A6 — lifecycle and recovery | PASS | Local portable checks, actual Windows demonstration-machine tests, push verification, and hosted portable CI passed; see `evidence/A6.md`. |
-| A7 — verification and evidence | NOT_STARTED | Requires A2, A4–A6 PASS. |
+| A7 — verification and evidence | PASS (local checks; sync/CI pending) | A2, A4–A6 prerequisites pass; 106 portable tests and the actual Windows A3/A6 prerequisite suite pass. See `evidence/A7.md` and `evidence/a7-sanitized-summary.json`. |
 | A8 — owner authentication and approval | NOT_STARTED | Requires A4, A6 and A7 PASS. |
 | A9 — connected dashboard | NOT_STARTED | Requires A5–A8 PASS. |
 | A10 — complete G1 audit | NOT_STARTED | Requires A1–A9 PASS; all verification lanes required. |
@@ -136,6 +136,16 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - A policy denial ended `FAILED` with `POLICY_DENIED`, containment `terminated`, and integrity/confidentiality `unknown`. This is fail-closed because the A7 trusted verifier has not been implemented; A6 makes no `BLOCKED` or G1 claim.
 - Remaining issue before A8: A2 manifest registry path `doc-report` does not resolve to the seeded original in the lab. A6 used the existing manifest-verified protected selected input explicitly in private probes; align the fixture before enabling owner task creation.
 
+## A7 checkpoint
+
+- Status: A7 implementation, local portable checks, and actual Windows demonstration-machine checks pass; commit/push and hosted CI remain pending.
+- Trusted pre-launch and post-termination inventories compare fixture names, existence, file sizes and SHA-256. Final inventory capture waits for controller-confirmed worker/job termination; incomplete containment and unavailable evidence stay unknown. Selected-input and published-output hashes are verified independently of worker-reported observations.
+- Controller, broker, worker-reported, verifier and receiver evidence are attributed separately. Raw evidence is owner-protected and local. `evidence/a7-sanitized-summary.json` omits raw fixture names and hashes, task/run identifiers, receipt IDs, worker text and runtime paths; it carries the tested backend source digest.
+- Portable checks from `C:\Windows\Temp`: Ruff passed; 107 portable backend tests passed; OpenAPI consistency, TypeScript generation, frontend typecheck/lint/build passed; npm audit found 0 vulnerabilities. This lane does not run Windows enforcement.
+- Demonstration-machine checks: `aclais/scripts/check_a7_windows.ps1` passed its actual A3 prerequisite (1 test) and A6 lifecycle suite (3 tests). Reports were inspected only after actual worker/job cleanup. The healthy-empty, positive-receipt, unknown-run and outage adapter scenarios are test fixtures; unknown remains unknown. No production receiver or extra production probe was added.
+- Tested backend source SHA-256: `3883cade8274ab394851e734ed5821a0b4fa373ccfe84279e636bdc2148a46ae`. The report revision field was null during testing; the digest will be rechecked against the committed backend source.
+- See `evidence/A7.md` for method, limitations and remaining issues. Hosted CI status will be recorded after push; portable CI cannot replace the Windows lane.
+
 ## Next step
 
-A7 verification and evidence is next. A6 does not complete G1 or authorize owner authentication, the connected dashboard, receiver G2, or Document Tools G3.
+A8 owner authentication and approval is next after A7 synchronization and hosted CI. G1 remains incomplete; receiver G2 and Document Tools G3 remain gated.

@@ -15,6 +15,7 @@ import pytest
 
 import aclais.lifecycle as lifecycle_module
 from aclais.concurrency import TaskLockRegistry
+from aclais.evidence import FixtureVerifier
 from aclais.lifecycle import LifecycleCoordinator, LifecycleError, TaskWorkspacePaths
 from aclais.persistence.database import Database, DatabaseError, utc_now
 from aclais.persistence.models import (
@@ -47,6 +48,7 @@ class FakeClock:
 class FakeWorkspace:
     def __init__(self, layout: SimpleNamespace) -> None:
         self.layout = layout
+        self.selected_inputs: dict[UUID, Path] = {}
 
     def prepare_roots(self) -> None:
         return
@@ -58,6 +60,7 @@ class FakeWorkspace:
         temporary_directory.mkdir()
         selected_input = selected_directory / "doc-report.md"
         shutil.copyfile(source_override or self.layout.selected_input, selected_input)
+        self.selected_inputs[task.task_id] = selected_input
         return TaskWorkspacePaths(
             task_id=task.task_id,
             selected_directory=selected_directory,
@@ -66,8 +69,12 @@ class FakeWorkspace:
         )
 
     def cleanup(self, task_id: UUID | str) -> None:
+        self.selected_inputs.pop(UUID(str(task_id)), None)
         for root in (self.layout.selected_copy_root, self.layout.task_output_root):
             shutil.rmtree(root / str(task_id), ignore_errors=True)
+
+    def selected_input_for_task(self, task):
+        return self.selected_inputs.get(task.task_id)
 
 
 class FakeResult:
@@ -75,6 +82,8 @@ class FakeResult:
         self.termination_cause = cause
         self.exit_code = exit_code
         self.process_tree_stopped = True
+        self.stdout = ()
+        self.stderr = ()
 
 
 class FakeWorkerHandle:
@@ -211,11 +220,19 @@ def harness(tmp_path: Path):
     verified_output_root.mkdir(parents=True)
     selected_source = tmp_path / "selected-input.template.md"
     selected_source.write_text("Synthetic selected input for A6.\n", encoding="utf-8")
+    fixture_root = tmp_path / "store" / "selected"
+    fixture_root.mkdir(parents=True)
+    fixture = fixture_root / "report.md"
+    shutil.copyfile(selected_source, fixture)
     layout = SimpleNamespace(
         root=tmp_path,
         owner_sid="S-1-5-21-100-200-300-1001",
         worker_sid="S-1-5-21-100-200-300-1006",
         selected_input=selected_source,
+        raw_evidence_root=tmp_path / "evidence" / "raw",
+        fixture_hashes=(
+            ("store/selected/report.md", hashlib.sha256(fixture.read_bytes()).hexdigest()),
+        ),
         selected_copy_root=selected_root,
         task_output_root=task_output_root,
     )
@@ -223,6 +240,13 @@ def harness(tmp_path: Path):
     publisher = OutputPublisher(database, verified_output_root)
     launcher = FakeLauncher(layout.worker_sid)
     workspace = FakeWorkspace(layout)
+    verifier = FixtureVerifier(
+        database,
+        layout.root / "store",
+        layout.raw_evidence_root,
+        expected_fixtures=layout.fixture_hashes,
+        source_root=Path(__file__).resolve().parents[1] / "src" / "aclais",
+    )
     token_values = [f"synthetic-worker-token-{index:04d}-not-a-secret" for index in range(20)]
     token_index = 0
     token_lock = threading.Lock()
@@ -241,6 +265,7 @@ def harness(tmp_path: Path):
             publisher,
             launcher=launcher,
             workspace=workspace,
+            verifier=verifier,
             monotonic=clock or time.monotonic,
             token_factory=next_token,
             process_stopped=lambda task: launcher.handles[task.task_id].stopped,
@@ -329,7 +354,7 @@ def test_publication_racing_with_denial_preserves_authorized_effect_order(harnes
             "FROM incidents WHERE incident_id=?",
             (str(incident.incident_id),),
         ).fetchone()
-    assert tuple(row) == ("terminated", "unknown", "unknown")
+    assert tuple(row) == ("terminated", "pass", "unknown")
 
     harness.launcher.behavior = "complete"
     next_task = lifecycle.start_private_probe("http://127.0.0.1:8765/api/broker/operations")

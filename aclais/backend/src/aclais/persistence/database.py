@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -26,6 +26,9 @@ from aclais.persistence.models import (
     ErrorResponse,
     EventRecord,
     EventSource,
+    EvidenceBaseline,
+    EvidenceReport,
+    EvidenceResponse,
     Incident,
     JournalState,
     Operation,
@@ -178,7 +181,7 @@ def canonical_body_sha256(model: BaseModel) -> str:
 class Database:
     """Controller repository. The database location is supplied only by trusted startup code."""
 
-    schema_version = 2
+    schema_version = 3
 
     def __init__(self, path: Path) -> None:
         if not isinstance(path, Path) or not path.is_absolute():
@@ -1007,6 +1010,8 @@ class Database:
                     ),
                 )
                 verification_from = TaskStatus.VERIFYING
+            elif current.status == TaskStatus.VERIFYING:
+                verification_from = TaskStatus.VERIFYING
             self._validate_terminal_cause(
                 verification_from, TaskStatus.FAILED, None, terminal_cause
             )
@@ -1042,13 +1047,6 @@ class Database:
                 reason_code=None,
                 message=event_message,
             )
-            if current.incident_id is not None:
-                connection.execute(
-                    "UPDATE incidents SET containment_status='terminated', "
-                    "integrity_status='unknown', confidentiality_status='unknown' "
-                    "WHERE incident_id=?",
-                    (str(current.incident_id),),
-                )
             row = connection.execute(
                 "SELECT * FROM tasks WHERE task_id=?", (identifier,)
             ).fetchone()
@@ -1921,3 +1919,177 @@ class Database:
             sha256=row["content_sha256"],
             created_at=_parse_timestamp(row["created_at"]),
         )
+
+    def save_evidence_baseline(self, baseline: EvidenceBaseline, *, artifact_path: str) -> None:
+        """Persist a single immutable pre-launch inventory for the controller-owned task."""
+
+        identifier = str(_identifier(baseline.task_id))
+        inventory_json = json.dumps(
+            [entry.model_dump(mode="json") for entry in baseline.entries],
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        inventory_sha256 = hashlib.sha256(inventory_json.encode("utf-8")).hexdigest()
+        artifact = PurePosixPath(artifact_path)
+        if (
+            artifact.is_absolute()
+            or artifact_path.startswith("/")
+            or "\\" in artifact_path
+            or ":" in artifact_path
+            or any(part in {"", ".", ".."} for part in artifact_path.split("/"))
+        ):
+            raise ValueError("baseline artifact path must be trusted and relative")
+        with self._transaction() as connection:
+            task = connection.execute(
+                "SELECT run_id FROM tasks WHERE task_id=?", (identifier,)
+            ).fetchone()
+            if task is None or task["run_id"] != str(baseline.run_id):
+                raise ValueError("evidence baseline must match its persisted task and run")
+            connection.execute(
+                "INSERT INTO task_evidence_baselines(task_id, run_id, captured_at, "
+                "tested_source_revision, tested_source_sha256, manifest_match, "
+                "selected_input_size_bytes, selected_input_sha256, inventory_json, "
+                "inventory_sha256, artifact_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    identifier,
+                    str(baseline.run_id),
+                    _timestamp(baseline.captured_at),
+                    baseline.tested_source_revision,
+                    baseline.tested_source_sha256,
+                    int(baseline.manifest_match),
+                    baseline.selected_input_size_bytes,
+                    baseline.selected_input_sha256,
+                    inventory_json,
+                    inventory_sha256,
+                    artifact_path,
+                ),
+            )
+
+    def evidence_baseline(self, task_id: UUID | str) -> EvidenceBaseline | None:
+        identifier = str(_identifier(task_id))
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM task_evidence_baselines WHERE task_id=?", (identifier,)
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            inventory_json = str(row["inventory_json"])
+            if hashlib.sha256(inventory_json.encode("utf-8")).hexdigest() != row[
+                "inventory_sha256"
+            ]:
+                raise DatabaseError("stored evidence baseline digest mismatch")
+            entries = tuple(json.loads(inventory_json))
+            baseline = EvidenceBaseline(
+                task_id=row["task_id"],
+                run_id=row["run_id"],
+                captured_at=_parse_timestamp(row["captured_at"]),
+                tested_source_revision=row["tested_source_revision"],
+                tested_source_sha256=row["tested_source_sha256"],
+                manifest_match=bool(row["manifest_match"]),
+                selected_input_size_bytes=row["selected_input_size_bytes"],
+                selected_input_sha256=row["selected_input_sha256"],
+                entries=entries,
+            )
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise DatabaseError("stored evidence baseline is invalid") from exc
+        artifact = PurePosixPath(row["artifact_path"])
+        if (
+            artifact.is_absolute()
+            or row["artifact_path"].startswith("/")
+            or "\\" in row["artifact_path"]
+            or ":" in row["artifact_path"]
+            or any(part in {"", ".", ".."} for part in row["artifact_path"].split("/"))
+        ):
+            raise DatabaseError("stored evidence artifact path is invalid")
+        return baseline
+
+    def save_evidence_report(self, report: EvidenceReport) -> None:
+        """Append a validated report; prior unknown reports remain auditable."""
+
+        report_json = canonical_model_json(report)
+        report_hash = hashlib.sha256(report_json.encode("utf-8")).hexdigest()
+        with self._transaction() as connection:
+            task = connection.execute(
+                "SELECT run_id FROM tasks WHERE task_id=?", (str(report.task_id),)
+            ).fetchone()
+            if task is None or task["run_id"] != str(report.run_id):
+                raise ValueError("evidence report must match its persisted task and run")
+            connection.execute(
+                "INSERT INTO task_evidence_reports(report_id, task_id, run_id, generated_at, "
+                "report_sha256, report_json) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    str(report.report_id),
+                    str(report.task_id),
+                    str(report.run_id),
+                    _timestamp(report.generated_at),
+                    report_hash,
+                    report_json,
+                ),
+            )
+
+    def evidence_response(self, task_id: UUID | str) -> EvidenceResponse:
+        identifier = str(_identifier(task_id))
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT report_sha256, report_json FROM task_evidence_reports "
+                "WHERE task_id=? ORDER BY generated_at DESC, report_id DESC LIMIT 1",
+                (identifier,),
+            ).fetchone()
+        if row is None:
+            return EvidenceResponse(schema_version=1, status="pending", report=None)
+        raw = str(row["report_json"])
+        if hashlib.sha256(raw.encode("utf-8")).hexdigest() != row["report_sha256"]:
+            raise DatabaseError("stored evidence report digest mismatch")
+        try:
+            report = EvidenceReport.model_validate_json(raw, strict=True)
+        except ValidationError as exc:
+            raise DatabaseError("stored evidence report is invalid") from exc
+        if str(report.task_id) != identifier:
+            raise DatabaseError("stored evidence report task identity mismatch")
+        return EvidenceResponse(schema_version=1, status="complete", report=report)
+
+    def update_incident_verification(
+        self,
+        task_id: UUID | str,
+        *,
+        containment_status: str,
+        integrity_status: str,
+        confidentiality_status: str,
+        evidence_ref: str,
+    ) -> None:
+        identifier = str(_identifier(task_id))
+        if containment_status not in {"terminated", "failed"}:
+            raise ValueError("incident containment status is invalid")
+        if integrity_status not in {"pass", "fail", "unknown", "not_applicable"}:
+            raise ValueError("incident integrity status is invalid")
+        if confidentiality_status not in {"pass", "fail", "unknown", "not_applicable"}:
+            raise ValueError("incident confidentiality status is invalid")
+        path = Path(evidence_ref)
+        if path.is_absolute() or "\\" in evidence_ref or any(
+            part in {"", ".", ".."} for part in path.parts
+        ):
+            raise ValueError("incident evidence reference must be trusted and relative")
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT i.incident_id, i.evidence_refs_json FROM incidents i "
+                "JOIN tasks t USING(task_id) WHERE t.task_id=?",
+                (identifier,),
+            ).fetchone()
+            if row is None:
+                return
+            references = list(json.loads(row["evidence_refs_json"]))
+            if evidence_ref not in references:
+                references.append(evidence_ref)
+            connection.execute(
+                "UPDATE incidents SET containment_status=?, integrity_status=?, "
+                "confidentiality_status=?, evidence_refs_json=? WHERE incident_id=?",
+                (
+                    containment_status,
+                    integrity_status,
+                    confidentiality_status,
+                    json.dumps(references, ensure_ascii=False, separators=(",", ":")),
+                    row["incident_id"],
+                ),
+            )

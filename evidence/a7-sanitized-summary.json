@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "checkpoint": "A7",
+  "tested_source_revision": null,
+  "tested_source_sha256": "3883cade8274ab394851e734ed5821a0b4fa373ccfe84279e636bdc2148a46ae",
+  "environment": {
+    "platform": "Microsoft Windows 11 Home Single Language",
+    "version": "10.0.26200",
+    "build": "26200",
+    "target": "designated demonstration machine",
+    "filesystem": "NTFS"
+  },
+  "checks": {
+    "portable": {
+      "command": "scripts/check.ps1",
+      "backend_tests": "107 passed",
+      "backend_lint": "passed",
+      "contract_generation_consistency": "passed",
+      "frontend_typecheck_lint_build": "passed",
+      "npm_audit_vulnerabilities": 0,
+      "windows_enforcement": "not run by portable checks"
+    },
+    "windows": {
+      "command": "aclais/scripts/check_a7_windows.ps1",
+      "a3_private_probe_tests": "1 passed",
+      "a6_actual_lifecycle_tests": "3 passed",
+      "a7_verification_assertions": "passed within the actual lifecycle suite",
+      "worker_and_job_termination": "checked from Windows process identities/handles before final fixture scan",
+      "private_probe_only": true,
+      "receiver_production_implemented": false
+    },
+    "receiver_adapter_fixtures": {
+      "healthy_empty": "pass",
+      "positive_receipt": "fail",
+      "unknown_run": "unknown",
+      "outage": "unknown"
+    }
+  },
+  "sanitized_windows_observations": {
+    "verified_completion": {
+      "schema_version": 1,
+      "tested_source_revision": null,
+      "tested_source_sha256": "3883cade8274ab394851e734ed5821a0b4fa373ccfe84279e636bdc2148a46ae",
+      "overall_status": "pass",
+      "integrity_status": "pass",
+      "confidentiality_status": "not_applicable",
+      "receiver_status": "not_applicable",
+      "worker_identity_recorded": true,
+      "worker_exit_observed": true,
+      "worker_termination_confirmed": true,
+      "worker_exit_code": 0,
+      "inventory_counts": {
+        "before_entries": 14,
+        "after_entries": 14,
+        "added": 0,
+        "missing": 0,
+        "renamed": 0,
+        "changed": 0
+      },
+      "event_source_counts": {
+        "controller": 3,
+        "broker": 2,
+        "worker_reported": 3,
+        "verifier": 2,
+        "receiver": 0
+      },
+      "checks": [
+        {
+          "id": "worker_termination_confirmed",
+          "source": "controller",
+          "status": "pass"
+        },
+        {
+          "id": "fixture_manifest_baseline",
+          "source": "verifier",
+          "status": "pass"
+        },
+        {
+          "id": "fixture_inventory_unchanged",
+          "source": "verifier",
+          "status": "pass"
+        },
+        {
+          "id": "selected_input_hash",
+          "source": "verifier",
+          "status": "pass"
+        },
+        {
+          "id": "published_output_hash",
+          "source": "verifier",
+          "status": "pass"
+        }
+      ]
+    },
+    "policy_incident_without_receiver": {
+      "schema_version": 1,
+      "tested_source_revision": null,
+      "tested_source_sha256": "3883cade8274ab394851e734ed5821a0b4fa373ccfe84279e636bdc2148a46ae",
+      "overall_status": "unknown",
+      "integrity_status": "pass",
+      "confidentiality_status": "unknown",
+      "receiver_status": "not_applicable",
+      "worker_identity_recorded": true,
+      "worker_exit_observed": false,
+      "worker_termination_confirmed": true,
+      "worker_exit_code": 3221225786,
+      "inventory_counts": {
+        "before_entries": 14,
+        "after_entries": 14,
+        "added": 0,
+        "missing": 0,
+        "renamed": 0,
+        "changed": 0
+      },
+      "event_source_counts": {
+        "controller": 3,
+        "broker": 1,
+        "worker_reported": 3,
+        "verifier": 2,
+        "receiver": 0
+      },
+      "checks": [
+        {
+          "id": "worker_termination_confirmed",
+          "source": "controller",
+          "status": "pass"
+        },
+        {
+          "id": "fixture_manifest_baseline",
+          "source": "verifier",
+          "status": "pass"
+        },
+        {
+          "id": "fixture_inventory_unchanged",
+          "source": "verifier",
+          "status": "pass"
+        },
+        {
+          "id": "selected_input_hash",
+          "source": "verifier",
+          "status": "pass"
+        },
+        {
+          "id": "published_output_hash",
+          "source": "verifier",
+          "status": "not_applicable"
+        },
+        {
+          "id": "incident_confidentiality",
+          "source": "verifier",
+          "status": "unknown"
+        }
+      ]
+    }
+  },
+  "raw_evidence": "retained only in the owner-protected local runtime evidence store; not tracked"
+}

@@ -479,6 +479,29 @@ export interface components {
              */
             task_id: string;
         };
+        /** ControllerProcessObservation */
+        ControllerProcessObservation: {
+            /** Assigned To Job Before Resume */
+            assigned_to_job_before_resume: boolean | null;
+            /** Creation Time 100Ns */
+            creation_time_100ns: number;
+            /** Job Kill On Close */
+            job_kill_on_close: boolean | null;
+            /** Pid */
+            pid: number;
+            /** Process Tree Stopped */
+            process_tree_stopped: boolean;
+            /**
+             * Source
+             * @default controller
+             * @constant
+             */
+            source: "controller";
+            /** Worker Is Administrator */
+            worker_is_administrator: boolean | null;
+            /** Worker Sid */
+            worker_sid: string;
+        };
         /** CreateRunRequest */
         CreateRunRequest: {
             /** Canary Marker */
@@ -660,28 +683,71 @@ export interface components {
             /** Observed */
             observed: string;
             /**
+             * Source
+             * @enum {string}
+             */
+            source: "controller" | "broker" | "worker_reported" | "verifier" | "receiver";
+            /**
              * Status
              * @enum {string}
              */
             status: "pending" | "pass" | "fail" | "unknown" | "not_applicable";
         };
+        /** EvidenceEventReference */
+        EvidenceEventReference: {
+            /** Seq */
+            seq: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "controller" | "broker" | "worker_reported" | "verifier";
+        };
         /** EvidenceReport */
         EvidenceReport: {
+            /** Added Files */
+            added_files: string[];
+            /** Changed Files */
+            changed_files: string[];
             /** Checks */
             checks: components["schemas"]["EvidenceCheck"][];
+            /**
+             * Confidentiality Status
+             * @enum {string}
+             */
+            confidentiality_status: "pass" | "fail" | "unknown" | "not_applicable";
+            controller_process_observation: components["schemas"]["ControllerProcessObservation"] | null;
             /** Differences */
             differences: string[];
+            /** Event Sources */
+            event_sources: components["schemas"]["EvidenceEventReference"][];
             /** File Inventory After */
-            file_inventory_after: string[];
+            file_inventory_after: components["schemas"]["InventoryEntry"][];
             /** File Inventory Before */
-            file_inventory_before: string[];
+            file_inventory_before: components["schemas"]["InventoryEntry"][];
             /**
              * Generated At
              * Format: date-time
              */
             generated_at: string;
+            /**
+             * Integrity Status
+             * @enum {string}
+             */
+            integrity_status: "pass" | "fail" | "unknown" | "not_applicable";
             /** Marker Received */
             marker_received: boolean | null;
+            /** Missing Files */
+            missing_files: string[];
+            /**
+             * Overall Status
+             * @enum {string}
+             */
+            overall_status: "pass" | "fail" | "unknown";
+            /** Published Output Sha256 */
+            published_output_sha256: string | null;
+            /** Published Output Size Bytes */
+            published_output_size_bytes: number | null;
             /** Receipt Ids */
             receipt_ids: string[];
             /**
@@ -689,6 +755,8 @@ export interface components {
              * @enum {string}
              */
             receiver_status: "pass" | "fail" | "unknown" | "not_applicable";
+            /** Renamed Files */
+            renamed_files: string[];
             /**
              * Report Id
              * Format: uuid
@@ -699,15 +767,35 @@ export interface components {
              * Format: uuid
              */
             run_id: string;
+            /** Selected Input Sha256 After */
+            selected_input_sha256_after: string | null;
+            /** Selected Input Sha256 Before */
+            selected_input_sha256_before: string | null;
+            /** Selected Input Size After Bytes */
+            selected_input_size_after_bytes: number | null;
+            /** Selected Input Size Before Bytes */
+            selected_input_size_before_bytes: number | null;
             /**
              * Task Id
              * Format: uuid
              */
             task_id: string;
+            /** Tested Source Revision */
+            tested_source_revision: string | null;
+            /** Tested Source Sha256 */
+            tested_source_sha256: string;
             /** Verifier Version */
             verifier_version: string;
+            /** Worker Exit Code */
+            worker_exit_code: number | null;
             /** Worker Exit Observed */
             worker_exit_observed: boolean;
+            /** Worker Identity Recorded */
+            worker_identity_recorded: boolean;
+            /** Worker Observation Count */
+            worker_observation_count: number;
+            /** Worker Termination Confirmed */
+            worker_termination_confirmed: boolean;
         };
         /** EvidenceResponse */
         EvidenceResponse: {
@@ -819,6 +907,25 @@ export interface components {
              * Format: uuid
              */
             task_id: string;
+        };
+        /** InventoryEntry */
+        InventoryEntry: {
+            /**
+             * Entry Type
+             * @enum {string}
+             */
+            entry_type: "file" | "directory";
+            /**
+             * Exists
+             * @constant
+             */
+            exists: true;
+            /** Relative Path */
+            relative_path: string;
+            /** Sha256 */
+            sha256: string | null;
+            /** Size Bytes */
+            size_bytes: number | null;
         };
         /** InvoiceResult */
         InvoiceResult: {

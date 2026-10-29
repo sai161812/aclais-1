@@ -7,6 +7,8 @@ Use `IMPLEMENTATION_CHECKPOINTS.md` for the ordered A0–A10 delivery steps insi
 
 Every gate report includes: actual platform/build, dependency lock identifiers, commit/source hash, exact commands and exit codes, observed results, artifact paths, unresolved defects and final status. An unrun mandatory test means BLOCKED, not PASS. Tests must exercise behavior, not simply assert the implementation contains a chosen function name.
 
+For A7, preserve raw inventories and captured worker output only in the owner-protected local evidence tree. Git-trackable summaries must omit fixture names/hashes, receipt IDs, worker text, credentials and runtime paths, and identify the tested source revision or source digest. Final inventory begins only after actual worker/job termination is confirmed; incomplete containment or a verifier timeout remains unknown.
+
 ## Verification lanes
 Keep these results separate in `BUILD_STATUS.md`, gate evidence and CI summaries:
 
