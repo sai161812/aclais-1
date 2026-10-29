@@ -1,6 +1,6 @@
 # Build status
 
-As of 2026-10-29. A0–A7 and repository-structure checkpoint R0 have passed their required checks. A7 implementation commit `26e806bd51b4b8944717667474ae7269fa27ab98` is pushed and verified; its hosted portable CI passed. G1 remains incomplete, and later production components remain unimplemented.
+As of 2026-10-29. A0 through A9 and repository-structure checkpoint R0 passed their required checks. A9 implementation commit e726c84309d7d532010d51a0027d16c133926b84 is pushed and its hosted portable CI passed. A10 is not started; G1 remains incomplete and later production components remain gated.
 
 Historical A1–A3 command paths below describe the tree when those runs occurred. Current component and orchestration paths are documented in `RUNBOOK.md` and the R0 record.
 
@@ -40,7 +40,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 | A6 — lifecycle and recovery | PASS | Local portable checks, actual Windows demonstration-machine tests, push verification, and hosted portable CI passed; see `evidence/A6.md`. |
 | A7 — verification and evidence | PASS | A2, A4–A6 prerequisites pass; 107 portable tests and the actual Windows A3/A6 prerequisite suite pass; implementation commit is synchronized and hosted CI passed. See `evidence/A7.md` and `evidence/a7-sanitized-summary.json`. |
 | A8 — owner authentication and approval | PASS | Actual Windows browser/containment and portable checks passed; see `evidence/A8.md`. |
-| A9 — connected dashboard | PASS pending hosted CI | Connected Chrome dashboard, actual backend flows, A2 access probe, portable checks and Windows enforcement passed; see `evidence/A9.md`. |
+| A9 — connected dashboard | PASS | Connected Chrome dashboard, actual backend flows, A2 access probe, portable checks, Windows enforcement, and hosted CI passed; see `evidence/A9.md`. |
 | A10 — complete G1 audit | NOT_STARTED | Requires A1–A9 PASS; all verification lanes required. |
 
 ## R0 repository-structure checkpoint
@@ -158,18 +158,19 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 - Ten portable A8 route and registry tests cover one-time bootstrap and cookie fixation, missing/expired sessions, worker credentials on owner routes, invalid Host, cross-origin Origin, missing CSRF, rejected executable arguments, undeclared query parameters, approval GET with no launch, separate source/observed attribution, single-use approval context, and logout. They do not substitute for the Windows browser evidence.
 - Implementation commit `b3a42d0d8a42ff6efaa2245ada6d9b9054ca0984` was pushed to `origin/aclais-prototype`; `git ls-remote` matched the exact branch head. [GitHub Actions run 40828122814](https://github.com/sai161812/aclais-1/actions/runs/40828122814) passed both portable jobs for that revision.
 - The committed ACLAIS backend source digest `82dda54095561dc0a6540c6be4874a2e8f840170319b156a3c59d296c78fdfa8` matches the digest recorded by both independent Windows verification reports.
-- G1 remains incomplete until A9 and A10; receiver G2 and Document Tools G3 remain gated.
+- G1 remains incomplete until A10; receiver G2 and Document Tools G3 remain gated.
 
 ## A9 checkpoint
 
-- Status: Local portable and actual Windows demonstration-machine checks passed; hosted CI is pending for the pushed implementation revision.
+- Status: PASS for local portable checks, actual Windows demonstration-machine checks, remote synchronization, and hosted portable CI.
 - The connected owner dashboard now renders the persisted workspace, Activity history, approval, task output, ordered events, incident evidence and cancellation from the ACLAIS same-origin APIs. Output remains bounded inert text. Transport disconnection clears green status; a reachable failed preflight shows protection unavailable; pending evidence remains pending until a verifier report arrives.
 - Fixes found while connecting the UI: synchronous broker work no longer starves the API event loop; the owner cancel route invokes the lifecycle callback instead of shadowing it; persisted incident evidence lists validate against the tuple contract. Portable regression tests cover all three issues.
 - The private Chrome flow tested side-effect-free approval-page load, Enter-key approval, persisted event order across refresh and the Activity screen, output inertness, network outage/reconnection, protection-unavailable mapping, keyboard focus/close behavior, reduced motion, cancellation and actual worker termination. The browser made no external font/CDN requests. Screenshots are sanitized and stored in `evidence/a9-visuals/` at both specified resolutions; the incident drawer shows real pending and incomplete evidence. No verified incident is claimed because real confidentiality evidence remains unknown without receiver production evidence.
 - Tested source manifest digest: `48f12cb35d68798531d2997249ce36ee2d04434b4d0ecc2487adff74b1913029` (82 source, test, schema, and component-configuration files; method and scope are recorded in `evidence/A9.md`).
 - The A2 actual worker access probe passed after protecting the frontend bundle, including 62 worker checks, 14 seeded fixture preconditions and the added repository bundle read/write denials. This is A2 evidence and does not complete G1.
 - Local portable command `scripts/check.ps1` passed from `C:\Windows\Temp`: 120 backend tests, Ruff, OpenAPI/TypeScript consistency, frontend typecheck/lint/build; npm audit reported 0 vulnerabilities. Windows enforcement command `uv run --locked --group windows-enforcement pytest -m windows_enforcement -q --tb=short` passed 4 tests on the demonstration machine. The root portable command does not include Windows enforcement.
-- Tested source digest and exact pushed CI run will be recorded after the staged-source review and push. A10 remains unstarted; receiver G2 and Document Tools G3 remain gated, and G1 is incomplete.
+- Implementation commit `e726c84309d7d532010d51a0027d16c133926b84` was pushed to `origin/aclais-prototype`; `git ls-remote --heads` matched the local commit. [GitHub Actions run 40839525965](https://github.com/sai161812/aclais-1/actions/runs/40839525965) passed both portable jobs for that exact revision. CI did not run Windows enforcement.
+- A10 remains unstarted; receiver G2 and Document Tools G3 remain gated, and G1 is incomplete.
 
 ## Next step
 
