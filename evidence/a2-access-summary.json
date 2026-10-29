@@ -1,1284 +1,395 @@
 {
-    "schema_version":  1,
+    "schema_version":  2,
     "checkpoint":  "A2",
     "passed":  true,
-    "phase":  "completed",
-    "machine":  "LAPTOP-FMQ8RARQ",
-    "owner_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1001",
     "elevated":  false,
-    "failures":  [
-
-                 ],
-    "root_guard_probe":  {
-                             "schema_version":  1,
-                             "kind":  "private_a2_root_guard_probe",
-                             "machine":  "LAPTOP-FMQ8RARQ",
-                             "owner_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1001",
-                             "passed":  true,
-                             "check_count":  8,
-                             "checks":  [
-                                            {
-                                                "name":  "missing_owned_root_gets_new_id",
-                                                "passed":  true
-                                            },
-                                            {
-                                                "name":  "empty_root_without_sentinel_is_initializable",
-                                                "passed":  true
-                                            },
-                                            {
-                                                "name":  "nonempty_root_without_sentinel_is_refused",
-                                                "passed":  true
-                                            },
-                                            {
-                                                "name":  "matching_sentinel_is_reused",
-                                                "passed":  true
-                                            },
-                                            {
-                                                "name":  "wrong_owner_sentinel_is_refused",
-                                                "passed":  true
-                                            },
-                                            {
-                                                "name":  "matching_interrupted_marker_is_reused",
-                                                "passed":  true
-                                            },
-                                            {
-                                                "name":  "wrong_owner_interrupted_marker_is_refused",
-                                                "passed":  true
-                                            },
-                                            {
-                                                "name":  "managed_reparse_point_is_rejected",
-                                                "passed":  true
-                                            }
-                                        ]
-                         },
-    "owner_credential_check":  {
-                                   "passed":  true,
-                                   "target":  "ACLAIS-1/AclaisWorker",
-                                   "user_name":  "LAPTOP-FMQ8RARQ\\AclaisWorker",
-                                   "owner_session_elevated":  false,
-                                   "secret_value_recorded":  false
-                               },
-    "fixture_integrity_before_probe":  [
-                                           {
-                                               "name":  "fixture_precondition:store/originals/dacl-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/delete-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/overwrite-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/Personnel_Private.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/rename-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/replace-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/selected/delete-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/selected/overwrite-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/selected/rename-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/selected/replace-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/selected/Selected_Input.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/invoice.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226",
-                                               "observed_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/meeting-notes.md",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff",
-                                               "observed_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/project-report.md",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0",
-                                               "observed_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0"
-                                           }
-                                       ],
-    "worker_process_exited":  true,
+    "source_revision":  "76179ed8b763823684cc3364ad4592e1aa15912f",
+    "tested_probe_sha256":  "f5eee4d5b08c11d96a036bb3cff38331da0aa93636c310621ba82a09e4d3c544",
+    "tested_harness_sha256":  "f6655642dc0014b48a275e370db731cef846c0c7c97f7b609a2c7fd62b3b7296",
     "worker_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006",
-    "worker_account":  "LAPTOP-FMQ8RARQ\\AclaisWorker",
     "worker_is_administrator":  false,
-    "worker_stderr_bytes":  0,
-    "probe":  {
-                  "schema_version":  1,
-                  "checkpoint":  "A2",
-                  "kind":  "private_windows_access_probe",
-                  "machine":  "LAPTOP-FMQ8RARQ",
-                  "windows_caption":  "Microsoft Windows 11 Home Single Language",
-                  "windows_build":  "26200",
-                  "observed_identity":  "LAPTOP-FMQ8RARQ\\AclaisWorker",
-                  "observed_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006",
-                  "is_administrator":  false,
-                  "passed":  true,
-                  "check_count":  62,
-                  "checks":  [
-                                 {
-                                     "name":  "worker_identity",
-                                     "passed":  true,
-                                     "expected":  "actual AclaisWorker SID and non-administrator token",
-                                     "actual":  "verified_worker_sid",
-                                     "error":  {
-                                                   "account":  "LAPTOP-FMQ8RARQ\\AclaisWorker",
-                                                   "is_administrator":  false,
-                                                   "sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006"
-                                               }
-                                 },
-                                 {
-                                     "name":  "probe_command_line_contains_no_credential",
-                                     "passed":  true,
-                                     "expected":  "no credential values in process command line",
-                                     "actual":  "no_credential_pattern"
-                                 },
-                                 {
-                                     "name":  "worker_environment_has_no_credential_variables",
-                                     "passed":  true,
-                                     "expected":  "no password, secret, token, or credential environment variable",
-                                     "actual":  "none_found",
-                                     "error":  {
-                                                   "count":  0
-                                               }
-                                 },
-                                 {
-                                     "name":  "selected_input_read",
-                                     "passed":  true,
-                                     "expected":  "selected copy readable with provisioned SHA-256",
-                                     "actual":  "readable",
-                                     "error":  {
-                                                   "bytes":  95,
-                                                   "sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                               }
-                                 },
-                                 {
-                                     "name":  "selected_input_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "selected_input_overwrite_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "selected_input_delete_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "selected_input_rename_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "selected_input_replace_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "temporary_output_create_write_delete",
-                                     "passed":  true,
-                                     "expected":  "operation_succeeded",
-                                     "actual":  "operation_succeeded"
-                                 },
-                                 {
-                                     "name":  "confidential_original_read_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "permitted_original_read_denied:project-report.md",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "permitted_original_read_denied:meeting-notes.md",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "permitted_original_read_denied:invoice.csv",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "original_overwrite_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "original_delete_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "original_rename_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 2 or Win32 3 or Win32 5",
-                                     "actual":  "path_hidden_or_not_found",
-                                     "error":  {
-                                                   "win32_error":  2,
-                                                   "error_type":  "System.IO.FileNotFoundException",
-                                                   "hresult":  "0x80070002",
-                                                   "windows_message":  "The system cannot find the file specified"
-                                               }
-                                 },
-                                 {
-                                     "name":  "original_replace_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 2 or Win32 3 or Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "originals_parent_create_child_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "store_parent_create_child_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "work_parent_create_child_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "lab_root_create_child_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "trusted_state_read_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "trusted_state_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "trusted_state_delete_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "trusted_state_rename_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 2 or Win32 3 or Win32 5",
-                                     "actual":  "path_hidden_or_not_found",
-                                     "error":  {
-                                                   "win32_error":  2,
-                                                   "error_type":  "System.IO.FileNotFoundException",
-                                                   "hresult":  "0x80070002",
-                                                   "windows_message":  "The system cannot find the file specified"
-                                               }
-                                 },
-                                 {
-                                     "name":  "trusted_state_create_child_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_evidence_read_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_evidence_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_evidence_delete_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_evidence_rename_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 2 or Win32 3 or Win32 5",
-                                     "actual":  "path_hidden_or_not_found",
-                                     "error":  {
-                                                   "win32_error":  2,
-                                                   "error_type":  "System.IO.FileNotFoundException",
-                                                   "hresult":  "0x80070002",
-                                                   "windows_message":  "The system cannot find the file specified"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_evidence_create_child_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "protected_application_code_readable",
-                                     "passed":  true,
-                                     "expected":  "operation_succeeded",
-                                     "actual":  "operation_succeeded"
-                                 },
-                                 {
-                                     "name":  "protected_application_code_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "protected_application_code_delete_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "protected_application_code_rename_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "repository_application_code_read_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "repository_application_code_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "repository_frontend_bundle_read_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "repository_frontend_bundle_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5 or Win32 2 or Win32 3",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "repository_evidence_read_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "repository_evidence_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "repository_evidence_create_child_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_sentinel_read_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_sentinel_write_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "lab_root_child_delete_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.UnauthorizedAccessException",
-                                                   "hresult":  "0x80070005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "lab_root_child_rename_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 2 or Win32 3 or Win32 5",
-                                     "actual":  "path_hidden_or_not_found",
-                                     "error":  {
-                                                   "win32_error":  2,
-                                                   "error_type":  "System.IO.FileNotFoundException",
-                                                   "hresult":  "0x80070002",
-                                                   "windows_message":  "The system cannot find the file specified"
-                                               }
-                                 },
-                                 {
-                                     "name":  "owner_credential_unavailable_to_worker",
-                                     "passed":  true,
-                                     "expected":  "ERROR_ACCESS_DENIED (5) or ERROR_NOT_FOUND (1168)",
-                                     "actual":  "credential_not_found_in_worker_vault",
-                                     "error":  {
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "win32_error":  1168,
-                                                   "windows_message":  "Element not found"
-                                               }
-                                 },
-                                 {
-                                     "name":  "originals_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "trusted_state_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "evidence_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "selected_input_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "application_code_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "lab_root_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "store_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "work_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "temporary_output_dacl_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "originals_owner_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "trusted_state_owner_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "evidence_owner_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "application_code_owner_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 },
-                                 {
-                                     "name":  "lab_root_owner_change_denied",
-                                     "passed":  true,
-                                     "expected":  "Win32 5",
-                                     "actual":  "access_denied",
-                                     "error":  {
-                                                   "win32_error":  5,
-                                                   "error_type":  "System.ComponentModel.Win32Exception",
-                                                   "hresult":  "0x80004005",
-                                                   "windows_message":  "Access is denied"
-                                               }
-                                 }
-                             ]
-              },
-    "owner_checks":  [
-                         {
-                             "name":  "owner_can_read_original",
-                             "passed":  true,
-                             "actual":  "owner_read_succeeded"
-                         },
-                         {
-                             "name":  "owner_can_read_trusted_state",
-                             "passed":  true,
-                             "actual":  "owner_read_succeeded"
-                         },
-                         {
-                             "name":  "owner_can_read_evidence",
-                             "passed":  true,
-                             "actual":  "owner_read_succeeded"
-                         },
-                         {
-                             "name":  "owner_can_read_protected_code",
-                             "passed":  true,
-                             "actual":  "owner_read_succeeded"
-                         },
-                         {
-                             "name":  "owner_can_read_repository_application_code",
-                             "passed":  true,
-                             "actual":  "owner_read_succeeded"
-                         },
-                         {
-                             "name":  "owner_can_read_repository_frontend_bundle",
-                             "passed":  true,
-                             "actual":  "owner_read_succeeded"
-                         },
-                         {
-                             "name":  "owner_can_read_repository_evidence",
-                             "passed":  true,
-                             "actual":  "owner_read_succeeded"
-                         }
-                     ],
-    "code_integrity_before_repair":  {
-                                         "passed":  true,
-                                         "expected_file_count":  566,
-                                         "actual_file_count":  566,
-                                         "expected_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
-                                         "actual_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
-                                         "mismatches":  [
-
-                                                        ]
-                                     },
-    "repository_checkout_integrity":  {
-                                          "application_source_unchanged":  true,
-                                          "frontend_bundle_unchanged":  true,
-                                          "evidence_probe_unchanged":  true,
-                                          "evidence_child_not_created":  true,
-                                          "application_source_sha256_before":  "e7ef3775464867e47920fc33e95ce9edd719e03ed722ad84d28338ac123b6c7d",
-                                          "application_source_sha256_after":  "e7ef3775464867e47920fc33e95ce9edd719e03ed722ad84d28338ac123b6c7d",
-                                          "frontend_bundle_sha256_before":  "3a99de6150e94f2cc407975c9d7820e4457c73aa274bc38530c551fd001b8bda",
-                                          "frontend_bundle_sha256_after":  "3a99de6150e94f2cc407975c9d7820e4457c73aa274bc38530c551fd001b8bda",
-                                          "evidence_probe_sha256_before":  "dceadaf620d1005dd44467fbd5c38c903b600d4f398536c9bc00b254f4c51fa9",
-                                          "evidence_probe_sha256_after":  "dceadaf620d1005dd44467fbd5c38c903b600d4f398536c9bc00b254f4c51fa9"
-                                      },
-    "fixture_integrity_before_repair":  [
-                                            {
-                                                "name":  "fixture_integrity:store/originals/dacl-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/delete-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/overwrite-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/Personnel_Private.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/rename-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/replace-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/selected/delete-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/selected/overwrite-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/selected/rename-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/selected/replace-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/selected/Selected_Input.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/invoice.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226",
-                                                "observed_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/meeting-notes.md",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff",
-                                                "observed_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/project-report.md",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0",
-                                                "observed_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0"
-                                            }
-                                        ],
-    "trusted_state_integrity":  {
-                                    "name":  "trusted_state_integrity",
-                                    "passed":  true,
-                                    "before_sha256":  "d2260430fa45743ccea0545d197ba9dc712c2ec43ab31fe42995d6dbc838f247",
-                                    "after_probe_sha256":  "d2260430fa45743ccea0545d197ba9dc712c2ec43ab31fe42995d6dbc838f247",
-                                    "after_repair_sha256":  "d2260430fa45743ccea0545d197ba9dc712c2ec43ab31fe42995d6dbc838f247"
-                                },
-    "installation_manifest_integrity":  {
-                                            "passed":  true,
-                                            "before_sha256":  "2a3dd88e72177873a36045dd90deb9af44695bb1171e8eaa26fcdb1146c2de5f",
-                                            "after_probe_sha256":  "2a3dd88e72177873a36045dd90deb9af44695bb1171e8eaa26fcdb1146c2de5f",
-                                            "after_repair_sha256":  "2a3dd88e72177873a36045dd90deb9af44695bb1171e8eaa26fcdb1146c2de5f"
-                                        },
-    "sentinel_integrity":  {
-                               "passed":  true,
-                               "before_sha256":  "1f642c8864aaff8e94352ab6d4d32cb232162aff6ee749ecc440ff5f58a7f9c8",
-                               "after_probe_sha256":  "1f642c8864aaff8e94352ab6d4d32cb232162aff6ee749ecc440ff5f58a7f9c8",
-                               "after_repair_sha256":  "1f642c8864aaff8e94352ab6d4d32cb232162aff6ee749ecc440ff5f58a7f9c8"
-                           },
-    "fixture_integrity_after_repair":  [
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/dacl-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/delete-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/overwrite-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/Personnel_Private.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/rename-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/replace-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/selected/delete-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/selected/overwrite-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/selected/rename-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/selected/replace-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/selected/Selected_Input.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/invoice.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226",
-                                               "observed_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/meeting-notes.md",
-                                               "passed":  true,
-                                               "expected_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff",
-                                               "observed_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/project-report.md",
-                                               "passed":  true,
-                                               "expected_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0",
-                                               "observed_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0"
-                                           }
-                                       ],
-    "code_integrity_after_repair":  {
-                                        "passed":  true,
-                                        "expected_file_count":  566,
-                                        "actual_file_count":  566,
-                                        "expected_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
-                                        "actual_inventory_sha256":  "7b60e2bd11cd02a861305b6acf0c5af63e45b71986ccdb7ee5ef1a77f3bd0c42",
-                                        "mismatches":  [
-
-                                                       ]
-                                    },
-    "acl_snapshots":  {
-                          "lab_root":  [
-                                           "C:\\ACLAIS-Lab NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                           "              BUILTIN\\Administrators:(OI)(CI)(F)",
-                                           "              LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                           "              LAPTOP-FMQ8RARQ\\AclaisWorker:(S,X)",
-                                           "",
-                                           "Successfully processed 1 files; Failed processing 0 files"
-                                       ],
-                          "lab_parent":  [
-                                             "C:\\ BUILTIN\\Administrators:(OI)(CI)(F)",
-                                             "    NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                             "    BUILTIN\\Users:(OI)(CI)(RX)",
-                                             "    NT AUTHORITY\\Authenticated Users:(OI)(CI)(IO)(M)",
-                                             "    NT AUTHORITY\\Authenticated Users:(AD)",
-                                             "    S-1-15-3-65536-1888954469-739942743-1668119174-2468466756-4239452838-1296943325-355587736-700089176:(S,RD,X,RA)",
-                                             "    Mandatory Label\\High Mandatory Level:(OI)(NP)(IO)(NW)",
-                                             "",
-                                             "Successfully processed 1 files; Failed processing 0 files"
-                                         ],
-                          "store":  [
-                                        "C:\\ACLAIS-Lab\\store NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                        "                    BUILTIN\\Administrators:(OI)(CI)(F)",
-                                        "                    LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                        "                    LAPTOP-FMQ8RARQ\\AclaisWorker:(S,X)",
-                                        "",
-                                        "Successfully processed 1 files; Failed processing 0 files"
-                                    ],
-                          "originals":  [
-                                            "C:\\ACLAIS-Lab\\store\\originals NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                            "                              BUILTIN\\Administrators:(OI)(CI)(F)",
-                                            "                              LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                            "",
-                                            "Successfully processed 1 files; Failed processing 0 files"
-                                        ],
-                          "selected":  [
-                                           "C:\\ACLAIS-Lab\\store\\selected NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                           "                             BUILTIN\\Administrators:(OI)(CI)(F)",
-                                           "                             LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                           "                             LAPTOP-FMQ8RARQ\\AclaisWorker:(OI)(CI)(RX)",
-                                           "",
-                                           "Successfully processed 1 files; Failed processing 0 files"
-                                       ],
-                          "work":  [
-                                       "C:\\ACLAIS-Lab\\work NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                       "                   BUILTIN\\Administrators:(OI)(CI)(F)",
-                                       "                   LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                       "                   LAPTOP-FMQ8RARQ\\AclaisWorker:(S,X)",
-                                       "",
-                                       "Successfully processed 1 files; Failed processing 0 files"
-                                   ],
-                          "temporary_output":  [
-                                                   "C:\\ACLAIS-Lab\\work\\temporary-output NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                                   "                                    BUILTIN\\Administrators:(OI)(CI)(F)",
-                                                   "                                    LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                                   "                                    LAPTOP-FMQ8RARQ\\AclaisWorker:(OI)(CI)(M)",
-                                                   "",
-                                                   "Successfully processed 1 files; Failed processing 0 files"
-                                               ],
-                          "trusted_state":  [
-                                                "C:\\ACLAIS-Lab\\state NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                                "                    BUILTIN\\Administrators:(OI)(CI)(F)",
-                                                "                    LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                                "",
-                                                "Successfully processed 1 files; Failed processing 0 files"
-                                            ],
-                          "evidence":  [
-                                           "C:\\ACLAIS-Lab\\evidence NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                           "                       BUILTIN\\Administrators:(OI)(CI)(F)",
-                                           "                       LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                           "",
-                                           "Successfully processed 1 files; Failed processing 0 files"
-                                       ],
-                          "protected_code":  [
-                                                 "C:\\ACLAIS-Lab\\code NT AUTHORITY\\SYSTEM:(OI)(CI)(F)",
-                                                 "                   BUILTIN\\Administrators:(OI)(CI)(F)",
-                                                 "                   LAPTOP-FMQ8RARQ\\saipr:(OI)(CI)(F)",
-                                                 "                   LAPTOP-FMQ8RARQ\\AclaisWorker:(OI)(CI)(RX)",
-                                                 "",
-                                                 "Successfully processed 1 files; Failed processing 0 files"
-                                             ],
-                          "repository_application_code":  [
-                                                              "D:\\Workspace\\IDL\\ACLAIS-1\\aclais\\backend\\src\\aclais LAPTOP-FMQ8RARQ\\AclaisWorker:(OI)(CI)(N)",
-                                                              "                                                    LAPTOP-FMQ8RARQ\\AclaisWorker:(I)(OI)(CI)(N)",
-                                                              "                                                    BUILTIN\\Administrators:(I)(F)",
-                                                              "                                                    BUILTIN\\Administrators:(I)(OI)(CI)(IO)(F)",
-                                                              "                                                    NT AUTHORITY\\SYSTEM:(I)(F)",
-                                                              "                                                    NT AUTHORITY\\SYSTEM:(I)(OI)(CI)(IO)(F)",
-                                                              "                                                    NT AUTHORITY\\Authenticated Users:(I)(M)",
-                                                              "                                                    NT AUTHORITY\\Authenticated Users:(I)(OI)(CI)(IO)(M)",
-                                                              "                                                    BUILTIN\\Users:(I)(RX)",
-                                                              "                                                    BUILTIN\\Users:(I)(OI)(CI)(IO)(GR,GE)",
-                                                              "",
-                                                              "Successfully processed 1 files; Failed processing 0 files"
-                                                          ],
-                          "repository_evidence":  [
-                                                      "D:\\Workspace\\IDL\\ACLAIS-1\\evidence LAPTOP-FMQ8RARQ\\AclaisWorker:(OI)(CI)(N)",
-                                                      "                                   BUILTIN\\Administrators:(I)(F)",
-                                                      "                                   BUILTIN\\Administrators:(I)(OI)(CI)(IO)(F)",
-                                                      "                                   NT AUTHORITY\\SYSTEM:(I)(F)",
-                                                      "                                   NT AUTHORITY\\SYSTEM:(I)(OI)(CI)(IO)(F)",
-                                                      "                                   NT AUTHORITY\\Authenticated Users:(I)(M)",
-                                                      "                                   NT AUTHORITY\\Authenticated Users:(I)(OI)(CI)(IO)(M)",
-                                                      "                                   BUILTIN\\Users:(I)(RX)",
-                                                      "                                   BUILTIN\\Users:(I)(OI)(CI)(IO)(GR,GE)",
-                                                      "",
-                                                      "Successfully processed 1 files; Failed processing 0 files"
-                                                  ]
-                      },
-    "runtime_import":  "passed"
+    "check_count":  75,
+    "fixture_count":  14,
+    "code_file_count":  566,
+    "fixture_integrity_passed":  true,
+    "owner_checks_passed":  true,
+    "credential_value_recorded":  false,
+    "raw_inventory_committed":  false,
+    "checks":  [
+                   {
+                       "name":  "worker_identity",
+                       "actual":  "verified_worker_sid",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "probe_command_line_contains_no_credential",
+                       "actual":  "no_credential_pattern",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "worker_environment_has_no_credential_variables",
+                       "actual":  "none_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_read",
+                       "actual":  "readable",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_overwrite_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_rename_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_replace_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "temporary_output_create_write_delete",
+                       "actual":  "operation_succeeded",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "confidential_original_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "permitted_original_read_denied:project-report.md",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "permitted_original_read_denied:meeting-notes.md",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "permitted_original_read_denied:invoice.csv",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_overwrite_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_replace_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "originals_parent_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "store_parent_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "work_parent_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_readable",
+                       "actual":  "operation_succeeded",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_rename_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_application_code_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_application_code_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_frontend_bundle_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_frontend_bundle_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_backend__venv_Lib_site-packages_fastapi___init___py_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_backend__venv_Lib_site-packages_fastapi___init___py_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_scripts_manage_ps1_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_scripts_manage_ps1_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "scripts_aclais_ps1_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "scripts_aclais_ps1_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "shared_openapi_json_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "shared_openapi_json_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_evidence_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_root_delete_access_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_git_metadata_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_git_metadata_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_ancestor_1_delete_access_denied",
+                       "actual":  "sharing_violation",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_ancestor_2_delete_access_denied",
+                       "actual":  "sharing_violation",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_evidence_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_evidence_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_sentinel_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_sentinel_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_child_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_child_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_credential_unavailable_to_worker",
+                       "actual":  "credential_not_found_in_worker_vault",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "originals_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "evidence_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "application_code_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "store_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "work_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "temporary_output_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "originals_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "evidence_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "application_code_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   }
+               ]
 }

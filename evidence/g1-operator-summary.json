@@ -1,0 +1,14 @@
+{
+  "checkpoint": "A10",
+  "passed": true,
+  "tested_backend_sha256": "b5b749d1e95c838c572570809f0704ba1be011d343f12e7dc2d5995df8c6887c",
+  "permission_drift_refused": true,
+  "duplicate_start_refused": true,
+  "active_controller_reset_refused": true,
+  "active_worker_reset_refused": true,
+  "scoped_stop_observed": true,
+  "wrong_process_identity_refused": true,
+  "owned_reset_completed": true,
+  "wrong_teardown_confirmation_refused": true,
+  "raw_values_committed": false
+}

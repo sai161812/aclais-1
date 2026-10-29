@@ -613,6 +613,13 @@ class _NativeApi:
             self._raise_last_error("stdin_create")
         return ctypes.c_void_p(handle)
 
+    def hold_source_directory(self, path: Path) -> ctypes.c_void_p:
+        """Prevent source-namespace rename without changing ancestor permissions."""
+        handle = self.kernel32.CreateFileW(str(path), 1, 3, None, 3, 0x02000000, None)
+        if not handle or handle == ctypes.c_void_p(-1).value:
+            self._raise_last_error("source_namespace_guard")
+        return ctypes.c_void_p(handle)
+
     def create_job(self) -> ctypes.c_void_p:
         handle = self.kernel32.CreateJobObjectW(None, None)
         if not handle:
@@ -944,6 +951,17 @@ class WindowsWorkerController:
         self._active: set[WorkerHandle] = set()
         self._lock = threading.RLock()
         self._shutdown = False
+        self._source_guards: list[ctypes.c_void_p] = []
+        try:
+            for directory in Path(__file__).resolve().parents:
+                if directory.parent == directory:
+                    break
+                self._source_guards.append(self._api.hold_source_directory(directory))
+        except Exception:
+            for guard in self._source_guards:
+                self._api.close_handle(guard)
+            self._source_guards.clear()
+            raise
 
     def start_a3_private_probe(
         self,
@@ -1279,6 +1297,10 @@ class WindowsWorkerController:
                 failures.append(exc)
         if failures:
             raise LauncherError("controller_shutdown_cleanup") from None
+        with self._lock:
+            for guard in self._source_guards:
+                self._api.close_handle(guard)
+            self._source_guards.clear()
 
 
 class WorkerHandle:

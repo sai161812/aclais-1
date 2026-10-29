@@ -309,16 +309,6 @@ try {
     if (-not (Test-Path -LiteralPath $checkoutEvidence)) {
         New-Item -ItemType Directory -Path $checkoutEvidence -Force | Out-Null
     }
-    foreach ($protectedCheckoutPath in @(
-        (Join-Path $componentRoot 'backend\src'),
-        (Join-Path $componentRoot 'frontend\src'),
-        (Join-Path $componentRoot 'frontend\dist'),
-        $checkoutEvidence
-    )) {
-        if (Test-Path -LiteralPath $protectedCheckoutPath) {
-            Set-A2WorkerDenyTree -Path $protectedCheckoutPath -WorkerSid $workerSid -Recursive
-        }
-    }
 Set-A2AclTree -Path $labRoot -OwnerSid $ownerSid -WorkerSid $workerSid -WorkerRights None | Out-Null
 Set-A2AclItem -Path $labRoot -OwnerSid $ownerSid -WorkerSid $workerSid -WorkerRights X -InheritWorkerRights $false
 Set-A2AclItem -Path (Join-Path $labRoot 'store') -OwnerSid $ownerSid -WorkerSid $workerSid -WorkerRights X -InheritWorkerRights $false
@@ -404,6 +394,7 @@ Set-A2AclTree -Path (Join-Path $labRoot 'work\temporary-output') -OwnerSid $owne
 Set-A2AclTree -Path (Join-Path $labRoot 'code') -OwnerSid $ownerSid -WorkerSid $workerSid -WorkerRights RX | Out-Null
 
 $credentialUserName = '{0}\{1}' -f $env:COMPUTERNAME, $workerName
+& (Join-Path $PSScriptRoot 'protect_checkout.ps1') | Out-Null
 [AclaisA2CredentialNative]::WriteGeneric($credentialTarget, $credentialUserName, $password)
 
 $result = [ordered]@{

@@ -10,6 +10,7 @@
               "INVALID_REQUEST",
               "NOT_FOUND",
               "PAYLOAD_TOO_LARGE",
+              "RATE_LIMITED",
               "AUTH_INVALID",
               "POLICY_DENIED",
               "TASK_BUSY",
@@ -1378,7 +1379,18 @@
           "id": {
             "enum": [
               "application_api",
-              "g1_protection"
+              "g1_protection",
+              "owner_and_worker_identity",
+              "effective_runtime_permissions",
+              "checkout_dependencies_and_commands",
+              "code_and_fixture_integrity",
+              "credential_retrieval",
+              "job_configuration",
+              "launch_preflight",
+              "database_integrity",
+              "owned_installation",
+              "no_active_worker",
+              "controller_lifecycle"
             ],
             "title": "Id",
             "type": "string"
@@ -2708,6 +2720,16 @@
               }
             },
             "description": "Strict request validation failed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Repeated invalid requests are temporarily limited"
           },
           "500": {
             "content": {

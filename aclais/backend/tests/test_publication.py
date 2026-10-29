@@ -22,6 +22,7 @@ from aclais.persistence.models import (
     CreateTaskRequest,
     JournalState,
     TaskStatus,
+    TerminalCause,
 )
 from aclais.publication import (
     OutputCollision,
@@ -30,8 +31,6 @@ from aclais.publication import (
     SimulatedPublicationCrash,
     _move_without_replace,
 )
-
-pytestmark = pytest.mark.portable
 
 NOW = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 FIXTURE = Path(__file__).parent / "fixtures" / "a4-create-task-request.json"
@@ -110,6 +109,7 @@ class _FailOnce:
         "after_final_commit",
     ],
 )
+@pytest.mark.portable
 def test_exact_retry_recovers_each_publication_crash_boundary(
     tmp_path: Path, boundary: str
 ) -> None:
@@ -139,6 +139,7 @@ def test_exact_retry_recovers_each_publication_crash_boundary(
         )
 
 
+@pytest.mark.portable
 def test_restart_aborts_only_an_unwritten_output_reservation(tmp_path: Path) -> None:
     database, task, _, _, publisher, _ = _harness(tmp_path)
     request = BrokerPublishOutputRequest.model_validate_json(_body())
@@ -159,6 +160,7 @@ def test_restart_aborts_only_an_unwritten_output_reservation(tmp_path: Path) -> 
     assert database.output_journal(record.output_id).state == JournalState.ABORTED
 
 
+@pytest.mark.portable
 def test_restart_marks_a_missing_durable_stage_inconsistent(tmp_path: Path) -> None:
     database, task, _, _, publisher, _ = _harness(tmp_path)
     request = BrokerPublishOutputRequest.model_validate_json(_body())
@@ -187,6 +189,7 @@ def test_restart_marks_a_missing_durable_stage_inconsistent(tmp_path: Path) -> N
     assert database.output_journal(record.output_id).state == JournalState.INCONSISTENT
 
 
+@pytest.mark.portable
 def test_exact_retry_after_durable_output_reservation_uses_database_state(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -214,6 +217,7 @@ def test_exact_retry_after_durable_output_reservation_uses_database_state(
     assert record.state == JournalState.PUBLISHED
 
 
+@pytest.mark.portable
 def test_retry_reflushes_a_complete_but_uncommitted_stage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -242,6 +246,7 @@ def test_retry_reflushes_a_complete_but_uncommitted_stage(
     assert record.state == JournalState.PUBLISHED
 
 
+@pytest.mark.portable
 def test_finalization_database_failure_withholds_then_retry_commits(tmp_path: Path) -> None:
     database, task, token, output_root, publisher, broker = _harness(tmp_path)
     original_finalize = database.finalize_output_publication
@@ -268,6 +273,7 @@ def test_finalization_database_failure_withholds_then_retry_commits(tmp_path: Pa
     assert len(list(output_root.rglob("*.md"))) == 1
 
 
+@pytest.mark.portable
 def test_destination_collision_is_never_overwritten_and_is_withheld(tmp_path: Path) -> None:
     database, task, _, output_root, publisher, _ = _harness(tmp_path)
     request_id = uuid4()
@@ -300,6 +306,7 @@ def test_destination_collision_is_never_overwritten_and_is_withheld(tmp_path: Pa
         publisher.read_published(record.output_id)
 
 
+@pytest.mark.portable
 def test_destination_collision_racing_the_no_replace_move_marks_inconsistent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -324,6 +331,7 @@ def test_destination_collision_racing_the_no_replace_move_marks_inconsistent(
         OutputPublisher(database, output_root).read_published(record.output_id)
 
 
+@pytest.mark.portable
 def test_published_file_tampering_is_detected_and_withheld(tmp_path: Path) -> None:
     database, _, token, output_root, publisher, broker = _harness(tmp_path)
     result = broker.execute(token, _body(), now=NOW + timedelta(seconds=3))
@@ -334,6 +342,37 @@ def test_published_file_tampering_is_detected_and_withheld(tmp_path: Path) -> No
     with pytest.raises(OutputUnavailable):
         publisher.read_published(result.body.output_id)
     assert database.output_journal(result.body.output_id).state == JournalState.INCONSISTENT
+
+
+@pytest.mark.portable
+def test_restart_reconciles_terminal_task_publications_and_detects_missing_file(tmp_path):
+    database, task, token, root, publisher, broker = _harness(tmp_path)
+    result = broker.execute(token, _body(), now=NOW + timedelta(seconds=3))
+    database.transition_task(task.task_id, TaskStatus.VERIFYING, now=NOW + timedelta(seconds=4))
+    database.transition_task(task.task_id, TaskStatus.FAILED, now=NOW + timedelta(seconds=5),
+                             terminal_cause=TerminalCause.VERIFICATION_FAILED)
+    metadata = database.published_output(result.body.output_id)
+    (root / str(task.task_id) / metadata.file_name).unlink()
+    with pytest.raises(OutputUnavailable):
+        publisher.reconcile_all()
+    assert database.output_journal(result.body.output_id).state == JournalState.INCONSISTENT
+
+
+@pytest.mark.portable
+def test_restart_quarantines_unknown_output_without_serving_or_overwriting(tmp_path):
+    root = tmp_path / "outputs"
+    root.mkdir()
+    database = Database(tmp_path / "controller.sqlite3")
+    unknown = root / "unknown.bin"
+    unknown.write_bytes(b"synthetic orphan output")
+    publisher = OutputPublisher(database, root)
+    with pytest.raises(OutputUnavailable):
+        publisher.reconcile_all(scan_unknown=True)
+    assert not unknown.exists()
+    archived = list((root / ".quarantine").glob("*/*"))
+    assert any(p.read_bytes() == b"synthetic orphan output" for p in archived)
+    assert database.publication_task_ids() == ()
+    publisher.reconcile_all(scan_unknown=True)
 
 
 @pytest.mark.windows_enforcement

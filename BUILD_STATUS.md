@@ -7,7 +7,7 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 ## Current state
 
 - All nine specification files in `docs/` have been reviewed in the prescribed order and reconciled for consistent implementation.
-- The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` as the default before the first push and now reports `aclais-prototype` after the first branch was pushed to the empty repository.
+- The supplied repository is verified as `sai161812/aclais-1` at `https://github.com/sai161812/aclais-1.git`; it is public. GitHub reported `main` before the first push and `aclais-prototype` afterward; A10 owner delegation restored the unchanged documentation baseline as remote `main` and verified it as the default (D-046).
 - The working branch remains `aclais-prototype`, tracking `origin/aclais-prototype`; R0 startup implementation commit `860070068607acb7004a2cc001a5b7e39854bce8` was pushed, the local and remote heads matched, and [run 9](https://github.com/sai161812/aclais-1/actions/runs/40769494744) passed for that revision. Synchronization and CI for its final documentation-only evidence commit are reported separately in the completion report.
 - Current source is organized under `aclais/`, `receiver/`, and `document-tools/`; root `tests/` is cross-component only, root `scripts/` is orchestration only, and `shared/` holds schemas/minimal protocol notes. Receiver and Document Tools contain reservation notes only. The existing `docs/` arrangement and protected `C:\ACLAIS-Lab` runtime location were retained. A2/A3 Windows checks were rerun after the move; both portable CI jobs passed on the R0 implementation commit.
 - A3 now provides the fixed private Windows probe launcher, Credential Manager retrieval, suspended alternate-user creation, pre-resume Job Object assignment, bounded output capture and scoped deadline/shutdown cleanup. Its real target-machine checks pass; portable checks remain a separate lane. This checkpoint does not complete G1.
@@ -174,4 +174,15 @@ Historical A1–A3 command paths below describe the tree when those runs occurre
 
 ## Next step
 
-A10 complete G1 audit is next. G1 remains incomplete until A10 passes; receiver G2 and Document Tools G3 remain gated.
+A10 local audit is complete; hosted exact-revision CI and draft PR are being finalized below. Do not begin a later production component in this turn.
+
+
+## A10 / G1 audit
+
+- Status: LOCAL PASS; hosted current-revision CI and synchronization pending. G1 is not yet marked PASS on the strength of a prior hosted run.
+- Audited all nine specifications against A0-A9 implementation and the actual demonstration machine. The requirement matrix is evidence/G1.md. Closed measured readiness/controller failure health, complete source/dependency/Git-metadata protection and ancestor-rename guards, all-task output recovery/orphan quarantine, invalid-request throttling, scoped operator commands/reset recovery, junction refusal, bootstrap failure redaction, polling and evidence-copy gaps. No receiver or Document Tools production code was added.
+- Portable local: scripts/check.ps1 from C:\Windows\Temp exited 0; 130 backend tests, Ruff, OpenAPI/type consistency, frontend typecheck/lint/build, npm audit 0 vulnerabilities. The selector explicitly excludes Windows enforcement.
+- Actual Windows/NTFS target: aclais/scripts/check_g1_windows.ps1 from C:\Windows\Temp exited 0; 13 Windows tests, zero skips; separate isolated UI fixture test 1 passed. The direct actual-worker probe passed 75 checks and 14 independent seeded-fixture preconditions before and after the suite. Chrome and Edge cookie-host isolation/approval and actual child cleanup passed. Screenshots at both required sizes were inspected; typed UI fixture screenshots visibly disclaim enforcement/receiver evidence.
+- Tested implementation-input manifest: `9b5a7b18fa6bcf1fb9f4eb01cabcbf5d5374600c4cb9c5f26379e98d34717bf3` (111 files; normalized method/scope in evidence/G1.md). Sanitized source/status summaries and 19 current visual captures are Git-trackable; raw inventories, process captures, databases, credentials, canary fixtures, quarantine and reset archives stay local.
+- The live doctor reports core checks passing and production-worker readiness unavailable pending fixed G3 entrypoints. Real receiver integration remains PENDING_G4. Actual incomplete confidentiality is unknown, never BLOCKED/verified success. Destructive live teardown/account deletion was not run; disposable safety tests passed, and the preexisting-account provenance limitation is recorded.
+- Implementation commit, exact remote verification, hosted CI and draft PR: pending the reviewed implementation push.

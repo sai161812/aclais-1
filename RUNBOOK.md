@@ -1,5 +1,24 @@
 # ACLAIS local development runbook
 
+## Protected G1 operator commands
+
+From any directory, use `& '<repository-root>\scripts\aclais.ps1' -Action doctor|start|stop|reset|teardown` with exactly one action. These commands delegate to `aclais/scripts/manage.ps1`; they use the sentinel-owned `C:\ACLAIS-Lab` and ordinary owner session. `start` stays in the foreground, opens the one-time owner bootstrap locally, and stops with Ctrl+C. `stop` verifies the recorded owner PID, creation time and instance before requesting shutdown and waiting for observed process exit. It never kills a port owner or unrelated process. A duplicate controller or occupied port fails.
+
+`doctor` measures core SID/non-admin, DACLs, fixture/code inventory, credential retrieval, database integrity/migration version, and kill-on-close Job Object configuration. Fresh core checks also precede admission; each launch separately verifies suspended-process identity and actual job assignment. A passing historical G1 gate does not make absent G3 production workers ready. Until those fixed entrypoints are installed, health remains **unavailable** with `g1_protection=unknown`, and product launch refuses without creating a task. The unprotected development health process never claims enforcement.
+
+`reset` refuses a live controller, worker, or nonterminal task. It archives raw evidence and a consistent database backup, restores only fixed synthetic fixture templates, rotates the private canary, and retains task history. A protected reset journal permits recovery of interrupted multi-file changes; unresolved recovery blocks startup. Do not edit the manifest/baseline to turn changed files green. Raw archives, databases, credentials and fixture contents remain outside Git.
+
+`teardown -ConfirmRootId '<exact-owned-sentinel-root-id>'` refuses an incorrect identity or active work. It restores recorded checkout DACLs, removes only the recorded owner Credential Manager entry, and archives the owned lab beside its original location rather than deleting evidence. An interrupted retirement blocks startup and can be retried. The initial installation did not record whether the local account preexisted; teardown therefore retains that account. Account deletion is a separate administrative decision. The G1 audit tests scoped retirement on disposable owned fixtures; it does not uninstall the active demonstration environment.
+
+Run the complete local lanes separately:
+
+```powershell
+& '<repository-root>\scripts\check.ps1'
+& '<repository-root>\aclais\scripts\check_g1_windows.ps1'
+```
+
+The first is portable and cannot establish Windows security. The second must run on the designated provisioned Windows/NTFS machine, refreshes fixed private probes, measures real worker access before and after tests, rejects skipped target tests, and records `evidence/g1-check-summary.json`. Raw JUnit and inventory records remain owner-protected locally. Isolated `windows_ui` contract fixtures run separately and are visibly labeled; they never establish enforcement or receiver integration. Runtime assets are local and require no font/CDN access. See `evidence/G1.md` for the requirement matrix, exact tested source digest, actual counts and limitations.
+
 ## Repository layout
 
 This is one repository for all three components. ACLAIS source, tests, tools, and dependencies live in `aclais/`; the later receiver and Document Tools source roots are `receiver/` and `document-tools/`; `shared/` holds minimal shared schemas/protocols. Root `tests/` is for cross-component acceptance and root `scripts/` is for whole-system orchestration. Protected fixture data, local credentials, databases, raw logs, and installed worker code remain in their designated runtime locations outside Git.
@@ -194,3 +213,6 @@ Run portable checks from any directory with `scripts/check.ps1`. On the provisio
 The private browser test uses a fresh disposable SQLite database, the protected seeded documents, the actual ACLAIS APIs, and the existing A3 private probe. It checks keyboard approval, side-effect-free approval-page loading, rendered inert output, event sequence order before and after refresh and on Activity, disconnection and reconnection, an unavailable preflight response, cancellation with verified worker termination, and a policy-denial incident with pending then completed verifier evidence. It captures sanitized screenshots at 1366x768 and 1920x1080 plus one reduced-motion screenshot. The test-only health response is used only to exercise unavailable-state rendering; production status always comes from backend responses. A9 does not claim a verified incident when the real receiver adapter leaves confidentiality unknown.
 
 The frontend preview binds to `127.0.0.2:5173` and has no API proxy. Only the built owner UI served from `127.0.0.1:8765` is connected. During an outage, the UI clears green protection status and marks active task progress as disconnected; after refresh it rebuilds state from persisted task, event, incident and evidence responses.
+
+
+Source protection includes the owned checkout root and Git metadata. Controller-held Windows directory handles prevent source-ancestor rename while workers can run; their handles are non-inheritable and close after verified shutdown. The audit changes no ACL outside the owned project. Repeated package installation can produce mixed ACL ordering; the scoped protector canonicalizes existing ACEs without dropping their rights before reapplying worker denial. Do not bypass this protection because source-file reads alone pass.

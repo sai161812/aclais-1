@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import hashlib
+import json
 import os
 import stat
 import sys
@@ -11,7 +12,7 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 from typing import BinaryIO
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from aclais.persistence.database import (
     Database,
@@ -303,6 +304,11 @@ class OutputPublisher:
 
         recovered: list[str] = []
         for record in self.database.outputs_for_task(task_id):
+            if record.state == JournalState.PUBLISHED:
+                self.read_published(record.output_id)
+                continue
+            if record.state == JournalState.INCONSISTENT:
+                raise OutputUnavailable("an inconsistent publication requires operator review")
             if record.state in {
                 JournalState.PUBLISHED,
                 JournalState.ABORTED,
@@ -367,6 +373,39 @@ class OutputPublisher:
             )
             recovered.append("published")
         return tuple(recovered)
+
+    def reconcile_all(self, *, scan_unknown: bool = False) -> None:
+        known: set[Path] = set()
+        for task_id in self.database.publication_task_ids():
+            self.reconcile_task(task_id)
+            for record in self.database.outputs_for_task(task_id):
+                known.update(self.paths(record))
+        if not scan_unknown:
+            return
+        unknown: list[Path] = []
+        for task_directory in self.output_root.iterdir():
+            if task_directory.name == ".quarantine":
+                _require_plain_tree(task_directory)
+                continue
+            _require_plain_tree(task_directory)
+            if not task_directory.is_dir():
+                unknown.append(task_directory)
+                continue
+            for file in task_directory.rglob("*"):
+                _require_plain_tree(file)
+                if file.is_file() and file not in known:
+                    unknown.append(file)
+        if unknown:
+            quarantine = self.output_root / ".quarantine" / str(uuid4())
+            quarantine.mkdir(parents=True)
+            records = []
+            for file in unknown:
+                destination = quarantine / str(uuid4())
+                _move_without_replace(file, destination)
+                records.append({"source": file.relative_to(self.output_root).as_posix(),
+                                "quarantined_as": destination.name})
+            (quarantine / "findings.json").write_text(json.dumps(records), encoding="utf-8")
+            raise OutputUnavailable("unknown output files were quarantined; review before restart")
 
     def _remove_partial_staging(self, staging: Path, record: OutputJournalRecord) -> None:
         try:

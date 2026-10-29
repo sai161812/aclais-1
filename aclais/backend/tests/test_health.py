@@ -26,7 +26,7 @@ def test_health_is_live_and_reports_protection_unavailable() -> None:
             {
                 "id": "g1_protection",
                 "status": "unknown",
-                "summary": "G1 verification and owner-session gates are incomplete.",
+                "summary": "Protected runtime is not enabled for this API process.",
             },
         ],
     }

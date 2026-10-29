@@ -4,7 +4,7 @@ on:
   push:
     branches: [aclais-prototype]
   pull_request:
-    branches: [aclais-prototype]
+    branches: [main]
 
 permissions:
   contents: read
@@ -41,7 +41,7 @@ jobs:
 
       - name: Portable backend tests
         working-directory: aclais/backend
-        run: uv run --locked pytest -m portable
+        run: uv run --locked pytest -m "portable and not windows_enforcement"
 
       - name: Check generated OpenAPI
         working-directory: aclais/backend

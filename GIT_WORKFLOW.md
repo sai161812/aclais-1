@@ -6,7 +6,7 @@
 - Remote: `origin` → `https://github.com/sai161812/aclais-1.git`
 - Visibility: public
 - Default branch before the first push: `main`
-- Current default branch reported by GitHub: `aclais-prototype` (after the first branch was pushed to the empty repository)
+- Current verified default branch: `main` (A10 owner-delegated correction); the first working-branch push originally made `aclais-prototype` the default
 - Initial remote state: empty; no branches or commits
 - Workspace before setup: `D:\Workspace\IDL\ACLAIS-1` had no `.git` directory, local branch/history, staged changes, remote, or tracking configuration. Its root contained the nine supplied specification files under `docs/`.
 - Local baseline: commit `0752747004fc689e07f8e55435964bf4d267fd12` on `main`, containing the specification pack, workflow documents, agent instructions, and ignore rules.
@@ -41,3 +41,9 @@ For the repository-structure checkpoint, stage the moves and all import, script,
 R0 follow-up startup commands use root `scripts/start.ps1 -Service Backend|Frontend` and delegate component details to `aclais/scripts/start.ps1`. Verify startup and Ctrl+C shutdown from an unrelated directory, strict occupied-port failure without replacing an existing owner, and the implemented portable checks before committing the orchestration change. This follow-up does not start A4 or invalidate unchanged worker-runtime/ACL paths.
 
 Never force-push, destructively reset, rewrite shared history, change repository settings, merge, or deploy without a separate instruction. Use `.gitignore` for local secrets/environments, runtime databases and raw receipts, generated confidential fixtures, unsanitized logs, and build output; retain synthetic fixture templates and sanitized summaries.
+
+## A10 owner-delegated default/base correction
+
+The owner explicitly delegated resolution of the self-PR conflict during A10 ("decide yourself and mention in relevant docs"). Publish only the existing local documentation baseline 0752747004fc689e07f8e55435964bf4d267fd12 as main, then set GitHub's default to main. Both actions succeeded and authenticated metadata independently verified sai161812/aclais-1, public, default main. No existing branch history or visibility was changed. This one baseline publication/default correction is the separately authorized exception to working-branch-only pushes and settings preservation; it is not continuing permission for other settings/default-branch changes.
+
+Keep aclais-prototype tracking origin/aclais-prototype. Checkpoint commits still push only that branch. Target one draft PR from aclais-prototype to verified main; do not request reviewers, merge or deploy. Portable push CI targets the working branch; pull_request CI targets main. Verify CI against the exact current pushed head, not an older successful run or only a PR merge ref.

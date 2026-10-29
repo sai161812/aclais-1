@@ -10,6 +10,20 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'a2_credential_manager.ps1')
 . (Join-Path $PSScriptRoot 'a2_acl.ps1')
+Add-Type -TypeDefinition @'
+using System;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+public static class AclaisA2NamespaceProbe {
+    [DllImport("kernel32.dll", EntryPoint="CreateFileW", CharSet=CharSet.Unicode, SetLastError=true)]
+    private static extern SafeFileHandle Open(string p, uint a, uint s, IntPtr d, uint c, uint f, IntPtr t);
+    public static void ProbeDeleteAccess(string path) {
+        using (var h=Open(path,0x10000,7,IntPtr.Zero,3,0x02000000,IntPtr.Zero))
+            if (h.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error());
+    }
+}
+'@
 
 $script:checks = @()
 $script:workerName = 'AclaisWorker'
@@ -76,7 +90,7 @@ function Test-A2ExpectedDenied {
         $details = Get-A2WindowsError -Exception $_.Exception
         $denied = $ExpectedWin32Errors -contains $details.win32_error
         $expectedText = ($ExpectedWin32Errors | ForEach-Object { 'Win32 {0}' -f $_ }) -join ' or '
-        $actualText = if ($details.win32_error -eq 5) { 'access_denied' } elseif ($details.win32_error -in @(2, 3)) { 'path_hidden_or_not_found' } else { 'unexpected_error' }
+        $actualText = if ($details.win32_error -eq 5) { 'access_denied' } elseif ($details.win32_error -eq 32) { 'sharing_violation' } elseif ($details.win32_error -in @(2, 3)) { 'path_hidden_or_not_found' } else { 'unexpected_error' }
         Add-A2ProbeCheck -Name $Name -Passed $denied -Expected $expectedText `
             -Actual $actualText -ErrorDetails $details
         return $denied
@@ -301,8 +315,33 @@ try {
     $null = Test-A2ExpectedDenied -Name 'repository_frontend_bundle_write_denied' -Operation {
         Test-A2WriteOpen -Path $repositoryFrontendIndex
     } -ExpectedWin32Errors @(5, 2, 3)
+    foreach ($relative in @('aclais\backend\.venv\Lib\site-packages\fastapi\__init__.py', 'aclais\scripts\manage.ps1', 'scripts\aclais.ps1', 'shared\openapi.json')) {
+        $controllerFile = Join-Path $repositoryRoot $relative
+        $label = ($relative.Replace('\','_').Replace('.','_'))
+        $null = Test-A2ExpectedDenied -Name ($label + '_read_denied') -Operation { Test-A2CanRead -Path $controllerFile } -ExpectedWin32Errors @(5)
+        $null = Test-A2ExpectedDenied -Name ($label + '_write_denied') -Operation { Test-A2WriteOpen -Path $controllerFile } -ExpectedWin32Errors @(5)
+    }
     $null = Test-A2ExpectedDenied -Name 'repository_evidence_read_denied' -Operation {
         Test-A2CanRead -Path $repositoryEvidenceProbe
+    }
+    $null = Test-A2ExpectedDenied -Name 'repository_root_delete_access_denied' -Operation {
+        [AclaisA2NamespaceProbe]::ProbeDeleteAccess($repositoryRoot)
+    }
+    $null = Test-A2ExpectedDenied -Name 'repository_git_metadata_read_denied' -Operation {
+        Test-A2CanRead -Path (Join-Path $repositoryRoot '.git\config')
+    }
+    $null = Test-A2ExpectedDenied -Name 'repository_git_metadata_write_denied' -Operation {
+        Test-A2WriteOpen -Path (Join-Path $repositoryRoot '.git\config')
+    }
+    $ancestor = [IO.DirectoryInfo]::new($repositoryRoot).Parent
+    $ancestorNumber = 0
+    while ($ancestor.Parent) {
+        $ancestorNumber++
+        $null = Test-A2ExpectedDenied -Name "repository_ancestor_${ancestorNumber}_delete_access_denied" `
+            -ExpectedWin32Errors @(5,32) -Operation {
+                [AclaisA2NamespaceProbe]::ProbeDeleteAccess($ancestor.FullName)
+            }
+        $ancestor = $ancestor.Parent
     }
     $null = Test-A2ExpectedDenied -Name 'repository_evidence_write_denied' -Operation {
         Test-A2WriteOpen -Path $repositoryEvidenceProbe

@@ -13,7 +13,7 @@ Push-Location $backendDir
 try {
     Invoke-Check 'Sync locked backend environment' 'uv' @('sync', '--locked')
     Invoke-Check 'Backend lint' 'uv' @('run', '--locked', 'ruff', 'check', '.')
-    Invoke-Check 'Portable backend tests' 'uv' @('run', '--locked', 'pytest', '-m', 'portable')
+    Invoke-Check 'Portable backend tests' 'uv' @('run', '--locked', 'pytest', '-m', 'portable and not windows_enforcement')
     Invoke-Check 'OpenAPI source consistency' 'uv' @('run', '--locked', 'python', '../../aclais/scripts/export_openapi.py', '--check')
 }
 finally {

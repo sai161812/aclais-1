@@ -15,6 +15,7 @@ from aclais.lifecycle import LifecycleCoordinator, TaskWorkspace
 from aclais.owner_auth import OwnerAuth
 from aclais.persistence.database import Database
 from aclais.publication import OutputPublisher
+from aclais.readiness import Readiness
 from aclais.tool_registry import FixedToolRegistry
 
 
@@ -86,6 +87,8 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
     if runtime_settings.host != "127.0.0.1" or runtime_settings.port != 8765:
         raise RuntimeError("protected ACLAIS requires its canonical loopback origin")
     layout = RuntimeLayout.open()
+    readiness = Readiness(layout)
+    readiness.require_core()
     workspace = TaskWorkspace(layout)
     workspace.prepare_roots()
     database = Database(layout.root / "state" / "controller.sqlite3")
@@ -105,9 +108,11 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
         launcher=launcher,
         workspace=workspace,
         verifier=verifier,
+        preflight=readiness.require_core,
     )
     lifecycle.recover_before_serving()
     owner_auth = OwnerAuth(database, origin=runtime_settings.expected_origin)
+    output_publisher.reconcile_all(scan_unknown=True)
     bootstrap_url = owner_auth.issue_bootstrap_url()
     tool_registry = FixedToolRegistry(layout.root)
     frontend_dist = Path(__file__).resolve().parents[3] / "frontend" / "dist"
@@ -119,6 +124,7 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
         cancel_task=lifecycle.cancel,
         tool_registry=tool_registry,
         frontend_dist=frontend_dist,
+        health_provider=lambda: readiness.health(controller_accepting=lifecycle.accepting_tasks),
     )
     application.router.add_event_handler("shutdown", lifecycle.shutdown)
     return A8Runtime(

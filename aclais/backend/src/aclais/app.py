@@ -36,6 +36,7 @@ def create_app(
     approved_task_launcher: TaskLauncher | None = None,
     tool_registry: FixedToolRegistry | None = None,
     frontend_dist: Path | None = None,
+    health_provider: Callable[[], HealthResponse] | None = None,
 ) -> FastAPI:
     runtime = settings if settings is not None else Settings()
     application = FastAPI(
@@ -77,6 +78,8 @@ def create_app(
         operation_id="getApiHealth",
     )
     async def get_health() -> HealthResponse:
+        if health_provider is not None:
+            return await run_in_threadpool(health_provider)
         result = HealthResponse(
             schema_version=1,
             status="unavailable",
@@ -90,7 +93,7 @@ def create_app(
                 HealthCheck(
                     id="g1_protection",
                     status="unknown",
-                    summary="G1 verification and owner-session gates are incomplete.",
+                    summary="Protected runtime is not enabled for this API process.",
                 ),
             ),
         )

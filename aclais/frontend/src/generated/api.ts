@@ -316,7 +316,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "INVALID_HOST" | "INVALID_REQUEST" | "NOT_FOUND" | "PAYLOAD_TOO_LARGE" | "AUTH_INVALID" | "POLICY_DENIED" | "TASK_BUSY" | "REQUEST_CONFLICT" | "OUTPUT_ALREADY_PUBLISHED" | "PROTECTION_UNAVAILABLE" | "WORKER_TIMEOUT" | "VERIFICATION_INCOMPLETE" | "CONTROLLER_SHUTDOWN" | "PUBLICATION_INCONSISTENT" | "INTERNAL_ERROR";
+            code: "INVALID_HOST" | "INVALID_REQUEST" | "NOT_FOUND" | "PAYLOAD_TOO_LARGE" | "RATE_LIMITED" | "AUTH_INVALID" | "POLICY_DENIED" | "TASK_BUSY" | "REQUEST_CONFLICT" | "OUTPUT_ALREADY_PUBLISHED" | "PROTECTION_UNAVAILABLE" | "WORKER_TIMEOUT" | "VERIFICATION_INCOMPLETE" | "CONTROLLER_SHUTDOWN" | "PUBLICATION_INCONSISTENT" | "INTERNAL_ERROR";
             /** Message */
             message: string;
             /**
@@ -868,7 +868,7 @@ export interface components {
              * Id
              * @enum {string}
              */
-            id: "application_api" | "g1_protection";
+            id: "application_api" | "g1_protection" | "owner_and_worker_identity" | "effective_runtime_permissions" | "checkout_dependencies_and_commands" | "code_and_fixture_integrity" | "credential_retrieval" | "job_configuration" | "launch_preflight" | "database_integrity" | "owned_installation" | "no_active_worker" | "controller_lifecycle";
             /**
              * Status
              * @enum {string}
@@ -1552,6 +1552,15 @@ export interface operations {
             };
             /** @description Strict request validation failed */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Repeated invalid requests are temporarily limited */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

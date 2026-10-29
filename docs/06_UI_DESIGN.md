@@ -67,3 +67,6 @@ Serve the built owner application and static assets from the authenticated ACLAI
 Capture Workspace, Approval, Running, Incident verified, Verification incomplete, and Disconnected at 1366×768 and 1920×1080. Inspect for clipping, illegible glass, inconsistent padding, excessive empty space, broken icons, focus loss and fake placeholder data. Test keyboard path: select tool → approve → inspect result → open/close incident. Capture at least one reduced-motion run. Production bundle must have no runtime font/CDN requests.
 
 Document Tools should share typography quality but use a distinct simpler neutral utility brand. The receiver can stay a clean text inspector; do not spend UI time there before ACLAIS is finished.
+
+
+G1 records live-backend pending/incomplete states separately from isolated typed UI fixtures for verified-receiver and containment-failure presentation. Fixture screenshots visibly state that no enforcement or receiver evidence is being shown. Production status remains backend-derived. Only terminated containment plus passing integrity and confidentiality displays "Protected originals unchanged"; a controller that no longer accepts work must make protection unavailable. Advanced evidence supports copying task/source identifiers with explicit feedback; no output HTML or Markdown is interpreted as active content.

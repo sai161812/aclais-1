@@ -1,3 +1,4 @@
+param([switch]$UseExistingControllerNamespaceGuard)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -40,9 +41,10 @@ function Restore-A2DisposableTargets {
     $selectedTemplate = Join-Path $componentRoot 'tests\fixtures\templates\selected-input.template.csv'
     $privateBytes = [IO.File]::ReadAllBytes($privateTemplate)
     $selectedBytes = [IO.File]::ReadAllBytes($selectedTemplate)
-    foreach ($name in @('Personnel_Private.csv', 'delete-target.csv', 'rename-target.csv', 'replace-target.csv', 'overwrite-target.csv', 'dacl-target.csv')) {
+    foreach ($name in @('delete-target.csv', 'rename-target.csv', 'replace-target.csv', 'overwrite-target.csv', 'dacl-target.csv')) {
         Write-A2KnownFile -Path (Join-Path $labRoot "store\originals\$name") -Bytes $privateBytes
     }
+    Write-A2KnownFile -Path (Join-Path $labRoot 'store\originals\Personnel_Private.csv') -Bytes ([IO.File]::ReadAllBytes((Join-Path $labRoot 'baseline\Personnel_Private.csv')))
     foreach ($name in @('Selected_Input.csv', 'overwrite-target.csv', 'delete-target.csv', 'rename-target.csv', 'replace-target.csv')) {
         Write-A2KnownFile -Path (Join-Path $labRoot "store\selected\$name") -Bytes $selectedBytes
     }
@@ -188,8 +190,13 @@ $repositoryFrontendIndexPath = Join-Path $componentRoot 'frontend\dist\index.htm
 $repositoryFrontendIndexHashBefore = $null
 $repositoryFrontendIndexHashAfter = $null
 $previousPythonPath = $env:PYTHONPATH
+$additionalSources = @('aclais\backend\.venv\Lib\site-packages\fastapi\__init__.py', 'aclais\scripts\manage.ps1', 'scripts\aclais.ps1', 'shared\openapi.json')
+$additionalHashes = @{}
 
 try {
+    foreach ($relative in $additionalSources) {
+        $additionalHashes[$relative] = (Get-FileHash -LiteralPath (Join-Path $repoRoot $relative) -Algorithm SHA256).Hash
+    }
     if ($isElevated) { throw 'Run the A2 access probe from the ordinary owner session, not its elevated setup shell.' }
     if (-not (Test-Path -LiteralPath $sentinelPath) -or -not (Test-Path -LiteralPath $manifestPath)) {
         throw 'The A2 sentinel or installation manifest is missing.'
@@ -320,6 +327,9 @@ try {
         throw 'Probe command arguments contain a forbidden credential-like string.'
     }
 
+    if (-not $UseExistingControllerNamespaceGuard) {
+        $checkoutGuards = Open-A2CheckoutNamespace -Root $repoRoot
+    }
     $workerProcess = Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') `
         -Credential $workerCredential `
         -ArgumentList $arguments `
@@ -371,6 +381,9 @@ try {
     $repositoryFrontendIndexHashAfter = if (Test-Path -LiteralPath $repositoryFrontendIndexPath -PathType Leaf) {
         (Get-FileHash -LiteralPath $repositoryFrontendIndexPath -Algorithm SHA256).Hash.ToLowerInvariant()
     } else { $null }
+    foreach ($relative in $additionalSources) {
+        if ((Get-FileHash -LiteralPath (Join-Path $repoRoot $relative) -Algorithm SHA256).Hash -ne $additionalHashes[$relative]) { throw 'A protected controller dependency or command changed during the access probe.' }
+    }
     $summary.repository_checkout_integrity = [ordered]@{
         application_source_unchanged = ($repositorySourceHashAfter -and $repositorySourceHashAfter -eq $repositorySourceHashBefore)
         frontend_bundle_unchanged = ($repositoryFrontendIndexHashAfter -and $repositoryFrontendIndexHashAfter -eq $repositoryFrontendIndexHashBefore)
@@ -569,14 +582,26 @@ try {
         '',
         'Owner read access to the protected original, trusted state, evidence marker, and protected code was checked from the ordinary non-elevated owner session. The owner Credential Manager entry was read without elevation and supplied only through the process credential API; the probe arguments contained no password.',
         '',
-        'Fixture SHA-256 integrity was checked after the worker probe and disposable targets were restored. The repository application source and temporary evidence marker hashes were unchanged, and the temporary marker was removed. ACL snapshots are preserved in `a2-access-summary.json`. This evidence records the observed A2 fixture boundary; it does not claim a full machine sandbox or continuous system-call monitoring.'
+        'Fixture SHA-256 integrity was checked after the worker probe and disposable targets were restored. Controller source, dependencies, commands and evidence remained unchanged. Raw hashes, fixture paths and ACL snapshots remain in the owner-protected local evidence report; the Git summary contains status and counts only. This is a fixture boundary, not a full machine sandbox or continuous system-call monitor.'
     )
     $markdownCreatedByRun = -not (Test-Path -LiteralPath $markdownPath)
     [IO.File]::WriteAllText($markdownPath, ($markdown -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
     $sanitizedJsonCreatedByRun = -not (Test-Path -LiteralPath $sanitizedJson)
-    Write-A2Json -Path $sanitizedJson -Value $summary
+    $sanitized = [ordered]@{
+        schema_version=2; checkpoint='A2'; passed=$true; elevated=$false
+        source_revision=(& git -C $repoRoot rev-parse HEAD).Trim()
+        tested_probe_sha256=(Get-FileHash -LiteralPath $probeSource -Algorithm SHA256).Hash.ToLowerInvariant()
+        tested_harness_sha256=(Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        worker_sid=$probe.observed_sid; worker_is_administrator=$probe.is_administrator
+        check_count=$probe.check_count; fixture_count=$fixtureIntegrityBeforeProbe.Count
+        code_file_count=$summary.code_integrity_after_repair.expected_file_count
+        fixture_integrity_passed=$allIntegrityPassed; owner_checks_passed=$allOwnerChecksPassed
+        credential_value_recorded=$false; raw_inventory_committed=$false
+        checks=@($probe.checks | ForEach-Object { @{name=$_.name; passed=$_.passed; actual=$_.actual} })
+    }
+    Write-A2Json -Path $sanitizedJson -Value $sanitized
     Write-A2Json -Path $runtimeEvidence -Value $summary
-    Write-Output ($summary | ConvertTo-Json -Depth 14 -Compress)
+    Write-Output ($sanitized | ConvertTo-Json -Depth 8 -Compress)
 }
 catch {
     $summary.passed = $false
@@ -595,7 +620,7 @@ catch {
     try {
         if (Test-Path -LiteralPath (Split-Path -Parent $markdownPath) -PathType Container) {
             [IO.File]::WriteAllText($markdownPath, ($failureMarkdown -join "`n") + "`n", [Text.UTF8Encoding]::new($false))
-            Write-A2Json -Path $sanitizedJson -Value $summary
+            Write-A2Json -Path $sanitizedJson -Value @{schema_version=2; checkpoint='A2'; passed=$false; phase=$summary.phase; failures=$summary.failures; raw_inventory_committed=$false}
         }
     }
     catch { }
@@ -603,7 +628,7 @@ catch {
         try { Write-A2Json -Path (Join-Path $labRoot 'evidence\a2-access-result.json') -Value $summary }
         catch { }
     }
-    Write-Output ($summary | ConvertTo-Json -Depth 14 -Compress)
+    Write-Output '{"checkpoint":"A2","passed":false,"raw_inventory_committed":false}'
     throw
 }
 finally {
@@ -639,6 +664,9 @@ finally {
         catch { }
     }
     if ($ownerCredential -and $ownerCredential.Password) { $ownerCredential.Password.Dispose() }
+    if (Get-Variable checkoutGuards -ErrorAction SilentlyContinue) {
+        foreach ($guard in $checkoutGuards) { $guard.Dispose() }
+    }
     if ($null -eq $previousPythonPath) { Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue }
     else { $env:PYTHONPATH = $previousPythonPath }
 }

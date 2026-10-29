@@ -6,6 +6,7 @@ import socket
 import threading
 import time
 import uuid
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from aclais.owner_auth import OWNER_SESSION_COOKIE, OwnerAuth
 from aclais.persistence.database import Database
 from aclais.persistence.models import CreateTaskRequest, RevocationCause, TaskStatus
 from aclais.publication import OutputPublisher
+from aclais.readiness import Readiness
 
 pytestmark = pytest.mark.windows_enforcement
 
@@ -120,9 +122,14 @@ def _build_private_approval_runtime(
 ):
     settings = Settings()
     layout = RuntimeLayout.open()
+    namespace = uuid.uuid4().hex
+    layout = replace(
+        layout, verified_output_root=(layout.root / "work" / "private-browser-output" / namespace)
+    )
+    layout.verified_output_root.parent.mkdir(exist_ok=True)
     workspace = TaskWorkspace(layout)
     workspace.prepare_roots()
-    database = Database(layout.root / "state" / f"a9-private-{uuid.uuid4().hex}.sqlite3")
+    database = Database(layout.root / "state" / f"a9-private-{namespace}.sqlite3")
     publisher = OutputPublisher(database, layout.verified_output_root)
     launcher = WindowsWorkerController(layout)
     verifier = FixtureVerifier(
@@ -189,6 +196,7 @@ def _build_private_approval_runtime(
             application.state.private_cancel_exception = type(exc).__name__
             raise
 
+    health_readiness = Readiness(layout)
     application = create_app(
         settings,
         broker=lifecycle.broker,
@@ -197,6 +205,9 @@ def _build_private_approval_runtime(
         cancel_task=private_cancel,
         approved_task_launcher=private_probe_launcher,
         frontend_dist=Path(__file__).resolve().parents[2] / "frontend" / "dist",
+        health_provider=lambda: health_readiness.health(
+            controller_accepting=lifecycle.accepting_tasks
+        ),
     )
     application.router.add_event_handler("shutdown", lifecycle.shutdown)
     return application, lifecycle, database, auth, bootstrap_url
@@ -419,7 +430,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
 
     browser: Any | None = None
     playwright = sync_playwright().start()
-    screenshot_root = Path(__file__).resolve().parents[3] / "evidence" / "a9-visuals"
+    screenshot_root = Path(__file__).resolve().parents[3] / "evidence" / "g1-visuals"
     screenshot_root.mkdir(parents=True, exist_ok=True)
 
     def capture(page, screen: str) -> None:
@@ -441,15 +452,29 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         )
         page = context.new_page()
         external_requests: list[str] = []
+        page_errors: list[str] = []
+        console_errors: list[str] = []
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
+        page.on(
+            "console",
+            lambda message: (
+                console_errors.append(message.text + str(message.location))
+                if message.type == "error"
+                else None
+            ),
+        )
         page.on(
             "request",
-            lambda request: external_requests.append(request.url)
-            if not request.url.startswith("http://127.0.0.1:8765/")
-            else None,
+            lambda request: (
+                external_requests.append(request.url)
+                if not request.url.startswith("http://127.0.0.1:8765/")
+                else None
+            ),
         )
         page.goto(bootstrap_url, wait_until="networkidle")
         session_cookie = next(
-            cookie for cookie in context.cookies("http://127.0.0.1:8765")
+            cookie
+            for cookie in context.cookies("http://127.0.0.1:8765")
             if cookie["name"] == OWNER_SESSION_COOKIE
         )
         session_token = session_cookie["value"]
@@ -477,9 +502,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         with page.expect_response("**/api/tasks") as approval_response:
             page.keyboard.press("Enter")
         response = approval_response.value
-        launch_diagnostic = getattr(
-            app.state, "private_probe_launch_exception", "none"
-        )
+        launch_diagnostic = getattr(app.state, "private_probe_launch_exception", "none")
         assert response.status == 201, (
             f"approval endpoint returned {response.status}: {response.text()}; "
             f"private launch exception={launch_diagnostic}"
@@ -507,12 +530,19 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         persisted_sequences = [event.seq for event in database.events(task_id)]
         assert event_sequences == persisted_sequences
 
+        def slow_real_health(route) -> None:
+            response = route.fetch()
+            time.sleep(0.7)
+            route.fulfill(response=response)
+
+        page.route("**/api/health", slow_real_health)
         page.reload(wait_until="domcontentloaded")
         page.locator(".event-line").first.wait_for(state="visible", timeout=10_000)
         refreshed_sequences = page.locator(".event-line").evaluate_all(
             "items => items.map(item => Number(item.dataset.eventSeq))"
         )
         assert refreshed_sequences == persisted_sequences
+        page.unroute("**/api/health")
         page.get_by_role("button", name="Activity").click()
         page.get_by_role("heading", name="Task history").wait_for(timeout=5_000)
         activity_sequences = page.locator(".event-line").evaluate_all(
@@ -520,6 +550,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         )
         assert activity_sequences == persisted_sequences
         capture(page, "activity")
+        assert console_errors == []
         page.get_by_role("button", name="Workspace", exact=True).click()
         page.get_by_role("heading", name="Workspace").wait_for(timeout=5_000)
 
@@ -528,7 +559,8 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         page.get_by_text("ACLAIS is disconnected").wait_for(timeout=5_000)
         capture(page, "disconnected")
         assert page.locator(".health-card.health-disconnected .health-tag").all_inner_texts() == [
-            "OFFLINE", "OFFLINE"
+            "OFFLINE",
+            "OFFLINE",
         ], page.locator(".health-card").evaluate_all(
             "items => items.map(item => ({className: item.className, text: item.innerText}))"
         )
@@ -554,7 +586,8 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         page.get_by_role("button", name="Refresh workspace").click()
         page.get_by_text("Protection unavailable", exact=True).first.wait_for(timeout=5_000)
         assert page.locator(".health-card.health-unavailable .health-tag").all_inner_texts() == [
-            "UNAVAILABLE", "UNAVAILABLE"
+            "UNAVAILABLE",
+            "UNAVAILABLE",
         ]
         page.unroute("**/api/health")
         page.get_by_role("button", name="Refresh workspace").click()
@@ -658,6 +691,15 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             else "verification-incomplete"
         )
         capture(page, screenshot_name)
+        context.grant_permissions(
+            ["clipboard-read", "clipboard-write"], origin="http://127.0.0.1:8765"
+        )
+        page.get_by_role("button", name="Advanced evidence").click()
+        assert "doc-private" in page.locator(".advanced-evidence").inner_text()
+        page.get_by_role("button", name="Copy Task ID", exact=True).click()
+        page.get_by_text("Task ID copied.", exact=True).wait_for(timeout=5_000)
+        assert page.evaluate("navigator.clipboard.readText()") == incident_task_id
+        page.get_by_role("button", name="Advanced evidence").click()
         page.get_by_role("button", name="Close incident details").focus()
         page.keyboard.press("Shift+Tab")
         assert page.get_by_role("button", name="Advanced evidence").evaluate(
@@ -677,6 +719,7 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
             animations="disabled",
         )
         assert external_requests == []
+        assert page_errors == []
 
     finally:
         lifecycle._private_verification_gate.set()

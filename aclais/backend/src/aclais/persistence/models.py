@@ -191,7 +191,13 @@ class OwnerLogoutResponse(StrictModel):
 
 
 class HealthCheck(StrictModel):
-    id: Literal["application_api", "g1_protection"]
+    id: Literal[
+        "application_api", "g1_protection", "owner_and_worker_identity",
+        "effective_runtime_permissions", "checkout_dependencies_and_commands",
+        "code_and_fixture_integrity", "credential_retrieval", "job_configuration",
+        "launch_preflight", "database_integrity", "owned_installation", "no_active_worker",
+        "controller_lifecycle",
+    ]
     status: Literal["pass", "fail", "unknown"]
     summary: ShortText
 
@@ -796,6 +802,7 @@ class ApiError(StrictModel):
         "INVALID_REQUEST",
         "NOT_FOUND",
         "PAYLOAD_TOO_LARGE",
+        "RATE_LIMITED",
         "AUTH_INVALID",
         "POLICY_DENIED",
         "TASK_BUSY",

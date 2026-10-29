@@ -191,6 +191,7 @@ class LifecycleCoordinator:
         wall_clock: Callable[[], datetime] = utc_now,
         token_factory: Callable[[], str] | None = None,
         process_stopped: Callable[[TaskRecord], bool] | None = None,
+        preflight: Callable[[], None] | None = None,
     ) -> None:
         self.layout = layout
         self.database = database
@@ -207,6 +208,7 @@ class LifecycleCoordinator:
         self._wall_clock = wall_clock
         self._token_factory = token_factory or (lambda: secrets.token_urlsafe(32))
         self._process_stopped = process_stopped
+        self._preflight = preflight
         self._admission_lock = threading.Lock()
         self._active_lock = threading.RLock()
         self._active: dict[UUID, _ActiveTask] = {}
@@ -246,6 +248,7 @@ class LifecycleCoordinator:
                             "an interrupted worker identity is still active or unverified"
                         )
                 self._reconcile_stale_worker_configuration()
+                self.output_publisher.reconcile_all()
                 for task in interrupted:
                     self.output_publisher.reconcile_task(task.task_id)
                     current = self.database.get_task(task.task_id)
@@ -354,6 +357,8 @@ class LifecycleCoordinator:
         with self._admission_lock:
             if not self.accepting_tasks:
                 raise LifecycleError("controller is not accepting task work")
+            if self._preflight is not None:
+                self._preflight()
             try:
                 task = self.database.create_task(
                     request,

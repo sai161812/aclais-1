@@ -2040,6 +2040,11 @@ class Database:
             return None
         return self._output_model(row)
 
+    def publication_task_ids(self) -> tuple[UUID, ...]:
+        with self._connection() as connection:
+            rows = connection.execute("SELECT DISTINCT task_id FROM output_records").fetchall()
+        return tuple(_identifier(row[0]) for row in rows)
+
     def outputs_for_task(self, task_id: UUID | str) -> tuple[OutputJournalRecord, ...]:
         identifier = str(_identifier(task_id))
         with self._connection() as connection:

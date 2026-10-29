@@ -6,6 +6,9 @@ import hashlib
 import logging
 import sqlite3
 import stat
+import threading
+import time
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -119,6 +122,28 @@ class BrokerService:
         self._before_admission = before_admission
         self._on_policy_denial = on_policy_denial
         self._on_protection_failure = on_protection_failure
+        self._failure_clock = time.monotonic
+        self._failure_lock = threading.Lock()
+        self._failures: OrderedDict[str, tuple[float, int]] = OrderedDict()
+
+    def _throttled(self, key: str, *, add_failure: bool = False) -> bool:
+        with self._failure_lock:
+            at = self._failure_clock()
+            start, count = self._failures.get(key, (at, 0))
+            if at - start >= 30:
+                start, count = at, 0
+            if add_failure:
+                count += 1
+                self._failures[key] = (start, count)
+                self._failures.move_to_end(key)
+                while len(self._failures) > 256:
+                    self._failures.popitem(last=False)
+            return count > 20
+
+    def _invalid(self, key: str, result: BrokerResult) -> BrokerResult:
+        if self._throttled(key, add_failure=True):
+            return _error(429, "RATE_LIMITED", "Repeated invalid requests are temporarily limited.")
+        return result
 
     def _parse(self, body: bytes) -> tuple[BrokerOperationRequest | None, BrokerResult | None]:
         if not isinstance(body, bytes):
@@ -155,10 +180,16 @@ class BrokerService:
         self, token: str | None, body: bytes, *, now: datetime | None = None
     ) -> BrokerResult:
         """Process one bounded request. Tokens and worker content are never logged."""
-
+        failure_key = hashlib.sha256((token or "").encode("utf-8")).hexdigest()
+        if self._throttled(failure_key):
+            return _error(429, "RATE_LIMITED", "Repeated invalid requests are temporarily limited.")
         request, parse_error = self._parse(body)
         if parse_error is not None:
-            return parse_error
+            try:
+                task = self.database.active_task_for_credential(token or "", at=now or utc_now())
+            except (DatabaseError, sqlite3.Error):
+                return _error(503, "PROTECTION_UNAVAILABLE", "Authorization state is unavailable.")
+            return self._invalid(failure_key if task is not None else "anonymous", parse_error)
         assert request is not None
         at = now or utc_now()
         try:
@@ -171,11 +202,14 @@ class BrokerService:
                 request.request_id,
             )
         if task is None:
-            return _error(
-                401,
-                "AUTH_INVALID",
-                "Worker credential is invalid or expired.",
-                request.request_id,
+            return self._invalid(
+                "anonymous",
+                _error(
+                    401,
+                    "AUTH_INVALID",
+                    "Worker credential is invalid or expired.",
+                    request.request_id,
+                ),
             )
         with self._task_locks.hold(str(task.task_id)):
             if self._before_admission is not None:
@@ -198,6 +232,8 @@ class BrokerService:
             result = self._execute_validated(token, request, at)
             if result.status_code == 503:
                 self._signal_protection_failure(task)
+            if result.status_code in {401, 413, 422}:
+                return self._invalid(failure_key, result)
             return result
 
     def _signal_protection_failure(self, task: TaskRecord) -> None:

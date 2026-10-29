@@ -33,6 +33,7 @@ addopts = "-ra --strict-markers"
 markers = [
     "portable: platform-independent checks that do not establish Windows enforcement",
     "windows_enforcement: actual Windows identity, NTFS, Credential Manager, or Job Object enforcement checks",
+    "windows_ui: isolated browser presentation fixtures; never enforcement evidence",
 ]
 
 [tool.ruff]

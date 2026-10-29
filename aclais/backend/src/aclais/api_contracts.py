@@ -122,6 +122,7 @@ _ERROR_RESPONSES = {
     "409": "Busy task, conflicting request, or duplicate run",
     "413": "Request body exceeds the documented limit",
     "422": "Strict request validation failed",
+    "429": "Repeated invalid requests are temporarily limited",
     "500": "Internal persistence or recovery failure",
     "503": "Protection unavailable",
 }
@@ -390,7 +391,7 @@ def contract_paths(
                 response="BrokerOperationResponse",
                 request="BrokerOperationRequest",
                 security=worker,
-                errors=("400", "401", "403", "409", "413", "422", "500", "503"),
+                errors=("400", "401", "403", "409", "413", "422", "429", "500", "503"),
             )
         },
         "/approve": {

@@ -3,9 +3,46 @@ if (-not ('AclaisA2AclNative' -as [type])) {
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
+using Microsoft.Win32.SafeHandles;
 
 public static class AclaisA2AclNative
 {
+    [DllImport("kernel32.dll", EntryPoint = "CreateFileW", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle OpenDirectory(string path, UInt32 access, UInt32 share,
+        IntPtr security, UInt32 disposition, UInt32 flags, IntPtr template);
+
+    public static SafeFileHandle HoldNamespace(string path)
+    {
+        var handle = OpenDirectory(path, 1, 3, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero);
+        if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error(), "Namespace guard failed.");
+        return handle;
+    }
+
+    public static void ProbeDeleteAccess(string path)
+    {
+        using (var handle = OpenDirectory(path, 0x10000, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero))
+            if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error(), "DELETE access refused.");
+    }
+    public static byte[] CanonicalDacl(byte[] descriptor)
+    {
+        var raw = new RawSecurityDescriptor(descriptor, 0);
+        var ordered = new RawAcl(raw.DiscretionaryAcl.Revision, raw.DiscretionaryAcl.Count);
+        // Preserve inherited ACE order and every ACE's original rights/flags.
+        for (int group = 0; group < 3; group++)
+            foreach (GenericAce ace in raw.DiscretionaryAcl)
+            {
+                var qualified = ace as QualifiedAce;
+                if (qualified == null) throw new InvalidOperationException("Unsupported checkout ACE.");
+                int category = (ace.AceFlags & AceFlags.Inherited) != 0 ? 2 :
+                    qualified.AceQualifier == AceQualifier.AccessDenied ? 0 : 1;
+                if (category == group) ordered.InsertAce(ordered.Count, ace);
+            }
+        raw.DiscretionaryAcl = ordered;
+        var result = new byte[raw.BinaryLength];
+        raw.GetBinaryForm(result, 0);
+        return result;
+    }
     [DllImport("Advapi32.dll", EntryPoint = "SetFileSecurityW", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool SetFileSecurity(string path, UInt32 securityInformation, byte[] descriptor);
 
@@ -32,6 +69,23 @@ public static class AclaisA2AclNative
     }
 }
 '@
+}
+
+function Open-A2CheckoutNamespace {
+    param([Parameter(Mandatory)][string]$Root)
+    $handles = [Collections.Generic.List[IDisposable]]::new()
+    try {
+        $directory = [IO.DirectoryInfo]::new($Root)
+        while ($directory.Parent) {
+            $handles.Add([AclaisA2AclNative]::HoldNamespace($directory.FullName))
+            $directory = $directory.Parent
+        }
+        return ,$handles
+    }
+    catch {
+        foreach ($handle in $handles) { $handle.Dispose() }
+        throw
+    }
 }
 
 function New-A2ProtectedAcl {
@@ -187,6 +241,11 @@ function Set-A2WorkerDenyTree {
             throw "Reparse point found in a workspace protection path: $($item.FullName)"
         }
         $acl = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
+        if (-not $acl.AreAccessRulesCanonical) {
+            $acl.SetSecurityDescriptorBinaryForm(
+                [AclaisA2AclNative]::CanonicalDacl($acl.GetSecurityDescriptorBinaryForm()),
+                [Security.AccessControl.AccessControlSections]::Access)
+        }
         $inheritance = if ($item.PSIsContainer) {
             [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
         }
@@ -199,7 +258,7 @@ function Set-A2WorkerDenyTree {
             [Security.AccessControl.AccessControlType]::Deny
         )
         $acl.SetAccessRule($deny)
-        Set-Acl -LiteralPath $item.FullName -AclObject $acl -ErrorAction Stop
+        [AclaisA2AclNative]::ApplyDaclPreservingProtection($item.FullName, $acl.GetSecurityDescriptorBinaryForm())
     }
 }
 

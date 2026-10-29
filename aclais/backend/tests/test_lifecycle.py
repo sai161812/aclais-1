@@ -258,7 +258,7 @@ def harness(tmp_path: Path):
             token_index += 1
             return value
 
-    def coordinator(*, clock=None, locks=None) -> LifecycleCoordinator:
+    def coordinator(*, clock=None, locks=None, preflight=None) -> LifecycleCoordinator:
         instance = LifecycleCoordinator(
             layout,
             database,
@@ -270,6 +270,7 @@ def harness(tmp_path: Path):
             token_factory=next_token,
             process_stopped=lambda task: launcher.handles[task.task_id].stopped,
             task_locks=locks,
+            preflight=preflight,
         )
         instance.recover_before_serving()
         launcher.broker = instance.broker
@@ -285,6 +286,19 @@ def harness(tmp_path: Path):
         tokens=token_values,
         source_hash=hashlib.sha256(selected_source.read_bytes()).hexdigest(),
     )
+
+
+def test_failed_preflight_prevents_task_and_worker_creation(harness):
+    def denied():
+        raise LifecycleError("private readiness failure")
+    coordinator = harness.coordinator(preflight=denied)
+    try:
+        with pytest.raises(LifecycleError):
+            coordinator.start_private_probe("http://127.0.0.1:8765/api/broker/operations")
+        assert harness.database.task_summaries() == ()
+        assert harness.launcher.handles == {}
+    finally:
+        coordinator.shutdown()
 
 
 def test_publication_racing_with_denial_preserves_authorized_effect_order(harness, tmp_path):

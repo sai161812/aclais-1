@@ -58,6 +58,8 @@ Security case review: malformed payload, oversized input, arbitrary executable f
 Broker denial and revocation share the per-task serialization boundary. Exercise simultaneous publish and forbidden operation: already-authorized publication may finish before revocation, but no new authorized effect starts after revocation. Preserve event order; do not retroactively claim an earlier allowed output was blocked. Verifier waits for actual job termination before final inventory. On verification timeout retain unknown/fail status.
 
 ## Operator runbook requirements
+For G1, exercise ACLAIS owner commands and harmless private origin/worker probes on the demonstration machine. Full three-service clean-start rehearsals, receiver receipts, and same-worker protected/baseline pairs remain G4 requirements. G1 still requires all identity, ACL, containment, authorization, recovery, authentication and evidence checks.
+
 Document installation/provisioning once, ordinary startup, readiness, opening the two UI URLs, creating fixtures, both user journeys, evidence inspection, shutdown, reset and removal. Provide one start script that checks ports/health and reports useful errors; one stop script using owned process identities; one doctor command; one reset command scoped to sentinel root. Do not kill arbitrary processes by name or free a port by killing an unknown owner.
 
 All three services must start cleanly without internet after dependencies are installed. Reset must refuse active tasks and never touch user documents. Test three consecutive full rehearsals with fresh run IDs and restored fixture hashes. Record p50/maximum measured launch and incident-display times if useful; do not invent latency metrics.

@@ -1,0 +1,49 @@
+{
+    "checkpoint":  "A10",
+    "gate":  "G1",
+    "windows_checks_passed":  true,
+    "tested_base_revision":  "76179ed8b763823684cc3364ad4592e1aa15912f",
+    "tested_input_sha256":  "9b5a7b18fa6bcf1fb9f4eb01cabcbf5d5374600c4cb9c5f26379e98d34717bf3",
+    "tested_input_file_count":  111,
+    "windows_edition":  "Microsoft Windows 11 Home Single Language",
+    "windows_build":  "26200",
+    "file_system":  "NTFS",
+    "access_probe_check_count":  75,
+    "fixture_count":  14,
+    "worker_is_administrator":  false,
+    "windows_test_count":  13,
+    "isolated_ui_fixture_test_count":  1,
+    "raw_inventory_committed":  false,
+    "receiver_production_integration":  "PENDING_G4",
+    "commands":  [
+                     {
+                         "exit_code":  0,
+                         "command":  "protect_checkout.ps1"
+                     },
+                     {
+                         "exit_code":  0,
+                         "command":  "deploy_a2_probe.ps1"
+                     },
+                     {
+                         "exit_code":  0,
+                         "command":  "deploy_a3_probe.ps1"
+                     },
+                     {
+                         "exit_code":  0,
+                         "command":  "run_a2_access_probe.ps1 (before and after Windows suite)"
+                     },
+                     {
+                         "exit_code":  0,
+                         "command":  "uv run --locked --group windows-enforcement pytest -c pyproject.toml tests ../tests/windows_enforcement -m windows_enforcement -v --tb=short"
+                     },
+                     {
+                         "command":  "uv run --locked --group windows-enforcement pytest tests/test_ui_fixtures_windows.py -m windows_ui -q --tb=short",
+                         "enforcement_evidence":  false,
+                         "exit_code":  0
+                     },
+                     {
+                         "exit_code":  0,
+                         "command":  "python -m aclais.operator doctor"
+                     }
+                 ]
+}

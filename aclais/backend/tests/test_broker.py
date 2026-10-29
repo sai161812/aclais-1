@@ -24,6 +24,27 @@ NOW = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 FIXTURE = Path(__file__).parent / "fixtures" / "a4-create-task-request.json"
 
 
+def test_invalid_request_rate_limit_is_bounded_and_does_not_block_other_valid_authority(tmp_path):
+    database, task, token, _selected, output, _publisher, broker = _service(tmp_path)
+    clock = [100.0]
+    broker._failure_clock = lambda: clock[0]
+    at = NOW + timedelta(seconds=3)
+    for index in range(21):
+        response = broker.execute(f"synthetic-forged-{index}", _read_body(), now=at)
+    assert response.status_code == 429
+    valid_request = _read_body()
+    assert broker.execute(token, valid_request, now=at).status_code == 200
+    for _ in range(21):
+        response = broker.execute(token, b'{"extra":true}', now=at)
+    assert response.status_code == 429
+    assert broker.execute(token, valid_request, now=at).status_code == 429
+    clock[0] += 31
+    assert broker.execute(token, valid_request, now=at).status_code == 200
+    assert len(database.events(task.task_id)) == 1
+    assert list(output.iterdir()) == []
+    assert len(broker._failures) <= 256
+
+
 def _request_model(*, tool_id: str = "report_formatter") -> CreateTaskRequest:
     source = json.loads(FIXTURE.read_text(encoding="utf-8"))
     if tool_id == "invoice_analyzer":
