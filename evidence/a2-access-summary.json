@@ -60,7 +60,7 @@
                                },
     "fixture_integrity_before_probe":  [
                                            {
-                                               "name":  "fixture_precondition:store/originals/Personnel_Private.csv",
+                                               "name":  "fixture_precondition:store/originals/dacl-target.csv",
                                                "passed":  true,
                                                "exists":  true,
                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
@@ -68,6 +68,20 @@
                                            },
                                            {
                                                "name":  "fixture_precondition:store/originals/delete-target.csv",
+                                               "passed":  true,
+                                               "exists":  true,
+                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
+                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
+                                           },
+                                           {
+                                               "name":  "fixture_precondition:store/originals/overwrite-target.csv",
+                                               "passed":  true,
+                                               "exists":  true,
+                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
+                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
+                                           },
+                                           {
+                                               "name":  "fixture_precondition:store/originals/Personnel_Private.csv",
                                                "passed":  true,
                                                "exists":  true,
                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
@@ -88,21 +102,7 @@
                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
                                            },
                                            {
-                                               "name":  "fixture_precondition:store/originals/overwrite-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/originals/dacl-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/selected/Selected_Input.csv",
+                                               "name":  "fixture_precondition:store/selected/delete-target.csv",
                                                "passed":  true,
                                                "exists":  true,
                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
@@ -110,13 +110,6 @@
                                            },
                                            {
                                                "name":  "fixture_precondition:store/selected/overwrite-target.csv",
-                                               "passed":  true,
-                                               "exists":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_precondition:store/selected/delete-target.csv",
                                                "passed":  true,
                                                "exists":  true,
                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
@@ -135,6 +128,34 @@
                                                "exists":  true,
                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
+                                           },
+                                           {
+                                               "name":  "fixture_precondition:store/selected/Selected_Input.csv",
+                                               "passed":  true,
+                                               "exists":  true,
+                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
+                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
+                                           },
+                                           {
+                                               "name":  "fixture_precondition:store/originals/invoice.csv",
+                                               "passed":  true,
+                                               "exists":  true,
+                                               "expected_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226",
+                                               "observed_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226"
+                                           },
+                                           {
+                                               "name":  "fixture_precondition:store/originals/meeting-notes.md",
+                                               "passed":  true,
+                                               "exists":  true,
+                                               "expected_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff",
+                                               "observed_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff"
+                                           },
+                                           {
+                                               "name":  "fixture_precondition:store/originals/project-report.md",
+                                               "passed":  true,
+                                               "exists":  true,
+                                               "expected_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0",
+                                               "observed_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0"
                                            }
                                        ],
     "worker_process_exited":  true,
@@ -153,7 +174,7 @@
                   "observed_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006",
                   "is_administrator":  false,
                   "passed":  true,
-                  "check_count":  57,
+                  "check_count":  60,
                   "checks":  [
                                  {
                                      "name":  "worker_identity",
@@ -259,6 +280,42 @@
                                  },
                                  {
                                      "name":  "confidential_original_read_denied",
+                                     "passed":  true,
+                                     "expected":  "Win32 5",
+                                     "actual":  "access_denied",
+                                     "error":  {
+                                                   "win32_error":  5,
+                                                   "error_type":  "System.UnauthorizedAccessException",
+                                                   "hresult":  "0x80070005",
+                                                   "windows_message":  "Access is denied"
+                                               }
+                                 },
+                                 {
+                                     "name":  "permitted_original_read_denied:project-report.md",
+                                     "passed":  true,
+                                     "expected":  "Win32 5",
+                                     "actual":  "access_denied",
+                                     "error":  {
+                                                   "win32_error":  5,
+                                                   "error_type":  "System.UnauthorizedAccessException",
+                                                   "hresult":  "0x80070005",
+                                                   "windows_message":  "Access is denied"
+                                               }
+                                 },
+                                 {
+                                     "name":  "permitted_original_read_denied:meeting-notes.md",
+                                     "passed":  true,
+                                     "expected":  "Win32 5",
+                                     "actual":  "access_denied",
+                                     "error":  {
+                                                   "win32_error":  5,
+                                                   "error_type":  "System.UnauthorizedAccessException",
+                                                   "hresult":  "0x80070005",
+                                                   "windows_message":  "Access is denied"
+                                               }
+                                 },
+                                 {
+                                     "name":  "permitted_original_read_denied:invoice.csv",
                                      "passed":  true,
                                      "expected":  "Win32 5",
                                      "actual":  "access_denied",
@@ -852,8 +909,8 @@
                                          "passed":  true,
                                          "expected_file_count":  566,
                                          "actual_file_count":  566,
-                                         "expected_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
-                                         "actual_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
+                                         "expected_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
+                                         "actual_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
                                          "mismatches":  [
 
                                                         ]
@@ -862,14 +919,14 @@
                                           "application_source_unchanged":  true,
                                           "evidence_probe_unchanged":  true,
                                           "evidence_child_not_created":  true,
-                                          "application_source_sha256_before":  "857ff0f9536646a24e37ba838fee11aa58ef8f7d8a16e7234dc96c3df75119be",
-                                          "application_source_sha256_after":  "857ff0f9536646a24e37ba838fee11aa58ef8f7d8a16e7234dc96c3df75119be",
+                                          "application_source_sha256_before":  "84219c310712987f63b8e13ae770440e275f438d8295c3981773321af6c83a62",
+                                          "application_source_sha256_after":  "84219c310712987f63b8e13ae770440e275f438d8295c3981773321af6c83a62",
                                           "evidence_probe_sha256_before":  "dceadaf620d1005dd44467fbd5c38c903b600d4f398536c9bc00b254f4c51fa9",
                                           "evidence_probe_sha256_after":  "dceadaf620d1005dd44467fbd5c38c903b600d4f398536c9bc00b254f4c51fa9"
                                       },
     "fixture_integrity_before_repair":  [
                                             {
-                                                "name":  "fixture_integrity:store/originals/Personnel_Private.csv",
+                                                "name":  "fixture_integrity:store/originals/dacl-target.csv",
                                                 "passed":  true,
                                                 "exists":  true,
                                                 "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
@@ -877,6 +934,20 @@
                                             },
                                             {
                                                 "name":  "fixture_integrity:store/originals/delete-target.csv",
+                                                "passed":  true,
+                                                "exists":  true,
+                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
+                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
+                                            },
+                                            {
+                                                "name":  "fixture_integrity:store/originals/overwrite-target.csv",
+                                                "passed":  true,
+                                                "exists":  true,
+                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
+                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
+                                            },
+                                            {
+                                                "name":  "fixture_integrity:store/originals/Personnel_Private.csv",
                                                 "passed":  true,
                                                 "exists":  true,
                                                 "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
@@ -897,21 +968,7 @@
                                                 "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
                                             },
                                             {
-                                                "name":  "fixture_integrity:store/originals/overwrite-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/originals/dacl-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/selected/Selected_Input.csv",
+                                                "name":  "fixture_integrity:store/selected/delete-target.csv",
                                                 "passed":  true,
                                                 "exists":  true,
                                                 "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
@@ -919,13 +976,6 @@
                                             },
                                             {
                                                 "name":  "fixture_integrity:store/selected/overwrite-target.csv",
-                                                "passed":  true,
-                                                "exists":  true,
-                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                            },
-                                            {
-                                                "name":  "fixture_integrity:store/selected/delete-target.csv",
                                                 "passed":  true,
                                                 "exists":  true,
                                                 "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
@@ -944,20 +994,48 @@
                                                 "exists":  true,
                                                 "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
                                                 "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
+                                            },
+                                            {
+                                                "name":  "fixture_integrity:store/selected/Selected_Input.csv",
+                                                "passed":  true,
+                                                "exists":  true,
+                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
+                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
+                                            },
+                                            {
+                                                "name":  "fixture_integrity:store/originals/invoice.csv",
+                                                "passed":  true,
+                                                "exists":  true,
+                                                "expected_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226",
+                                                "observed_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226"
+                                            },
+                                            {
+                                                "name":  "fixture_integrity:store/originals/meeting-notes.md",
+                                                "passed":  true,
+                                                "exists":  true,
+                                                "expected_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff",
+                                                "observed_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff"
+                                            },
+                                            {
+                                                "name":  "fixture_integrity:store/originals/project-report.md",
+                                                "passed":  true,
+                                                "exists":  true,
+                                                "expected_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0",
+                                                "observed_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0"
                                             }
                                         ],
     "trusted_state_integrity":  {
                                     "name":  "trusted_state_integrity",
                                     "passed":  true,
-                                    "before_sha256":  "5be3837f5fbbb7b2fbc9959d84e846a2384f08ee197f47f5cd7886799e50e7ec",
-                                    "after_probe_sha256":  "5be3837f5fbbb7b2fbc9959d84e846a2384f08ee197f47f5cd7886799e50e7ec",
-                                    "after_repair_sha256":  "5be3837f5fbbb7b2fbc9959d84e846a2384f08ee197f47f5cd7886799e50e7ec"
+                                    "before_sha256":  "d2260430fa45743ccea0545d197ba9dc712c2ec43ab31fe42995d6dbc838f247",
+                                    "after_probe_sha256":  "d2260430fa45743ccea0545d197ba9dc712c2ec43ab31fe42995d6dbc838f247",
+                                    "after_repair_sha256":  "d2260430fa45743ccea0545d197ba9dc712c2ec43ab31fe42995d6dbc838f247"
                                 },
     "installation_manifest_integrity":  {
                                             "passed":  true,
-                                            "before_sha256":  "46db0390acb92601ad68fee3f2c6726705a1c80615fd37a3c3ae1fddfc12a923",
-                                            "after_probe_sha256":  "46db0390acb92601ad68fee3f2c6726705a1c80615fd37a3c3ae1fddfc12a923",
-                                            "after_repair_sha256":  "46db0390acb92601ad68fee3f2c6726705a1c80615fd37a3c3ae1fddfc12a923"
+                                            "before_sha256":  "24125109ec76b96eedec90ee447b7bbef09d29c187d861056a6e0b326d36ad31",
+                                            "after_probe_sha256":  "24125109ec76b96eedec90ee447b7bbef09d29c187d861056a6e0b326d36ad31",
+                                            "after_repair_sha256":  "24125109ec76b96eedec90ee447b7bbef09d29c187d861056a6e0b326d36ad31"
                                         },
     "sentinel_integrity":  {
                                "passed":  true,
@@ -967,13 +1045,25 @@
                            },
     "fixture_integrity_after_repair":  [
                                            {
-                                               "name":  "fixture_integrity_after_repair:store/originals/Personnel_Private.csv",
+                                               "name":  "fixture_integrity_after_repair:store/originals/dacl-target.csv",
                                                "passed":  true,
                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
                                            },
                                            {
                                                "name":  "fixture_integrity_after_repair:store/originals/delete-target.csv",
+                                               "passed":  true,
+                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
+                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
+                                           },
+                                           {
+                                               "name":  "fixture_integrity_after_repair:store/originals/overwrite-target.csv",
+                                               "passed":  true,
+                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
+                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
+                                           },
+                                           {
+                                               "name":  "fixture_integrity_after_repair:store/originals/Personnel_Private.csv",
                                                "passed":  true,
                                                "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
@@ -991,31 +1081,13 @@
                                                "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
                                            },
                                            {
-                                               "name":  "fixture_integrity_after_repair:store/originals/overwrite-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/originals/dacl-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9",
-                                               "observed_sha256":  "1fe031e7ea4e996c97676e6b8d8ff1f183e3cb00de97950c44a4cd35d61c7fe9"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/selected/Selected_Input.csv",
+                                               "name":  "fixture_integrity_after_repair:store/selected/delete-target.csv",
                                                "passed":  true,
                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
                                            },
                                            {
                                                "name":  "fixture_integrity_after_repair:store/selected/overwrite-target.csv",
-                                               "passed":  true,
-                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
-                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
-                                           },
-                                           {
-                                               "name":  "fixture_integrity_after_repair:store/selected/delete-target.csv",
                                                "passed":  true,
                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
@@ -1031,14 +1103,38 @@
                                                "passed":  true,
                                                "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
                                                "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
+                                           },
+                                           {
+                                               "name":  "fixture_integrity_after_repair:store/selected/Selected_Input.csv",
+                                               "passed":  true,
+                                               "expected_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf",
+                                               "observed_sha256":  "829c9aa5fa43f49e0e55c9180513fafd7dc4fe0794ef508586f5100f9ea995bf"
+                                           },
+                                           {
+                                               "name":  "fixture_integrity_after_repair:store/originals/invoice.csv",
+                                               "passed":  true,
+                                               "expected_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226",
+                                               "observed_sha256":  "b21df7d2d810c7604b28317c17b2d7683d0d3b46e58925cd5b2067fd71055226"
+                                           },
+                                           {
+                                               "name":  "fixture_integrity_after_repair:store/originals/meeting-notes.md",
+                                               "passed":  true,
+                                               "expected_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff",
+                                               "observed_sha256":  "3c1d2d20d6752136053e028511ac3dbf2463af3985db92bc43a35faef251f4ff"
+                                           },
+                                           {
+                                               "name":  "fixture_integrity_after_repair:store/originals/project-report.md",
+                                               "passed":  true,
+                                               "expected_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0",
+                                               "observed_sha256":  "79ff25f9d123e416a54a97cebe6d2513ca3c53056414149fd691b9429e274eb0"
                                            }
                                        ],
     "code_integrity_after_repair":  {
                                         "passed":  true,
                                         "expected_file_count":  566,
                                         "actual_file_count":  566,
-                                        "expected_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
-                                        "actual_inventory_sha256":  "53dbcc2bda8c974451b778e6d3b5a1ba820efa88cb4fb39848ae809d872645c6",
+                                        "expected_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
+                                        "actual_inventory_sha256":  "37ed9293626ba07ba3f3dd8c083b09394c9abec03ba4a6f43c28936da9480078",
                                         "mismatches":  [
 
                                                        ]

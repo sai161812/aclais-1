@@ -110,6 +110,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/owner/bootstrap/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exchange the one-time owner bootstrap secret */
+        post: operations["exchangeOwnerBootstrap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read current owner session status */
+        get: operations["getOwnerSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner/session/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke the current owner session */
+        post: operations["logoutOwnerSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tasks": {
         parameters: {
             query?: never;
@@ -972,6 +1023,47 @@ export interface components {
              */
             task_id: string;
         };
+        /** OwnerBootstrapExchangeRequest */
+        OwnerBootstrapExchangeRequest: {
+            /** Bootstrap Token */
+            bootstrap_token: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** OwnerLogoutResponse */
+        OwnerLogoutResponse: {
+            /**
+             * Authenticated
+             * @constant
+             */
+            authenticated: false;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+        };
+        /** OwnerSessionResponse */
+        OwnerSessionResponse: {
+            /**
+             * Authenticated
+             * @constant
+             */
+            authenticated: true;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+        };
         /**
          * ReceiptJournalState
          * @enum {string}
@@ -1642,6 +1734,187 @@ export interface operations {
             };
         };
     };
+    exchangeOwnerBootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerBootstrapExchangeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSessionResponse"];
+                };
+            };
+            /** @description Invalid host or query */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication failed */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Well-formed operation denied by policy */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Request body exceeds the documented limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Strict request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal persistence or recovery failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOwnerSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerSessionResponse"];
+                };
+            };
+            /** @description Invalid host or query */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication failed */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal persistence or recovery failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    logoutOwnerSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerLogoutResponse"];
+                };
+            };
+            /** @description Invalid host or query */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Authentication failed */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Well-formed operation denied by policy */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal persistence or recovery failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listTasks: {
         parameters: {
             query?: {
@@ -1695,7 +1968,10 @@ export interface operations {
     createTask: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Short-lived server-signed context from the approval GET */
+                "X-Aclais-Approval-Context": string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1725,6 +2001,15 @@ export interface operations {
             };
             /** @description Authentication failed */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Well-formed operation denied by policy */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1868,6 +2153,15 @@ export interface operations {
             };
             /** @description Authentication failed */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Well-formed operation denied by policy */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

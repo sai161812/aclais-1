@@ -13,9 +13,12 @@ from fastapi.responses import JSONResponse, Response
 
 from aclais.broker import BrokerService
 from aclais.config import Settings
+from aclais.owner_api import TaskCanceller, TaskLauncher, install_owner_routes
+from aclais.owner_auth import OwnerAuth
 from aclais.persistence.database import DatabaseError
 from aclais.publication import OutputPublisher, OutputUnavailable
 from aclais.schemas import ApiError, ErrorResponse, HealthCheck, HealthResponse
+from aclais.tool_registry import FixedToolRegistry
 
 _logger = logging.getLogger("aclais.api")
 
@@ -26,6 +29,10 @@ def create_app(
     broker: BrokerService | None = None,
     output_publisher: OutputPublisher | None = None,
     authorize_output: Callable[[Request], bool | Awaitable[bool]] | None = None,
+    owner_auth: OwnerAuth | None = None,
+    cancel_task: TaskCanceller | None = None,
+    approved_task_launcher: TaskLauncher | None = None,
+    tool_registry: FixedToolRegistry | None = None,
 ) -> FastAPI:
     runtime = settings if settings is not None else Settings()
     application = FastAPI(
@@ -38,7 +45,7 @@ def create_app(
 
     @application.middleware("http")
     async def exact_host_allowlist(request: Request, call_next):
-        if request.headers.get("host") != runtime.expected_host_header:
+        if request.headers.getlist("host") != [runtime.expected_host_header]:
             request_id = str(uuid4())
             body = ErrorResponse(
                 schema_version=1,
@@ -48,7 +55,15 @@ def create_app(
                     request_id=request_id,
                 ),
             )
-            return JSONResponse(status_code=400, content=body.model_dump(mode="json"))
+            return JSONResponse(
+                status_code=400,
+                content=body.model_dump(mode="json"),
+                headers={
+                    "Cache-Control": "no-store",
+                    "X-Content-Type-Options": "nosniff",
+                    "Referrer-Policy": "no-referrer",
+                },
+            )
         return await call_next(request)
 
     @application.get(
@@ -117,7 +132,7 @@ def create_app(
                 content=result.body.model_dump(mode="json"),
             )
 
-    if output_publisher is not None and authorize_output is not None:
+    if output_publisher is not None and authorize_output is not None and owner_auth is None:
 
         @application.get(
             "/api/outputs/{output_id}", tags=["owner"], operation_id="getPublishedOutput"
@@ -156,6 +171,16 @@ def create_app(
                     "Cache-Control": "no-store",
                 },
             )
+
+    if owner_auth is not None:
+        install_owner_routes(
+            application,
+            owner_auth,
+            output_publisher=output_publisher,
+            cancel_task=cancel_task,
+            task_launcher=approved_task_launcher,
+            tool_registry=tool_registry,
+        )
 
     return application
 

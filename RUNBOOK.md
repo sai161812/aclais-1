@@ -61,7 +61,7 @@ $env:ACLAIS_LOG_LEVEL = 'INFO'
 $env:ACLAIS_PROTECTED_RUNTIME = 'false'
 ```
 
-On the provisioned A2/A3 Windows machine, `ACLAIS_PROTECTED_RUNTIME=true` assembles the A6 worker controller, broker and persistence, runs restart reconciliation before the API serves requests, and keeps the broker unavailable if recovery fails. This does not add owner task-creation or cancellation routes; those belong to A8. The health response remains `unknown` for overall G1 protection until A7–A10 verification gates pass.
+On the provisioned A2/A3 Windows machine, `ACLAIS_PROTECTED_RUNTIME=true` assembles the worker controller, broker and persistence, runs restart reconciliation before the API serves requests, and keeps the broker unavailable if recovery fails. A8 adds owner session and approval routes; production launch remains closed while the fixed G3 worker entrypoints are absent. The health response remains `unknown` for overall G1 protection until A7–A10 verification gates pass.
 
 Logs are one-line JSON records on stderr. Structured fields with names containing authorization, cookie, token, password, secret, credential, canary, payload, private, or API key are replaced with `[REDACTED]`; common bearer and `key=value`/header patterns in messages are also redacted. Exception text and tracebacks are omitted. Do not log request bodies, headers, credentials, canary values, private document contents, or arbitrary user input. The redactor is defense in depth and does not make unsafe logging of arbitrary strings acceptable.
 
@@ -135,7 +135,7 @@ Set-Location 'D:\Workspace\IDL\ACLAIS-1\aclais\backend'
 uv run --locked pytest -m windows_enforcement tests/test_publication.py --tb=short
 ```
 
-The A5 broker API is mounted only by injecting a trusted `BrokerService`; output downloads additionally require an owner-authorizer dependency. Output downloads still require the A8 owner-authorizer dependency. Tests use private injected services and do not claim A8 owner authentication.
+The A5 broker API is mounted only by injecting a trusted `BrokerService`. In the protected runtime, output downloads and task/evidence reads use A8's persisted owner session; a browser owner cookie is never a worker credential. Portable A5 contract tests use private injected services, while A8's owner route tests exercise the real session and CSRF gates.
 
 ## A6 lifecycle and recovery checks
 
@@ -166,3 +166,23 @@ Run the target-machine evidence lane from the ordinary, non-elevated owner sessi
 This invokes the A3 prerequisite and actual A6 worker lifecycle suite. It inspects evidence only after confirmed worker/job cleanup, compares protected fixture inventories and output hashes, and checks controller/broker/verifier attribution. Hosted portable CI does not run these Windows enforcement checks.
 
 Raw inventories and captured worker output stay under the protected local runtime path C:\ACLAIS-Lab\evidence\raw. Track only sanitized summaries under `evidence/`; reports identify the tested code revision or source digest and contain no raw fixture names/hashes, receipt IDs, worker text, runtime paths or credentials. Do not mark receiver-dependent incident confidentiality as pass when no run or an unknown/outage response is available.
+
+## A8 owner authentication and approval
+
+Protected startup creates a one-time bootstrap URL only when no owner session remains active. The token is in the URL fragment, is exchanged once at the exact ACLAIS origin, and is removed from browser history. Persisted storage contains only bootstrap/session/CSRF hashes. The owner cookie is host-only for `127.0.0.1`; the receiver must remain on `[::1]:8767` because HTTP cookies ignore ports. Never copy a bootstrap URL, cookie or worker token into an issue, log or evidence report.
+
+Run portable route and abuse checks from any directory through the root check command:
+
+```powershell
+& 'D:\Workspace\IDL\ACLAIS-1\scripts\check.ps1'
+```
+
+On the designated Windows machine, while the protected A2 runtime is provisioned and the ACLAIS/tool/receiver ports are free, run the actual Chrome and Edge browser lane from any directory:
+
+```powershell
+& 'D:\Workspace\IDL\ACLAIS-1\aclais\scripts\check_a8_windows.ps1'
+```
+
+The private harness starts ACLAIS on `127.0.0.1:8765`, test-only hostile web origins on `localhost:8766`, and an IPv6 receiver-origin probe at `[::1]:8767`. It verifies no owner cookie reaches either other host; cross-origin API attempts have no owner credential; a cross-host top-level approval GET makes no task; and the explicit owner button launches only the existing harmless A3 probe in the test harness. The probe selects the trusted document, starts a child in the assigned Job Object, then the harness cancels and verifies the actual worker and child process identities stopped before checking persisted evidence. The harness does not add a production tool or a production receiver.
+
+`launch_source_claim` is user-supplied attribution. Observed Origin and referrer headers are recorded separately and do not prove which site launched the task; the referrer path/query is stripped. The fixed production registry only accepts installed Document Tools entrypoints by exact tool/document pair. Since G3 workers are not installed, a production approval POST returns protection unavailable without creating a task. The demonstration test injects a private probe callback only in its test process.

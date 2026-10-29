@@ -189,6 +189,9 @@ def test_generated_openapi_covers_contract_and_safe_output_content() -> None:
     document = build_openapi_document(app)
     expected_paths = {
         "/api/health",
+        "/api/owner/bootstrap/exchange",
+        "/api/owner/session",
+        "/api/owner/session/logout",
         "/api/documents",
         "/api/tasks",
         "/api/tasks/{task_id}",

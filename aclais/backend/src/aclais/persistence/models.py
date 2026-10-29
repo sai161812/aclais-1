@@ -116,9 +116,7 @@ Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$", strict=True
 BoundedMessage = Annotated[str, StringConstraints(min_length=1, max_length=2048, strict=True)]
 ShortText = Annotated[str, StringConstraints(min_length=1, max_length=256, strict=True)]
 EvidencePath = Annotated[str, StringConstraints(min_length=1, max_length=512, strict=True)]
-EvidenceDescription = Annotated[
-    str, StringConstraints(min_length=1, max_length=1028, strict=True)
-]
+EvidenceDescription = Annotated[str, StringConstraints(min_length=1, max_length=1028, strict=True)]
 
 
 def _datetime_value(value: object) -> datetime:
@@ -171,6 +169,25 @@ IsoDate = Annotated[date, BeforeValidator(_iso_date_value)]
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True, validate_default=True)
+
+
+class OwnerBootstrapExchangeRequest(StrictModel):
+    schema_version: SchemaVersion
+    bootstrap_token: Annotated[
+        str,
+        StringConstraints(min_length=32, max_length=128, pattern=r"^[A-Za-z0-9_-]+$", strict=True),
+    ]
+
+
+class OwnerSessionResponse(StrictModel):
+    schema_version: SchemaVersion
+    authenticated: Literal[True]
+    expires_at: UtcDateTime
+
+
+class OwnerLogoutResponse(StrictModel):
+    schema_version: SchemaVersion
+    authenticated: Literal[False]
 
 
 class HealthCheck(StrictModel):
@@ -674,9 +691,9 @@ class EvidenceReport(StrictModel):
     run_id: UUIDValue
     generated_at: UtcDateTime
     verifier_version: ShortText
-    tested_source_revision: Annotated[
-        str, StringConstraints(pattern=r"^[0-9a-f]{7,40}$", strict=True)
-    ] | None
+    tested_source_revision: (
+        Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{7,40}$", strict=True)] | None
+    )
     tested_source_sha256: Sha256
     overall_status: Literal["pass", "fail", "unknown"]
     integrity_status: Literal["pass", "fail", "unknown", "not_applicable"]
@@ -756,9 +773,9 @@ class EvidenceBaseline(StrictModel):
     task_id: UUIDValue
     run_id: UUIDValue
     captured_at: UtcDateTime
-    tested_source_revision: Annotated[
-        str, StringConstraints(pattern=r"^[0-9a-f]{7,40}$", strict=True)
-    ] | None
+    tested_source_revision: (
+        Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{7,40}$", strict=True)] | None
+    )
     tested_source_sha256: Sha256
     manifest_match: bool
     selected_input_size_bytes: int = Field(ge=0)

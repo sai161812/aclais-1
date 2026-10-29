@@ -212,6 +212,12 @@ try {
 
     $privateOriginal = Join-Path $originals 'Personnel_Private.csv'
     $null = Test-A2ExpectedDenied -Name 'confidential_original_read_denied' -Operation { Test-A2CanRead -Path $privateOriginal }
+    foreach ($permittedOriginalName in @('project-report.md', 'meeting-notes.md', 'invoice.csv')) {
+        $permittedOriginal = Join-Path $originals $permittedOriginalName
+        $null = Test-A2ExpectedDenied -Name ('permitted_original_read_denied:' + $permittedOriginalName) -Operation {
+            Test-A2CanRead -Path $permittedOriginal
+        }
+    }
 
     $overwritePath = Join-Path $originals 'overwrite-target.csv'
     $null = Test-A2ExpectedDenied -Name 'original_overwrite_denied' -Operation {

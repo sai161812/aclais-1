@@ -1,6 +1,5 @@
 $ErrorActionPreference = 'Stop'
 $componentRoot = Split-Path -Parent $PSScriptRoot
-$repoRoot = Split-Path -Parent $componentRoot
 $backendDir = Join-Path $componentRoot 'backend'
 $frontendDir = Join-Path $componentRoot 'frontend'
 
@@ -24,15 +23,21 @@ finally {
 Push-Location $frontendDir
 try {
     Invoke-Check 'Install locked frontend environment' 'npm' @('ci')
+    $generatedApiPath = Join-Path $frontendDir 'src\generated\api.ts'
+    if (-not (Test-Path -LiteralPath $generatedApiPath -PathType Leaf)) {
+        throw 'The generated API contract file is missing.'
+    }
+    $apiTypesBefore = (
+        Get-Content -LiteralPath $generatedApiPath -Raw -Encoding utf8
+    ).Replace("`r`n", "`n")
     Invoke-Check 'Generate TypeScript API types' 'npm' @('run', 'api:generate')
-}
-finally {
-    Pop-Location
-}
-
-Push-Location $repoRoot
-try {
-    Invoke-Check 'Generated TypeScript is current' 'git' @('diff', '--exit-code', '--', 'aclais/frontend/src/generated/api.ts')
+    $apiTypesAfter = (
+        Get-Content -LiteralPath $generatedApiPath -Raw -Encoding utf8
+    ).Replace("`r`n", "`n")
+    if ($apiTypesBefore -cne $apiTypesAfter) {
+        throw 'Generated API types were stale and have been refreshed; review the diff and rerun checks.'
+    }
+    Write-Host 'Generated TypeScript API types are current.'
 }
 finally {
     Pop-Location

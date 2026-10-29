@@ -7,7 +7,7 @@ Keep receiver source, tests, receipt inspection tools, dependencies and componen
 Receive a stolen seeded payload if a hostile utility actually obtains it. Supply independent persistent receipt evidence. It does not decide whether an attack was blocked and cannot alter ACLAIS incidents.
 
 ## Implementation
-Use a small Python/FastAPI service at 127.0.0.1:8767. Implement /health, /ingest and the /admin routes from 02. Resolve every run by a trusted precreated run record. Ingest credential must be bound to its run. Store only a hash of the credential. Reject unknown runs, wrong credentials, malformed base64, payloads over 1 MiB, wrong run IDs for the supplied credential, and unknown fields. Task IDs remain client attribution per 02; do not add an undocumented task registration API.
+Use a small Python/FastAPI service at `[::1]:8767` only. Do not bind `127.0.0.1`, which is reserved for ACLAIS's owner cookie host; port separation does not isolate cookies. Implement /health, /ingest and the /admin routes from 02. Resolve every run by a trusted precreated run record. Ingest credential must be bound to its run. Store only a hash of the credential. Reject unknown runs, wrong credentials, malformed base64, payloads over 1 MiB, wrong run IDs for the supplied credential, and unknown fields. Task IDs remain client attribution per 02; do not add an undocumented task registration API.
 
 On ingestion compute receipt UUID, UTC time, decoded byte count, SHA-256 and whether the exact registered canary bytes are present. Do not trust a client-supplied hash, byte count or marker-match flag. Preserve run ID and claimed task ID; the task field is client attribution, not proof of process identity. Gate tests use known task IDs.
 

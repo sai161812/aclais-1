@@ -69,6 +69,23 @@ class TaskAlreadyActive(DatabaseError):
     """A task was not admitted because the single-worker slot is occupied."""
 
 
+@dataclass(frozen=True, slots=True)
+class OwnerBootstrapRecord:
+    token_sha256: str
+    created_at: datetime
+    expires_at: datetime
+    consumed_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class OwnerSessionRecord:
+    session_sha256: str
+    csrf_sha256: str
+    created_at: datetime
+    expires_at: datetime
+    revoked_at: datetime | None
+
+
 class RequestDisposition(StrEnum):
     NEW = "new"
     REPLAY = "replay"
@@ -136,6 +153,14 @@ def _identifier(value: UUID | str) -> UUID:
     return _UUID_ADAPTER.validate_python(value)
 
 
+def _valid_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
 def utc_now() -> datetime:
     return datetime.now(_UTC)
 
@@ -181,7 +206,7 @@ def canonical_body_sha256(model: BaseModel) -> str:
 class Database:
     """Controller repository. The database location is supplied only by trusted startup code."""
 
-    schema_version = 3
+    schema_version = 4
 
     def __init__(self, path: Path) -> None:
         if not isinstance(path, Path) or not path.is_absolute():
@@ -404,6 +429,105 @@ class Database:
         )
         return DocumentListResponse(schema_version=1, documents=entries)
 
+    def issue_owner_bootstrap(
+        self,
+        token_sha256: str,
+        *,
+        now: datetime,
+        expires_at: datetime,
+    ) -> bool:
+        """Rotate the one-time bootstrap only when no unexpired owner session exists."""
+
+        if not _valid_sha256(token_sha256) or expires_at <= now:
+            raise ValueError("owner bootstrap metadata is invalid")
+        timestamp, expiry = _timestamp(now), _timestamp(expires_at)
+        with self._transaction() as connection:
+            active = connection.execute(
+                "SELECT 1 FROM owner_sessions WHERE revoked_at IS NULL AND expires_at > ? LIMIT 1",
+                (timestamp,),
+            ).fetchone()
+            if active is not None:
+                return False
+            connection.execute(
+                "INSERT INTO owner_bootstrap(singleton, token_sha256, created_at, expires_at, "
+                "consumed_at) VALUES (1, ?, ?, ?, NULL) ON CONFLICT(singleton) DO UPDATE SET "
+                "token_sha256=excluded.token_sha256, created_at=excluded.created_at, "
+                "expires_at=excluded.expires_at, consumed_at=NULL",
+                (token_sha256, timestamp, expiry),
+            )
+        return True
+
+    def owner_bootstrap(self) -> OwnerBootstrapRecord | None:
+        with self._connection() as connection:
+            row = connection.execute("SELECT * FROM owner_bootstrap WHERE singleton = 1").fetchone()
+        if row is None:
+            return None
+        return OwnerBootstrapRecord(
+            token_sha256=str(row["token_sha256"]),
+            created_at=_parse_timestamp(row["created_at"]),
+            expires_at=_parse_timestamp(row["expires_at"]),
+            consumed_at=_parse_timestamp(row["consumed_at"]),
+        )
+
+    def exchange_owner_bootstrap(
+        self,
+        token_sha256: str,
+        session_sha256: str,
+        csrf_sha256: str,
+        *,
+        now: datetime,
+        session_expires_at: datetime,
+    ) -> bool:
+        """Consume bootstrap and persist a new hashed owner session atomically."""
+
+        if not all(_valid_sha256(value) for value in (token_sha256, session_sha256, csrf_sha256)):
+            raise ValueError("owner credential hash is invalid")
+        if session_expires_at <= now:
+            raise ValueError("owner session expiry is invalid")
+        timestamp = _timestamp(now)
+        with self._transaction() as connection:
+            updated = connection.execute(
+                "UPDATE owner_bootstrap SET consumed_at = ? WHERE singleton = 1 "
+                "AND token_sha256 = ? AND consumed_at IS NULL AND expires_at > ?",
+                (timestamp, token_sha256, timestamp),
+            )
+            if updated.rowcount != 1:
+                return False
+            connection.execute(
+                "INSERT INTO owner_sessions(session_sha256, csrf_sha256, created_at, expires_at) "
+                "VALUES (?, ?, ?, ?)",
+                (session_sha256, csrf_sha256, timestamp, _timestamp(session_expires_at)),
+            )
+        return True
+
+    def owner_session(self, session_sha256: str) -> OwnerSessionRecord | None:
+        if not _valid_sha256(session_sha256):
+            return None
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM owner_sessions WHERE session_sha256 = ?", (session_sha256,)
+            ).fetchone()
+        if row is None:
+            return None
+        return OwnerSessionRecord(
+            session_sha256=str(row["session_sha256"]),
+            csrf_sha256=str(row["csrf_sha256"]),
+            created_at=_parse_timestamp(row["created_at"]),
+            expires_at=_parse_timestamp(row["expires_at"]),
+            revoked_at=_parse_timestamp(row["revoked_at"]),
+        )
+
+    def revoke_owner_session(self, session_sha256: str, *, now: datetime) -> bool:
+        if not _valid_sha256(session_sha256):
+            return False
+        with self._transaction() as connection:
+            updated = connection.execute(
+                "UPDATE owner_sessions SET revoked_at = ? WHERE session_sha256 = ? "
+                "AND revoked_at IS NULL",
+                (_timestamp(now), session_sha256),
+            )
+        return updated.rowcount == 1
+
     def create_task(
         self,
         request: CreateTaskRequest,
@@ -411,6 +535,8 @@ class Database:
         run_id: UUID | str | None = None,
         now: datetime | None = None,
         require_single_worker: bool = False,
+        observed_origin: str | None = None,
+        observed_referer: str | None = None,
     ) -> TaskRecord:
         """Create task, fixed action contract and its two grants atomically."""
 
@@ -421,6 +547,14 @@ class Database:
         created_at = _parse_timestamp(timestamp)
         assert created_at is not None
         expires_at = self._contract_expiry(created_at)
+        if observed_origin is not None and (
+            not isinstance(observed_origin, str) or len(observed_origin) > 512
+        ):
+            raise ValueError("observed origin is invalid")
+        if observed_referer is not None and (
+            not isinstance(observed_referer, str) or len(observed_referer) > 2048
+        ):
+            raise ValueError("observed referer is invalid")
         with self._transaction() as connection:
             if require_single_worker:
                 active = connection.execute(
@@ -431,8 +565,8 @@ class Database:
                     raise TaskAlreadyActive("the single worker slot is occupied")
             connection.execute(
                 "INSERT INTO tasks(task_id, run_id, tool_id, selected_document_id, contract_id, "
-                "status, created_at, "
-                "launch_source_claim) VALUES (?, ?, ?, ?, ?, 'CREATED', ?, ?)",
+                "status, created_at, launch_source_claim, observed_origin, observed_referer) "
+                "VALUES (?, ?, ?, ?, ?, 'CREATED', ?, ?, ?, ?)",
                 (
                     str(task_id),
                     str(trusted_run_id),
@@ -441,6 +575,8 @@ class Database:
                     str(contract_id),
                     timestamp,
                     request.launch_source_claim,
+                    observed_origin,
+                    observed_referer,
                 ),
             )
             connection.execute(
@@ -481,9 +617,7 @@ class Database:
 
         with self._connection() as connection:
             for correction_us in range(1001):
-                candidate = created_at + timedelta(
-                    seconds=30, microseconds=-correction_us
-                )
+                candidate = created_at + timedelta(seconds=30, microseconds=-correction_us)
                 candidate_text = _timestamp(candidate)
                 within_bound = connection.execute(
                     "SELECT julianday(?) <= julianday(?) + (30.0 / 86400.0)",
@@ -809,8 +943,7 @@ class Database:
                 raise ValueError("worker activation cannot precede task creation")
             seq = int(
                 connection.execute(
-                    "SELECT COALESCE(MAX(seq), 0) + 1 FROM task_state_transitions "
-                    "WHERE task_id=?",
+                    "SELECT COALESCE(MAX(seq), 0) + 1 FROM task_state_transitions WHERE task_id=?",
                     (identifier,),
                 ).fetchone()[0]
             )
@@ -905,8 +1038,7 @@ class Database:
                 (cause.value, identifier),
             )
             connection.execute(
-                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) "
-                "WHERE task_id=?",
+                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) WHERE task_id=?",
                 (timestamp, identifier),
             )
             connection.execute(
@@ -1020,8 +1152,7 @@ class Database:
                 (timestamp, terminal_cause.value, identifier),
             )
             connection.execute(
-                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) "
-                "WHERE task_id=?",
+                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) WHERE task_id=?",
                 (timestamp, identifier),
             )
             connection.execute(
@@ -1387,8 +1518,7 @@ class Database:
                 (task_key,),
             )
             connection.execute(
-                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) "
-                "WHERE task_id=?",
+                "UPDATE worker_credentials SET revoked_at=COALESCE(revoked_at, ?) WHERE task_id=?",
                 (timestamp, task_key),
             )
             transition_seq = int(latest["seq"] + 1) if latest is not None else 1
@@ -1515,6 +1645,34 @@ class Database:
                 "UPDATE tasks SET incident_id = ? WHERE task_id = ?",
                 (str(incident.incident_id), str(incident.task_id)),
             )
+
+    def incident_for_task(self, task_id: UUID | str) -> Incident | None:
+        identifier = str(_identifier(task_id))
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT incident_id, task_id, trigger_event_id, policy_reason, "
+                "containment_status, integrity_status, confidentiality_status, evidence_refs_json "
+                "FROM incidents WHERE task_id = ?",
+                (identifier,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            return Incident.model_validate(
+                {
+                    "incident_id": row["incident_id"],
+                    "task_id": row["task_id"],
+                    "trigger_event_id": row["trigger_event_id"],
+                    "policy_reason": row["policy_reason"],
+                    "containment_status": row["containment_status"],
+                    "integrity_status": row["integrity_status"],
+                    "confidentiality_status": row["confidentiality_status"],
+                    "evidence_refs": json.loads(row["evidence_refs_json"]),
+                },
+                strict=True,
+            )
+        except (ValueError, ValidationError) as exc:
+            raise DatabaseError("stored incident violates its strict model") from exc
 
     def begin_request(
         self,
@@ -1976,9 +2134,10 @@ class Database:
             return None
         try:
             inventory_json = str(row["inventory_json"])
-            if hashlib.sha256(inventory_json.encode("utf-8")).hexdigest() != row[
-                "inventory_sha256"
-            ]:
+            if (
+                hashlib.sha256(inventory_json.encode("utf-8")).hexdigest()
+                != row["inventory_sha256"]
+            ):
                 raise DatabaseError("stored evidence baseline digest mismatch")
             entries = tuple(json.loads(inventory_json))
             baseline = EvidenceBaseline(
@@ -2067,8 +2226,10 @@ class Database:
         if confidentiality_status not in {"pass", "fail", "unknown", "not_applicable"}:
             raise ValueError("incident confidentiality status is invalid")
         path = Path(evidence_ref)
-        if path.is_absolute() or "\\" in evidence_ref or any(
-            part in {"", ".", ".."} for part in path.parts
+        if (
+            path.is_absolute()
+            or "\\" in evidence_ref
+            or any(part in {"", ".", ".."} for part in path.parts)
         ):
             raise ValueError("incident evidence reference must be trusted and relative")
         with self._transaction() as connection:

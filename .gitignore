@@ -12,6 +12,7 @@ secrets/
 *.credential
 *.credentials
 *.password
+*.secret
 
 # Local Python and JavaScript environments
 .venv/

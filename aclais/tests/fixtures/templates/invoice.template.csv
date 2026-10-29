@@ -1,0 +1,2 @@
+invoice_id,vendor,description,quantity,unit_price,currency
+SYNTH-1001,Example Supply Co,Sample office materials,2,12.50,USD

@@ -1720,6 +1720,77 @@
         "title": "OutputMetadata",
         "type": "object"
       },
+      "OwnerBootstrapExchangeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "bootstrap_token": {
+            "maxLength": 128,
+            "minLength": 32,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Bootstrap Token",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "bootstrap_token"
+        ],
+        "title": "OwnerBootstrapExchangeRequest",
+        "type": "object"
+      },
+      "OwnerLogoutResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "authenticated": {
+            "const": false,
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "authenticated"
+        ],
+        "title": "OwnerLogoutResponse",
+        "type": "object"
+      },
+      "OwnerSessionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "authenticated": {
+            "const": true,
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "authenticated",
+          "expires_at"
+        ],
+        "title": "OwnerSessionResponse",
+        "type": "object"
+      },
       "ReceiptJournalState": {
         "enum": [
           "reserved",
@@ -2873,6 +2944,221 @@
         }
       ]
     },
+    "/api/owner/bootstrap/exchange": {
+      "post": {
+        "operationId": "exchangeOwnerBootstrap",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerBootstrapExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body exceeds the documented limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Strict request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [],
+        "summary": "Exchange the one-time owner bootstrap secret",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/owner/session": {
+      "get": {
+        "operationId": "getOwnerSession",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Read current owner session status",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/owner/session/logout": {
+      "post": {
+        "operationId": "logoutOwnerSession",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerLogoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "CsrfToken": [],
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Revoke the current owner session",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
     "/api/tasks": {
       "get": {
         "operationId": "listTasks",
@@ -2945,6 +3231,19 @@
       },
       "post": {
         "operationId": "createTask",
+        "parameters": [
+          {
+            "description": "Short-lived server-signed context from the approval GET",
+            "in": "header",
+            "name": "X-Aclais-Approval-Context",
+            "required": true,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -2985,6 +3284,16 @@
               }
             },
             "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
           },
           "409": {
             "content": {
@@ -3172,6 +3481,16 @@
               }
             },
             "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
           },
           "404": {
             "content": {

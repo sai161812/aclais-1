@@ -59,10 +59,10 @@ def test_fresh_database_reopen_and_seeded_registry(tmp_path: Path) -> None:
     path = tmp_path / "state.sqlite3"
     db = Database(path)
     with db._connection() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
         assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
         assert connection.execute("PRAGMA synchronous").fetchone()[0] == 2
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 3
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 4
         assert connection.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 4
 
     public_documents = db.documents().model_dump_json()
@@ -464,9 +464,7 @@ def test_request_dedup_output_journal_and_unique_output_slot(tmp_path: Path) -> 
     )
     with (
         db._connection() as connection,
-        pytest.raises(
-            sqlite3.IntegrityError, match="request_reservation_identity_is_immutable"
-        ),
+        pytest.raises(sqlite3.IntegrityError, match="request_reservation_identity_is_immutable"),
     ):
         connection.execute(
             "UPDATE request_deduplication SET canonical_body_sha256=? "

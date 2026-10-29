@@ -24,7 +24,8 @@ G1 may be PASS only when required checks in all three lanes pass. If a required 
 | Natural website workflows, no attack controls | Tools/UI | G3 route and screenshot review |
 | Selected input and legitimate output work | ACLAIS/tools | G1 benign probe, G3 output assertions |
 | Different worker identity and original protection | ACLAIS | G1 real Windows SID/ACL probes |
-| Owner cookie withheld from Document Tools browser origin | ACLAIS/UI | G1 browser-origin test at 127.0.0.1 and localhost |
+| Owner cookie withheld from Document Tools and receiver | ACLAIS/UI | G1 Chrome/Edge browser-origin test at 127.0.0.1, localhost and [::1] |
+| Approval GET has no launch effect; owner POST is the launch action | ACLAIS | G1 owner-auth route test and actual private-probe browser run |
 | Output/retry/crash consistency across SQLite and NTFS | ACLAIS/receiver | G1/G2 publication and receipt journal fault injection |
 | No bypass by direct read/write/delete | ACLAIS/tools | G1 access tests, G3 paired runs |
 | Unauthorized broker effect never runs | ACLAIS | G1 forbidden-operation tests + inventory |

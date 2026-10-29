@@ -110,6 +110,7 @@ class RuntimeLayout:
 
         sentinel_path = root / ".owner-sentinel.json"
         manifest_path = root / "state" / "installation.json"
+        trusted_state_path = root / "state" / "trusted-state.json"
         selected_root = root / "store" / "selected"
         output_root = root / "work" / "temporary-output"
         selected_copy_root = root / "work" / "selected-inputs"
@@ -125,6 +126,7 @@ class RuntimeLayout:
             sentinel_path,
             root / "state",
             manifest_path,
+            trusted_state_path,
             root / "store",
             selected_root,
             root / "evidence",
@@ -143,6 +145,7 @@ class RuntimeLayout:
         try:
             sentinel = json.loads(sentinel_path.read_text(encoding="utf-8"))
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            trusted_state = json.loads(trusted_state_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):
             raise LauncherError("installation_metadata_unavailable") from None
 
@@ -166,6 +169,36 @@ class RuntimeLayout:
             or not isinstance(manifest.get("worker_sid"), str)
         ):
             raise LauncherError("installation_metadata_invalid")
+
+        manifest_fixtures = manifest.get("fixtures")
+        trusted_fixtures = trusted_state.get("fixture_hashes")
+        if not isinstance(manifest_fixtures, list) or not isinstance(trusted_fixtures, list):
+            raise LauncherError("trusted_state_invalid")
+        try:
+            manifest_hashes = tuple(
+                sorted((item["path"], item["sha256"]) for item in manifest_fixtures)
+            )
+            trusted_hashes = tuple(
+                sorted((item["path"], item["sha256"]) for item in trusted_fixtures)
+            )
+        except (KeyError, TypeError):
+            raise LauncherError("trusted_state_invalid") from None
+        if (
+            trusted_state.get("schema_version") != 1
+            or trusted_state.get("root_id") != manifest.get("root_id")
+            or trusted_state.get("owner_sid") != manifest.get("owner_sid")
+            or trusted_state.get("worker_sid") != manifest.get("worker_sid")
+            or trusted_state.get("source_revision") != manifest.get("source_revision")
+            or manifest_hashes != trusted_hashes
+            or any(
+                not isinstance(path, str)
+                or not isinstance(digest, str)
+                or not re.fullmatch(r"[0-9a-f]{64}", digest)
+                for path, digest in manifest_hashes
+            )
+            or len({path for path, _digest in manifest_hashes}) != len(manifest_hashes)
+        ):
+            raise LauncherError("trusted_state_invalid")
 
         selected_relative = "store/selected/Selected_Input.csv"
         fixture = next(
@@ -248,7 +281,7 @@ class RuntimeLayout:
             fixture_hashes=tuple(
                 sorted(
                     (item["path"], item["sha256"])
-                    for item in manifest.get("fixtures", [])
+                    for item in manifest_fixtures
                     if isinstance(item, dict)
                     and isinstance(item.get("path"), str)
                     and isinstance(item.get("sha256"), str)
@@ -620,9 +653,7 @@ class _NativeApi:
     ) -> None:
         if (worker_sid is None) != (worker_rights is None):
             raise ValueError("worker SID and access rights must be supplied together")
-        sddl = (
-            f"D:P(A;OICI;FA;;;{owner_sid})(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
-        )
+        sddl = f"D:P(A;OICI;FA;;;{owner_sid})(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
         if worker_sid is not None and worker_rights is not None:
             if worker_rights not in {"GX", "GRGX", "GRGWGX"}:
                 raise ValueError("unsupported scoped worker directory right")
@@ -635,12 +666,8 @@ class _NativeApi:
         ):
             self._raise_last_error("directory_acl_descriptor")
         try:
-            security_information = (
-                _DACL_SECURITY_INFORMATION | _PROTECTED_DACL_SECURITY_INFORMATION
-            )
-            if not self.advapi32.SetFileSecurityW(
-                str(path), security_information, descriptor
-            ):
+            security_information = _DACL_SECURITY_INFORMATION | _PROTECTED_DACL_SECURITY_INFORMATION
+            if not self.advapi32.SetFileSecurityW(str(path), security_information, descriptor):
                 self._raise_last_error("directory_acl_apply")
         finally:
             self.kernel32.LocalFree(descriptor)
@@ -1112,9 +1139,7 @@ class WindowsWorkerController:
             handle = WorkerHandle(
                 controller=self,
                 api=api,
-                config=config.model_copy(
-                    update={"broker_url": None, "worker_credential": None}
-                ),
+                config=config.model_copy(update={"broker_url": None, "worker_credential": None}),
                 config_path=config_path,
                 process=process,
                 primary_thread=primary_thread,
@@ -1158,9 +1183,7 @@ class WindowsWorkerController:
                         try:
                             job.close()
                             if api.wait(process.raw, _CLEANUP_TIMEOUT_MS) != _WAIT_OBJECT_0:
-                                cleanup_failure = LauncherError(
-                                    "launch_job_close_cleanup_timeout"
-                                )
+                                cleanup_failure = LauncherError("launch_job_close_cleanup_timeout")
                         except Exception:
                             cleanup_failure = LauncherError("launch_job_close_cleanup")
             if cleanup_failure:
@@ -1300,9 +1323,7 @@ class WorkerHandle:
         self._lock = threading.RLock()
         self._finalize_lock = threading.Lock()
         self._termination_cause: (
-            Literal[
-                "process_exit", "cancelled", "timeout", "controller_shutdown", "policy_denied"
-            ]
+            Literal["process_exit", "cancelled", "timeout", "controller_shutdown", "policy_denied"]
             | None
         ) = None
         self._result: WorkerResult | None = None
@@ -1362,9 +1383,7 @@ class WorkerHandle:
                 with self._lock:
                     if self._termination_cause is None:
                         self._termination_cause = (
-                            "timeout"
-                            if time.monotonic() >= self.deadline_at
-                            else "process_exit"
+                            "timeout" if time.monotonic() >= self.deadline_at else "process_exit"
                         )
                 continue
             if status != _WAIT_TIMEOUT:
@@ -1375,9 +1394,7 @@ class WorkerHandle:
 
     def terminate(
         self,
-        cause: Literal[
-            "cancelled", "timeout", "controller_shutdown", "policy_denied"
-        ],
+        cause: Literal["cancelled", "timeout", "controller_shutdown", "policy_denied"],
     ) -> WorkerResult:
         with self._lock:
             if self._result is not None:

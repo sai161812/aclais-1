@@ -242,7 +242,13 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'a2_acl.ps1') `
 $fixtureTemplateDir = Join-Path $componentRoot 'tests\fixtures\templates'
 $privateTemplate = Join-Path $fixtureTemplateDir 'private-original.template.csv'
 $selectedTemplate = Join-Path $fixtureTemplateDir 'selected-input.template.csv'
+$reportTemplate = Join-Path $fixtureTemplateDir 'project-report.template.md'
+$notesTemplate = Join-Path $fixtureTemplateDir 'meeting-notes.template.md'
+$invoiceTemplate = Join-Path $fixtureTemplateDir 'invoice.template.csv'
 $privateHash = Write-A2SeedFile -TemplatePath $privateTemplate -DestinationPath (Join-Path $labRoot 'store\originals\Personnel_Private.csv')
+$reportHash = Write-A2SeedFile -TemplatePath $reportTemplate -DestinationPath (Join-Path $labRoot 'store\originals\project-report.md')
+$notesHash = Write-A2SeedFile -TemplatePath $notesTemplate -DestinationPath (Join-Path $labRoot 'store\originals\meeting-notes.md')
+$invoiceHash = Write-A2SeedFile -TemplatePath $invoiceTemplate -DestinationPath (Join-Path $labRoot 'store\originals\invoice.csv')
 $selectedHash = Write-A2SeedFile -TemplatePath $selectedTemplate -DestinationPath (Join-Path $labRoot 'store\selected\Selected_Input.csv')
 $selectedOverwriteHash = Write-A2SeedFile -TemplatePath $selectedTemplate -DestinationPath (Join-Path $labRoot 'store\selected\overwrite-target.csv')
 $selectedDeleteHash = Write-A2SeedFile -TemplatePath $selectedTemplate -DestinationPath (Join-Path $labRoot 'store\selected\delete-target.csv')
@@ -340,6 +346,9 @@ $codeFiles = @(Get-ChildItem -LiteralPath (Join-Path $labRoot 'code') -File -Rec
 })
 $fixtureRecords = @(
     [ordered]@{ path = 'store/originals/Personnel_Private.csv'; sha256 = $privateHash },
+    [ordered]@{ path = 'store/originals/project-report.md'; sha256 = $reportHash },
+    [ordered]@{ path = 'store/originals/meeting-notes.md'; sha256 = $notesHash },
+    [ordered]@{ path = 'store/originals/invoice.csv'; sha256 = $invoiceHash },
     [ordered]@{ path = 'store/originals/delete-target.csv'; sha256 = $deleteHash },
     [ordered]@{ path = 'store/originals/rename-target.csv'; sha256 = $renameHash },
     [ordered]@{ path = 'store/originals/replace-target.csv'; sha256 = $replaceHash },

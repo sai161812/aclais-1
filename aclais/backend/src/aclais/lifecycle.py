@@ -329,11 +329,15 @@ class LifecycleCoordinator:
         self,
         broker_url: str,
         *,
+        request: CreateTaskRequest | None = None,
         deadline_seconds: int = 12,
         probe_case: Literal[
             "normal", "child_exit", "child_wait", "child_crash", "capture"
         ] = "normal",
         broker_probe: Literal["allow_and_publish", "policy_denial"] = "allow_and_publish",
+        use_trusted_document: bool = False,
+        observed_origin: str | None = None,
+        observed_referer: str | None = None,
     ) -> UUID:
         """Start the fixed harmless probe; this is internal verification code, not a tool API."""
 
@@ -341,7 +345,7 @@ class LifecycleCoordinator:
             raise ValueError("private lifecycle probe deadline must be between 1 and 20 seconds")
         if not self.accepting_tasks:
             raise LifecycleError("controller is not accepting task work")
-        request = CreateTaskRequest(
+        request = request or CreateTaskRequest(
             schema_version=1,
             tool_id="report_formatter",
             selected_document_id="doc-report",
@@ -355,6 +359,8 @@ class LifecycleCoordinator:
                     request,
                     now=self._wall_clock(),
                     require_single_worker=True,
+                    observed_origin=observed_origin,
+                    observed_referer=observed_referer,
                 )
             except TaskAlreadyActive as exc:
                 raise LifecycleError("the single worker slot is occupied") from exc
@@ -369,7 +375,12 @@ class LifecycleCoordinator:
                 paths: TaskWorkspacePaths | None = None
                 context: _ActiveTask | None = None
                 try:
-                    paths = self.workspace.prepare(task, source_override=self.layout.selected_input)
+                    paths = self.workspace.prepare(
+                        task,
+                        source_override=(
+                            None if use_trusted_document else self.layout.selected_input
+                        ),
+                    )
                     if self.verifier is None:
                         raise LifecycleError("trusted fixture verifier is unavailable")
                     baseline = self.verifier.capture_baseline(task, paths.selected_input)
@@ -412,9 +423,7 @@ class LifecycleCoordinator:
                         selected_input=paths.selected_input,
                         temporary_output=paths.temporary_directory,
                         selected_document_id=(
-                            task.selected_document_id
-                            if broker_probe != "none"
-                            else None
+                            task.selected_document_id if broker_probe != "none" else None
                         ),
                         tool_id=task.tool_id if broker_probe != "none" else None,
                         broker_url=broker_url if broker_probe != "none" else None,
@@ -448,9 +457,7 @@ class LifecycleCoordinator:
                     if context is not None:
                         self._fail_closed()
                         try:
-                            self._revoke_locked(
-                                context, RevocationCause.CONTROLLER_SHUTDOWN
-                            )
+                            self._revoke_locked(context, RevocationCause.CONTROLLER_SHUTDOWN)
                         except Exception:
                             self._fail_closed()
                     self._handle_start_failure(task.task_id, paths, exc)
@@ -633,9 +640,7 @@ class LifecycleCoordinator:
             return
         self._contain_committed_revocation(context, durable_cause)
 
-    def _contain_committed_revocation(
-        self, context: _ActiveTask, cause: RevocationCause
-    ) -> None:
+    def _contain_committed_revocation(self, context: _ActiveTask, cause: RevocationCause) -> None:
         handle_cause = {
             RevocationCause.POLICY_DENIED: "policy_denied",
             RevocationCause.CANCELLED: "cancelled",
@@ -668,9 +673,7 @@ class LifecycleCoordinator:
                 TaskStatus.VERIFYING,
                 now=self._wall_clock(),
                 event_kind="worker_termination_observed",
-                event_message=(
-                    "Worker process and Job Object descendants were observed stopped."
-                ),
+                event_message=("Worker process and Job Object descendants were observed stopped."),
                 revoke_worker_credential=True,
                 incident_containment_status=(
                     "terminated" if cause == RevocationCause.POLICY_DENIED else None
@@ -775,17 +778,13 @@ class LifecycleCoordinator:
             self.database.evidence_baseline(task.task_id),
             termination_confirmed=True,
             worker_exit_observed=worker_exit_observed,
-            worker_creation_time_100ns=(
-                self.database.worker_process_creation_time(task.task_id)
-            ),
+            worker_creation_time_100ns=(self.database.worker_process_creation_time(task.task_id)),
             worker_result=result,
             selected_input=paths.selected_input if paths is not None else None,
             outputs=self.database.outputs_for_task(task.task_id),
             publisher=self.output_publisher,
             receiver_adapter=self.receiver_adapter,
-            worker_observations=(
-                (*result.stdout, *result.stderr) if result is not None else ()
-            ),
+            worker_observations=((*result.stdout, *result.stderr) if result is not None else ()),
         )
 
     def _complete_exit_locked(self, context: _ActiveTask) -> None:

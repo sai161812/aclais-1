@@ -39,6 +39,9 @@ from aclais.persistence.models import (
     IngestRequest,
     InvoiceResult,
     OutputMetadata,
+    OwnerBootstrapExchangeRequest,
+    OwnerLogoutResponse,
+    OwnerSessionResponse,
     ReceiptResponse,
     ReceiptsResponse,
     ReceiptSummary,
@@ -106,6 +109,9 @@ class ContractSchemaCatalog(BaseModel):
     create_run_response: CreateRunResponse
     receipt_summary: ReceiptSummary
     receipts_response: ReceiptsResponse
+    owner_bootstrap_exchange_request: OwnerBootstrapExchangeRequest
+    owner_session_response: OwnerSessionResponse
+    owner_logout_response: OwnerLogoutResponse
 
 
 _ERROR_RESPONSES = {
@@ -230,6 +236,40 @@ def contract_paths(
                 errors=("400", "500"),
             )
         },
+        "/api/owner/bootstrap/exchange": {
+            "post": _operation(
+                "exchangeOwnerBootstrap",
+                "Exchange the one-time owner bootstrap secret",
+                tags=["owner"],
+                success_status="200",
+                response="OwnerSessionResponse",
+                request="OwnerBootstrapExchangeRequest",
+                security=[],
+                errors=("400", "401", "403", "413", "422", "500"),
+            )
+        },
+        "/api/owner/session": {
+            "get": _operation(
+                "getOwnerSession",
+                "Read current owner session status",
+                tags=["owner"],
+                success_status="200",
+                response="OwnerSessionResponse",
+                security=owner,
+                errors=("400", "401", "500"),
+            )
+        },
+        "/api/owner/session/logout": {
+            "post": _operation(
+                "logoutOwnerSession",
+                "Revoke the current owner session",
+                tags=["owner"],
+                success_status="200",
+                response="OwnerLogoutResponse",
+                security=owner_mutation,
+                errors=("400", "401", "403", "500"),
+            )
+        },
         "/api/documents": {
             "get": _operation(
                 "listDocuments",
@@ -262,7 +302,16 @@ def contract_paths(
                 response="TaskRecord",
                 request="CreateTaskRequest",
                 security=owner_mutation,
-                errors=("400", "401", "409", "413", "422", "500", "503"),
+                parameters=[
+                    {
+                        "name": "X-Aclais-Approval-Context",
+                        "in": "header",
+                        "required": True,
+                        "schema": {"type": "string", "minLength": 1, "maxLength": 2048},
+                        "description": "Short-lived server-signed context from the approval GET",
+                    }
+                ],
+                errors=("400", "401", "403", "409", "413", "422", "500", "503"),
             ),
         },
         "/api/tasks/{task_id}": {
@@ -305,7 +354,7 @@ def contract_paths(
                 response="CancelResponse",
                 security=owner_mutation,
                 parameters=[_path_parameter("task_id", path_id_schema)],
-                errors=("400", "401", "404", "409", "500"),
+                errors=("400", "401", "403", "404", "409", "500"),
             )
         },
         "/api/tasks/{task_id}/evidence": {

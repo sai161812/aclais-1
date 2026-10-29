@@ -23,6 +23,10 @@ class Settings(BaseModel):
     def expected_host_header(self) -> str:
         return f"{self.host}:{self.port}"
 
+    @property
+    def expected_origin(self) -> str:
+        return f"http://{self.expected_host_header}"
+
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
         """Load only supported ACLAIS variables; reject typos without echoing values."""

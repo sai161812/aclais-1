@@ -1,6 +1,6 @@
 # Decisions
 
-This log records the A0 specification decisions, A1 foundation choices, A2 protected-fixture decisions, A3 launcher choices, repository-structure checkpoint, and A6 lifecycle/recovery decisions. Later production controller components remain unimplemented.
+This log records the A0 specification decisions, A1 foundation choices, A2 protected-fixture decisions, A3 launcher choices, repository-structure checkpoint, A6/A7 lifecycle and evidence decisions, and A8 owner-authentication decisions. Later production controller components remain gated.
 
 ## D-001 — Preserve the supplied specification pack
 
@@ -20,7 +20,7 @@ Ignore credentials, local environments, runtime databases, raw receipt payloads,
 
 ## D-005 — Isolate browser owner cookies by host
 
-Keep all listeners loopback-only, but serve ACLAIS at `127.0.0.1:8765` and Document Tools at `localhost:8766`. Bind Document Tools to `127.0.0.1` and `::1` only because Windows resolves `localhost` to both addresses. HTTP cookies are not scoped by port, so the distinct hostnames prevent the browser from sending ACLAIS's host-only owner cookie to Document Tools. Use `SameSite=Lax` because the approved launch is a side-effect-free cross-host top-level GET; retain exact-Origin and anti-CSRF checks for mutations. Keep the receiver server-to-server at `127.0.0.1:8767`.
+Keep all listeners loopback-only, but serve ACLAIS at `127.0.0.1:8765` and Document Tools at `localhost:8766`. Bind Document Tools to `127.0.0.1` and `::1` only because Windows resolves `localhost` to both addresses. HTTP cookies are not scoped by port, so the distinct hostnames prevent the browser from sending ACLAIS's host-only owner cookie to Document Tools. Use `SameSite=Lax` because the approved launch is a side-effect-free cross-host top-level GET; retain exact-Origin and anti-CSRF checks for mutations. The receiver binding was later corrected to `[::1]:8767` by D-035 so it cannot share the owner-cookie host.
 
 ## D-006 — Retrieve the worker logon secret from the owner's Credential Manager
 
@@ -139,3 +139,21 @@ SQLite `julianday()` uses floating-point day values, so two ISO timestamps exact
 The owner-side verifier captures one immutable pre-launch inventory of the trusted fixture tree, then waits for controller confirmation that the recorded worker and job are stopped before scanning again. Inventory entries record names, existence, sizes and SHA-256; selected-input and published-output hashes are kept in the protected report. Incomplete termination, absent baseline, scan timeout, receiver outage and unknown run remain unknown. A policy incident can become BLOCKED only when the independent report passes integrity and confidentiality checks; no receiver run leaves incident confidentiality unknown.
 
 Evidence records preserve source boundaries: controller observations, broker decisions, worker-reported stdout/stderr, verifier checks and typed receiver observations. Workers cannot submit an authoritative verification result. Raw inventories, identifiers and worker output stay in owner-protected local evidence; Git summaries omit fixture paths/hashes, receipt identifiers, worker text and runtime paths while identifying the tested source revision or source-tree digest. The ACLAIS receiver adapter remains an interface with test-only typed responses; it creates no receiver service, endpoint or production tool.
+
+## D-035 â€” Give the receiver a distinct loopback host
+
+Ports do not isolate browser cookies. A receiver bound to `127.0.0.1:8767` would share the host-only cookie host with ACLAIS at `127.0.0.1:8765`. Bind the later server-to-server receiver only to IPv6 loopback `[::1]:8767`; keep ACLAIS on `127.0.0.1:8765` and Document Tools on `localhost:8766`. The receiver remains private service-to-service traffic and is not a browser origin. Private A8 browser probes verify no owner cookie is sent to either other host.
+
+## D-036 â€” Bootstrap owner sessions without persisting raw secrets
+
+At protected startup, create a random 256-bit, 15-minute one-time bootstrap token in memory, persist only its SHA-256 hash in the owner database, and open its URL with the token in the fragment. The fragment is never sent in the HTTP request and the browser removes it after exchange. Bootstrap exchange requires exact ACLAIS Origin and atomically consumes the token while creating a session. Persist only hashes for the 8-hour absolute owner session and CSRF value. The session cookie is host-only, HttpOnly, Path=/, SameSite=Lax; the CSRF cookie is host-only, readable only by same-origin page code, Path=/, SameSite=Strict. Owner mutations require exact Host and Origin, CSRF cookie/header/hash match, and `Sec-Fetch-Site: same-origin` when available. Opening the approval page has no persistent mutation or launch effect.
+
+Each approval GET signs the session, fixed tool claim, user source claim, and normalized observed Origin/referrer into an in-memory HMAC context with a five-minute expiry and a single-use nonce. The explicit owner POST returns that observation separately from the `launch_source_claim`; both are untrusted attribution, not verified browser provenance. Strip referrer paths, query and fragment. Require and consume the signed context once for task creation; strict body schemas reject executable paths, argv, grants and filesystem paths.
+
+## D-037 â€” Keep the production worker allowlist fixed and gate workers until G3
+
+The fixed controller registry maps only `report_formatter/doc-report` and `invoice_analyzer/doc-invoice` to explicit worker entrypoints beneath `C:\ACLAIS-Lab\code\document-tools`. Client requests cannot name an executable or arguments. If a fixed entrypoint or launcher is unavailable, do not create a task and return protection unavailable. A8 browser verification injects the existing harmless A3 private probe only in the test harness; the probe is never a production tool, route, package or UI option. Production Document Tools workers remain gated until G3.
+
+## D-038 â€” Reconcile missing permitted A2 originals with synthetic templates
+
+The demonstration runtime initially lacked the three permitted originals already named in the trusted registry. Add trackable fabricated templates for report, notes and invoice documents; update A2 provisioning to seed and hash them; use the scoped A8 prerequisite updater only when the protected lab exists, controller is stopped, sentinel/identity match and any existing bytes match their template. Apply owner-only DACLs to each file and reconcile the manifest/trusted hashes. Re-run the actual A2 worker probe before using those documents; raw runtime files remain outside Git.
