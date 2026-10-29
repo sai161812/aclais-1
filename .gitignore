@@ -3,11 +3,16 @@
 .env.*
 !.env.example
 secrets/
+**/credentials/
 *.pem
 *.p12
 *.pfx
 *.key
 *.token
+*.credential
+*.credentials
+*.password
+*.secret
 
 # Local Python and JavaScript environments
 .venv/
@@ -26,17 +31,34 @@ node_modules/
 *.sqlite3
 *.db-wal
 *.db-shm
+*.db-journal
 *.sqlite-wal
 *.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
 
 # Raw receipt payloads and generated confidential fixtures
 **/raw-receipts/
 **/receipts/raw/
 receiver/data/
+receiver/runtime/
+receiver/evidence/raw/
+receiver/raw-receipts/
+receiver/**/payloads/
+receiver/**/staging/
+receiver/**/quarantine/
+receiver/**/*.bin
+receiver/**/*.stage
+receiver/**/*.quarantined
 *.receipt.bin
 **/receiver/evidence/**/*.bin
 **/fixtures/generated/
 **/Personnel_Private.csv
+**/store/originals/
+**/store/verified-output/
+**/baseline/generated/
 
 # Unsanitized runtime logs and local evidence dumps
 *.log
@@ -44,6 +66,8 @@ receiver/data/
 **/logs/raw/
 **/unsanitized/
 evidence/raw/
+evidence/.a2-worker-access-probe.tmp
+evidence/worker-created-evidence.txt
 
 # Build, coverage, and browser-test output
 dist/

@@ -1,0 +1,111 @@
+{
+  "aclais_failure_mapping": {
+    "authentication_failure": "authentication_failure",
+    "storage_open_failure": "unreachable",
+    "unknown_run": "unknown_run",
+    "unreachable_after_shutdown": "unreachable"
+  },
+  "crash_boundary_http_recovery": {
+    "after_rename": {
+      "aclais_unknown_during_failure": "unreachable",
+      "injected_http_status": 500,
+      "recovered_before_retry": true,
+      "recovery_http_status": 200,
+      "retry_http_status": 201,
+      "single_persisted_receipt": true
+    },
+    "after_reservation": {
+      "aclais_unknown_during_failure": "unreachable",
+      "injected_http_status": 500,
+      "recovered_before_retry": false,
+      "recovery_http_status": 503,
+      "retry_http_status": 201,
+      "single_persisted_receipt": true
+    },
+    "after_stage_flush": {
+      "aclais_unknown_during_failure": "unreachable",
+      "injected_http_status": 500,
+      "recovered_before_retry": true,
+      "recovery_http_status": 200,
+      "retry_http_status": 201,
+      "single_persisted_receipt": true
+    },
+    "before_commit": {
+      "aclais_unknown_during_failure": "unreachable",
+      "injected_http_status": 500,
+      "recovered_before_retry": true,
+      "recovery_http_status": 200,
+      "retry_http_status": 201,
+      "single_persisted_receipt": true
+    }
+  },
+  "credential_separation": {
+    "admin_ingest_status": 401,
+    "ingest_create_run_status": 401,
+    "missing_admin_credential_status": 401,
+    "run_credential_persisted_as_hash": true
+  },
+  "cross_run_credential": {
+    "no_receipt": true,
+    "status": 401
+  },
+  "healthy_empty": "pass",
+  "ingest_credential_admin_access": {
+    "denied": true,
+    "status": 401
+  },
+  "listener_cleanup": "pass",
+  "loopback_ipv6_only": true,
+  "malformed_json_and_base64": {
+    "base64_status": 422,
+    "json_status": 422,
+    "no_receipt": true
+  },
+  "matching_payload": {
+    "http": "pass",
+    "marker_match": true,
+    "persisted_file_and_row": "pass",
+    "sha256_and_byte_count": "pass"
+  },
+  "metadata": {
+    "base_revision": "8e7a2ab8e1742893889416477cb9940ef50e03ad",
+    "platform": "Windows demonstration machine / NTFS",
+    "raw_payloads_or_credentials_in_report": false,
+    "schema_version": 1,
+    "source_digest_sha256": "215323914978054ede04fdd520480a83fc618d6d25fb485e003635ea3b3859da",
+    "source_input_count": 37,
+    "tested_at_utc": "2026-10-29T16:49:10+00:00"
+  },
+  "nonmatching_payload": {
+    "http": "pass",
+    "marker_match": false,
+    "persisted_file_and_row": "pass",
+    "sha256_and_byte_count": "pass"
+  },
+  "oversized_payloads": {
+    "decoded_status": 413,
+    "no_receipt": true,
+    "request_status": 413
+  },
+  "owner_cli_inspection": "pass",
+  "request_id_reuse_with_changed_body": {
+    "single_persisted_receipt": true,
+    "status": 409
+  },
+  "restart_and_identical_retry": "pass",
+  "routine_logs_redacted": true,
+  "storage_write_failure": {
+    "http_status": 503,
+    "no_false_success": true,
+    "no_receipt_or_file": true
+  },
+  "strict_payload_validation": {
+    "invalid_base64_status": 422,
+    "malformed_json_status": 422,
+    "unknown_field_status": 422
+  },
+  "wrong_ingest_credential": {
+    "no_receipt": true,
+    "status": 401
+  }
+}

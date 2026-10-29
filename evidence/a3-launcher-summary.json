@@ -1,0 +1,71 @@
+{
+  "checkpoint": "A3",
+  "result": "PASS",
+  "verification_date": "2026-10-29",
+  "machine": "LAPTOP-FMQ8RARQ",
+  "os": {
+    "name": "Windows 11 Home Single Language",
+    "build": "26200",
+    "architecture": "64-bit"
+  },
+  "identities": {
+    "controller_sid": "S-1-5-21-2514999450-3486617813-2191310599-1001",
+    "controller_elevated": false,
+    "worker_name": "LAPTOP-FMQ8RARQ\\AclaisWorker",
+    "worker_sid": "S-1-5-21-2514999450-3486617813-2191310599-1006",
+    "worker_administrator": false
+  },
+  "runtime": {
+    "python_version": "3.12.10",
+    "embeddable_package_sha256": "4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3",
+    "protected_code_file_count": 566
+  },
+  "windows_enforcement": {
+    "command": "scripts/check_a3_windows.ps1",
+    "exit_code": 0,
+    "pytest_passed": 1,
+    "scenarios": {
+      "real_credential_manager_logon": "PASS",
+      "worker_sid_and_non_admin_verified": "PASS",
+      "suspended_then_assigned_before_resume": "PASS",
+      "fixed_entrypoint_and_safe_arguments": "PASS",
+      "minimal_environment_and_controlled_cwd": "PASS",
+      "protected_task_configuration_read_only": "PASS",
+      "separate_bounded_stdout_stderr": "PASS",
+      "oversized_stream_truncation": "PASS",
+      "normal_exit_cleanup": "PASS",
+      "parent_exit_child_cleanup": "PASS",
+      "forced_cancellation_worker_and_child_cleanup": "PASS",
+      "deadline_timeout_worker_and_child_cleanup": "PASS",
+      "orderly_shutdown_worker_and_child_cleanup": "PASS",
+      "shutdown_during_launch_no_untracked_worker": "PASS",
+      "abrupt_controller_exit_job_close_cleanup": "PASS",
+      "identity_mismatch_prevents_probe_execution": "PASS",
+      "job_assignment_failure_prevents_probe_execution": "PASS",
+      "job_membership_unobserved_prevents_probe_execution": "PASS",
+      "missing_credential_prevents_process_creation": "PASS",
+      "unrelated_owner_process_survives_scoped_cleanup": "PASS"
+    },
+    "stdout_bytes_observed_lower_bound_per_stream": 1000001,
+    "retained_bytes_limit_per_stream": 262144,
+    "retained_line_bytes_limit": 16384,
+    "retained_line_count_limit_per_stream": 1024,
+    "worker_output_provenance": "worker_reported",
+    "credential_values_recorded": false
+  },
+  "portable_checks": {
+    "command": "scripts/check.ps1",
+    "exit_code": 0,
+    "backend_tests_passed": 23,
+    "backend_lint": "PASS",
+    "openapi_and_typescript_generation_consistency": "PASS",
+    "frontend_typecheck": "PASS",
+    "frontend_lint": "PASS",
+    "frontend_production_build": "PASS",
+    "npm_audit_reported_vulnerabilities": 0,
+    "windows_enforcement_run": false
+  },
+  "portable_lane_proves_windows_enforcement": false,
+  "g1_complete": false,
+  "source_commit": "ed136604fdbd15d7a650e91941f8a188a7140453"
+}

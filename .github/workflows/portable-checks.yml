@@ -1,0 +1,175 @@
+name: Portable checks
+
+on:
+  push:
+    branches: [aclais-prototype]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Portable backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12.10"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.15"
+          enable-cache: false
+
+      - name: Sync locked backend environment
+        working-directory: aclais/backend
+        run: uv sync --locked
+
+      - name: Backend lint
+        working-directory: aclais/backend
+        run: uv run --locked ruff check .
+
+      - name: Portable backend tests
+        working-directory: aclais/backend
+        run: uv run --locked pytest -m "portable and not windows_enforcement"
+
+      - name: Check generated OpenAPI
+        working-directory: aclais/backend
+        run: uv run --locked python ../../aclais/scripts/export_openapi.py --check
+
+  frontend:
+    name: Portable frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: aclais/frontend/.nvmrc
+
+      - name: Install locked frontend dependencies
+        working-directory: aclais/frontend
+        run: npm ci
+
+      - name: Generate API types
+        working-directory: aclais/frontend
+        run: npm run api:generate
+
+      - name: Verify generated API types
+        run: git diff --exit-code -- aclais/frontend/src/generated/api.ts
+
+      - name: Frontend type checking
+        working-directory: aclais/frontend
+        run: npm run typecheck
+
+      - name: Frontend lint
+        working-directory: aclais/frontend
+        run: npm run lint
+
+      - name: Frontend build
+        working-directory: aclais/frontend
+        run: npm run build
+
+  receiver:
+    name: Portable receiver and adapter integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12.10"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.15"
+          enable-cache: false
+
+      - name: Sync locked receiver environment
+        working-directory: receiver
+        run: uv sync --locked
+
+      - name: Receiver lint
+        working-directory: receiver
+        run: uv run --locked ruff check . ../tests/test_receiver_adapter_integration.py
+
+      - name: Receiver component tests
+        working-directory: receiver
+        run: uv run --locked pytest -m portable
+
+      - name: Live receiver and ACLAIS adapter integration
+        working-directory: receiver
+        env:
+          PYTHONPATH: ${{ github.workspace }}/aclais/backend/src
+        run: uv run --locked python -m pytest -q ../tests/test_receiver_adapter_integration.py
+
+  document-tools:
+    name: Portable Document Tools
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12.10"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.15"
+          enable-cache: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: document-tools/frontend/.nvmrc
+
+      - name: Sync locked Python environment
+        working-directory: document-tools
+        run: uv sync --locked
+
+      - name: Document Tools lint
+        working-directory: document-tools
+        run: uv run --locked ruff check src workers tests
+
+      - name: Portable worker and website tests
+        working-directory: document-tools
+        run: uv run --locked pytest -m portable
+
+      - name: Install locked frontend dependencies
+        working-directory: document-tools/frontend
+        run: npm ci
+
+      - name: Frontend type checking
+        working-directory: document-tools/frontend
+        run: npm run typecheck
+
+      - name: Frontend build
+        working-directory: document-tools/frontend
+        run: npm run build

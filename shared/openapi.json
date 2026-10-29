@@ -1,0 +1,3968 @@
+{
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "enum": [
+              "INVALID_HOST",
+              "INVALID_REQUEST",
+              "NOT_FOUND",
+              "PAYLOAD_TOO_LARGE",
+              "RATE_LIMITED",
+              "AUTH_INVALID",
+              "POLICY_DENIED",
+              "TASK_BUSY",
+              "REQUEST_CONFLICT",
+              "OUTPUT_ALREADY_PUBLISHED",
+              "PROTECTION_UNAVAILABLE",
+              "WORKER_TIMEOUT",
+              "VERIFICATION_INCOMPLETE",
+              "CONTROLLER_SHUTDOWN",
+              "PUBLICATION_INCONSISTENT",
+              "INTERNAL_ERROR"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "ApprovalQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "launch_source_claim": {
+            "const": "document_tools",
+            "title": "Launch Source Claim",
+            "type": "string"
+          },
+          "tool_id": {
+            "enum": [
+              "report_formatter",
+              "invoice_analyzer"
+            ],
+            "title": "Tool Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool_id",
+          "launch_source_claim"
+        ],
+        "title": "ApprovalQuery",
+        "type": "object"
+      },
+      "BrokerDeleteDocumentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Document Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "delete_document",
+            "title": "Operation",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "request_id",
+          "operation",
+          "document_id"
+        ],
+        "title": "BrokerDeleteDocumentRequest",
+        "type": "object"
+      },
+      "BrokerOperationRequest": {
+        "discriminator": {
+          "mapping": {
+            "delete_document": "#/components/schemas/BrokerDeleteDocumentRequest",
+            "publish_output": "#/components/schemas/BrokerPublishOutputRequest",
+            "read_document": "#/components/schemas/BrokerReadDocumentRequest",
+            "replace_original": "#/components/schemas/BrokerReplaceOriginalRequest"
+          },
+          "propertyName": "operation"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/BrokerReadDocumentRequest"
+          },
+          {
+            "$ref": "#/components/schemas/BrokerPublishOutputRequest"
+          },
+          {
+            "$ref": "#/components/schemas/BrokerReplaceOriginalRequest"
+          },
+          {
+            "$ref": "#/components/schemas/BrokerDeleteDocumentRequest"
+          }
+        ],
+        "title": "Broker Operation Request"
+      },
+      "BrokerOperationResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/BrokerReadDocumentAllowed"
+          },
+          {
+            "$ref": "#/components/schemas/BrokerOutputAllowed"
+          }
+        ],
+        "title": "Broker Operation Response"
+      },
+      "BrokerOutputAllowed": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "const": "allow",
+            "title": "Decision",
+            "type": "string"
+          },
+          "output_id": {
+            "format": "uuid",
+            "title": "Output Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "decision",
+          "output_id",
+          "sha256"
+        ],
+        "title": "BrokerOutputAllowed",
+        "type": "object"
+      },
+      "BrokerPublishOutputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "const": "publish_output",
+            "title": "Operation",
+            "type": "string"
+          },
+          "output_kind": {
+            "enum": [
+              "formatted_markdown",
+              "invoice_json"
+            ],
+            "title": "Output Kind",
+            "type": "string"
+          },
+          "output_text": {
+            "maxLength": 1048576,
+            "title": "Output Text",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "request_id",
+          "operation",
+          "output_kind",
+          "output_text"
+        ],
+        "title": "BrokerPublishOutputRequest",
+        "type": "object"
+      },
+      "BrokerReadDocumentAllowed": {
+        "additionalProperties": false,
+        "properties": {
+          "content_text": {
+            "maxLength": 1048576,
+            "title": "Content Text",
+            "type": "string"
+          },
+          "decision": {
+            "const": "allow",
+            "title": "Decision",
+            "type": "string"
+          },
+          "document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Document Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "decision",
+          "document_id",
+          "content_text"
+        ],
+        "title": "BrokerReadDocumentAllowed",
+        "type": "object"
+      },
+      "BrokerReadDocumentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Document Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "read_document",
+            "title": "Operation",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "request_id",
+          "operation",
+          "document_id"
+        ],
+        "title": "BrokerReadDocumentRequest",
+        "type": "object"
+      },
+      "BrokerReplaceOriginalRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Document Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "replace_original",
+            "title": "Operation",
+            "type": "string"
+          },
+          "replacement_text": {
+            "maxLength": 1048576,
+            "title": "Replacement Text",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "request_id",
+          "operation",
+          "document_id",
+          "replacement_text"
+        ],
+        "title": "BrokerReplaceOriginalRequest",
+        "type": "object"
+      },
+      "CancelResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "task_id",
+          "status"
+        ],
+        "title": "CancelResponse",
+        "type": "object"
+      },
+      "ContractSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed_operations": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "const": "read_document",
+                "type": "string"
+              },
+              {
+                "const": "publish_output",
+                "type": "string"
+              }
+            ],
+            "title": "Allowed Operations",
+            "type": "array"
+          },
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "output_slot_id": {
+            "format": "uuid",
+            "title": "Output Slot Id",
+            "type": "string"
+          },
+          "policy_version": {
+            "const": "1",
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "selected_document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Selected Document Id",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_id",
+          "task_id",
+          "selected_document_id",
+          "allowed_operations",
+          "output_slot_id",
+          "expires_at",
+          "policy_version"
+        ],
+        "title": "ContractSummary",
+        "type": "object"
+      },
+      "ControllerProcessObservation": {
+        "additionalProperties": false,
+        "properties": {
+          "assigned_to_job_before_resume": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Job Before Resume"
+          },
+          "creation_time_100ns": {
+            "exclusiveMinimum": 0,
+            "title": "Creation Time 100Ns",
+            "type": "integer"
+          },
+          "job_kill_on_close": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Kill On Close"
+          },
+          "pid": {
+            "exclusiveMinimum": 0,
+            "title": "Pid",
+            "type": "integer"
+          },
+          "process_tree_stopped": {
+            "title": "Process Tree Stopped",
+            "type": "boolean"
+          },
+          "source": {
+            "const": "controller",
+            "default": "controller",
+            "title": "Source",
+            "type": "string"
+          },
+          "worker_is_administrator": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Is Administrator"
+          },
+          "worker_sid": {
+            "maxLength": 184,
+            "minLength": 1,
+            "title": "Worker Sid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pid",
+          "worker_sid",
+          "creation_time_100ns",
+          "process_tree_stopped",
+          "assigned_to_job_before_resume",
+          "job_kill_on_close",
+          "worker_is_administrator"
+        ],
+        "title": "ControllerProcessObservation",
+        "type": "object"
+      },
+      "CreateRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "canary_marker": {
+            "maxLength": 128,
+            "minLength": 16,
+            "title": "Canary Marker",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "run_id",
+          "canary_marker"
+        ],
+        "title": "CreateRunRequest",
+        "type": "object"
+      },
+      "CreateRunResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ingest_token": {
+            "maxLength": 512,
+            "minLength": 32,
+            "title": "Ingest Token",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "run_id",
+          "ingest_token"
+        ],
+        "title": "CreateRunResponse",
+        "type": "object"
+      },
+      "CreateTaskRequest": {
+        "additionalProperties": false,
+        "description": "Only client supplied task choices; all paths and grants remain controller-owned.",
+        "properties": {
+          "launch_source_claim": {
+            "const": "document_tools",
+            "title": "Launch Source Claim",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "selected_document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Selected Document Id",
+            "type": "string"
+          },
+          "tool_id": {
+            "enum": [
+              "report_formatter",
+              "invoice_analyzer"
+            ],
+            "title": "Tool Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tool_id",
+          "selected_document_id",
+          "launch_source_claim"
+        ],
+        "title": "CreateTaskRequest",
+        "type": "object"
+      },
+      "DocumentListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentSummary"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "documents"
+        ],
+        "title": "DocumentListResponse",
+        "type": "object"
+      },
+      "DocumentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "last_verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Verified At"
+          },
+          "media_type": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Media Type",
+            "type": "string"
+          },
+          "protection_status": {
+            "enum": [
+              "ready",
+              "unverified",
+              "unavailable"
+            ],
+            "title": "Protection Status",
+            "type": "string"
+          },
+          "sensitivity": {
+            "enum": [
+              "standard",
+              "confidential"
+            ],
+            "title": "Sensitivity",
+            "type": "string"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "media_type",
+          "size_bytes",
+          "sensitivity",
+          "protection_status",
+          "last_verified_at"
+        ],
+        "title": "DocumentSummary",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ApiError"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EventRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allow",
+                  "deny"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "kind": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "enum": [
+                  "read_document",
+                  "publish_output",
+                  "replace_original",
+                  "delete_document"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "DOCUMENT_OUT_OF_SCOPE",
+                  "ORIGINAL_MUTATION_FORBIDDEN",
+                  "TASK_REVOKED",
+                  "AUTH_INVALID",
+                  "OUTPUT_ALREADY_PUBLISHED",
+                  "INVALID_REQUEST",
+                  "PROTECTION_UNAVAILABLE",
+                  "WORKER_TIMEOUT",
+                  "VERIFICATION_INCOMPLETE",
+                  "CONTROLLER_SHUTDOWN",
+                  "PUBLICATION_INCONSISTENT"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "seq": {
+            "minimum": 1,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "controller",
+              "broker",
+              "worker_reported",
+              "verifier"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "target_document_id": {
+            "anyOf": [
+              {
+                "enum": [
+                  "doc-report",
+                  "doc-notes",
+                  "doc-invoice",
+                  "doc-private"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Document Id"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "event_id",
+          "task_id",
+          "run_id",
+          "seq",
+          "timestamp",
+          "source",
+          "kind",
+          "operation",
+          "target_document_id",
+          "decision",
+          "reason_code",
+          "message",
+          "evidence_refs"
+        ],
+        "title": "EventRecord",
+        "type": "object"
+      },
+      "EventsQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "after_seq": {
+            "default": 0,
+            "maximum": 999999999,
+            "minimum": 0,
+            "title": "After Seq",
+            "type": "integer"
+          }
+        },
+        "title": "EventsQuery",
+        "type": "object"
+      },
+      "EventsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventRecord"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "last_seq": {
+            "minimum": 0,
+            "title": "Last Seq",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "events",
+          "last_seq"
+        ],
+        "title": "EventsResponse",
+        "type": "object"
+      },
+      "EvidenceCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_path": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Artifact Path",
+            "type": "string"
+          },
+          "expected": {
+            "maxLength": 2048,
+            "title": "Expected",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "observed": {
+            "maxLength": 2048,
+            "title": "Observed",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "controller",
+              "broker",
+              "worker_reported",
+              "verifier",
+              "receiver"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "status",
+          "observed",
+          "expected",
+          "artifact_path"
+        ],
+        "title": "EvidenceCheck",
+        "type": "object"
+      },
+      "EvidenceEventReference": {
+        "additionalProperties": false,
+        "properties": {
+          "seq": {
+            "minimum": 1,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "controller",
+              "broker",
+              "worker_reported",
+              "verifier"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "seq"
+        ],
+        "title": "EvidenceEventReference",
+        "type": "object"
+      },
+      "EvidenceReport": {
+        "additionalProperties": false,
+        "properties": {
+          "added_files": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Added Files",
+            "type": "array"
+          },
+          "changed_files": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Changed Files",
+            "type": "array"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "confidentiality_status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Confidentiality Status",
+            "type": "string"
+          },
+          "controller_process_observation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ControllerProcessObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "differences": {
+            "items": {
+              "maxLength": 1028,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Differences",
+            "type": "array"
+          },
+          "event_sources": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceEventReference"
+            },
+            "title": "Event Sources",
+            "type": "array"
+          },
+          "file_inventory_after": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryEntry"
+            },
+            "title": "File Inventory After",
+            "type": "array"
+          },
+          "file_inventory_before": {
+            "items": {
+              "$ref": "#/components/schemas/InventoryEntry"
+            },
+            "title": "File Inventory Before",
+            "type": "array"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "integrity_status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Integrity Status",
+            "type": "string"
+          },
+          "marker_received": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marker Received"
+          },
+          "missing_files": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Missing Files",
+            "type": "array"
+          },
+          "overall_status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "Overall Status",
+            "type": "string"
+          },
+          "published_output_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Output Sha256"
+          },
+          "published_output_size_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published Output Size Bytes"
+          },
+          "receipt_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Receipt Ids",
+            "type": "array"
+          },
+          "receiver_status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Receiver Status",
+            "type": "string"
+          },
+          "renamed_files": {
+            "items": {
+              "maxLength": 1028,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Renamed Files",
+            "type": "array"
+          },
+          "report_id": {
+            "format": "uuid",
+            "title": "Report Id",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "selected_input_sha256_after": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Sha256 After"
+          },
+          "selected_input_sha256_before": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Sha256 Before"
+          },
+          "selected_input_size_after_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Size After Bytes"
+          },
+          "selected_input_size_before_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Input Size Before Bytes"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "tested_source_revision": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{7,40}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tested Source Revision"
+          },
+          "tested_source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Tested Source Sha256",
+            "type": "string"
+          },
+          "verifier_version": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Verifier Version",
+            "type": "string"
+          },
+          "worker_exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Worker Exit Code"
+          },
+          "worker_exit_observed": {
+            "title": "Worker Exit Observed",
+            "type": "boolean"
+          },
+          "worker_identity_recorded": {
+            "title": "Worker Identity Recorded",
+            "type": "boolean"
+          },
+          "worker_observation_count": {
+            "maximum": 1024,
+            "minimum": 0,
+            "title": "Worker Observation Count",
+            "type": "integer"
+          },
+          "worker_termination_confirmed": {
+            "title": "Worker Termination Confirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "report_id",
+          "task_id",
+          "run_id",
+          "generated_at",
+          "verifier_version",
+          "tested_source_revision",
+          "tested_source_sha256",
+          "overall_status",
+          "integrity_status",
+          "confidentiality_status",
+          "file_inventory_before",
+          "file_inventory_after",
+          "selected_input_size_before_bytes",
+          "selected_input_sha256_before",
+          "selected_input_size_after_bytes",
+          "selected_input_sha256_after",
+          "published_output_size_bytes",
+          "published_output_sha256",
+          "added_files",
+          "missing_files",
+          "renamed_files",
+          "changed_files",
+          "differences",
+          "receiver_status",
+          "receipt_ids",
+          "marker_received",
+          "controller_process_observation",
+          "worker_exit_observed",
+          "worker_identity_recorded",
+          "worker_termination_confirmed",
+          "worker_exit_code",
+          "worker_observation_count",
+          "event_sources",
+          "checks"
+        ],
+        "title": "EvidenceReport",
+        "type": "object"
+      },
+      "EvidenceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "complete"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "status",
+          "report"
+        ],
+        "title": "EvidenceResponse",
+        "type": "object"
+      },
+      "HealthCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "enum": [
+              "application_api",
+              "g1_protection",
+              "owner_and_worker_identity",
+              "effective_runtime_permissions",
+              "checkout_dependencies_and_commands",
+              "code_and_fixture_integrity",
+              "credential_retrieval",
+              "job_configuration",
+              "launch_preflight",
+              "database_integrity",
+              "owned_installation",
+              "no_active_worker",
+              "controller_lifecycle"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "summary"
+        ],
+        "title": "HealthCheck",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/HealthCheck"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "protection_ready": {
+            "title": "Protection Ready",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "status",
+          "protection_ready",
+          "checks"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "Incident": {
+        "additionalProperties": false,
+        "properties": {
+          "confidentiality_status": {
+            "enum": [
+              "pending",
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Confidentiality Status",
+            "type": "string"
+          },
+          "containment_status": {
+            "enum": [
+              "pending",
+              "terminated",
+              "failed"
+            ],
+            "title": "Containment Status",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "incident_id": {
+            "format": "uuid",
+            "title": "Incident Id",
+            "type": "string"
+          },
+          "integrity_status": {
+            "enum": [
+              "pending",
+              "pass",
+              "fail",
+              "unknown",
+              "not_applicable"
+            ],
+            "title": "Integrity Status",
+            "type": "string"
+          },
+          "policy_reason": {
+            "enum": [
+              "DOCUMENT_OUT_OF_SCOPE",
+              "ORIGINAL_MUTATION_FORBIDDEN"
+            ],
+            "title": "Policy Reason",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "trigger_event_id": {
+            "format": "uuid",
+            "title": "Trigger Event Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "incident_id",
+          "task_id",
+          "trigger_event_id",
+          "policy_reason",
+          "containment_status",
+          "integrity_status",
+          "confidentiality_status",
+          "evidence_refs"
+        ],
+        "title": "Incident",
+        "type": "object"
+      },
+      "IngestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "payload_base64": {
+            "maxLength": 1398104,
+            "title": "Payload Base64",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "request_id",
+          "run_id",
+          "task_id",
+          "payload_base64"
+        ],
+        "title": "IngestRequest",
+        "type": "object"
+      },
+      "InventoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "entry_type": {
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "title": "Entry Type",
+            "type": "string"
+          },
+          "exists": {
+            "const": true,
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "relative_path": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Relative Path",
+            "type": "string"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          }
+        },
+        "required": [
+          "entry_type",
+          "relative_path",
+          "exists",
+          "size_bytes",
+          "sha256"
+        ],
+        "title": "InventoryEntry",
+        "type": "object"
+      },
+      "InvoiceResult": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "grand_total": {
+            "maxLength": 64,
+            "minLength": 4,
+            "pattern": "^(?:0|[1-9][0-9]{0,60})\\.[0-9]{2}$",
+            "title": "Grand Total",
+            "type": "string"
+          },
+          "invoice_number": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Invoice Number",
+            "type": "string"
+          },
+          "line_total": {
+            "maxLength": 64,
+            "minLength": 4,
+            "pattern": "^(?:0|[1-9][0-9]{0,60})\\.[0-9]{2}$",
+            "title": "Line Total",
+            "type": "string"
+          },
+          "vendor": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Vendor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor",
+          "invoice_number",
+          "date",
+          "line_total",
+          "grand_total"
+        ],
+        "title": "InvoiceResult",
+        "type": "object"
+      },
+      "OutputMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decoded_bytes": {
+            "maximum": 1048576,
+            "minimum": 0,
+            "title": "Decoded Bytes",
+            "type": "integer"
+          },
+          "file_name": {
+            "pattern": "^[0-9a-f-]{36}\\.(md|json)$",
+            "title": "File Name",
+            "type": "string"
+          },
+          "output_id": {
+            "format": "uuid",
+            "title": "Output Id",
+            "type": "string"
+          },
+          "output_kind": {
+            "enum": [
+              "formatted_markdown",
+              "invoice_json"
+            ],
+            "title": "Output Kind",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "output_id",
+          "task_id",
+          "output_kind",
+          "file_name",
+          "decoded_bytes",
+          "sha256",
+          "created_at"
+        ],
+        "title": "OutputMetadata",
+        "type": "object"
+      },
+      "OwnerBootstrapExchangeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "bootstrap_token": {
+            "maxLength": 128,
+            "minLength": 32,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Bootstrap Token",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "bootstrap_token"
+        ],
+        "title": "OwnerBootstrapExchangeRequest",
+        "type": "object"
+      },
+      "OwnerLogoutResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "authenticated": {
+            "const": false,
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "authenticated"
+        ],
+        "title": "OwnerLogoutResponse",
+        "type": "object"
+      },
+      "OwnerSessionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "authenticated": {
+            "const": true,
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "authenticated",
+          "expires_at"
+        ],
+        "title": "OwnerSessionResponse",
+        "type": "object"
+      },
+      "ReceiptJournalState": {
+        "enum": [
+          "reserved",
+          "staged",
+          "file_committed",
+          "committed",
+          "aborted",
+          "inconsistent"
+        ],
+        "title": "ReceiptJournalState",
+        "type": "string"
+      },
+      "ReceiptResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "decoded_bytes": {
+            "maximum": 1048576,
+            "minimum": 0,
+            "title": "Decoded Bytes",
+            "type": "integer"
+          },
+          "receipt_id": {
+            "format": "uuid",
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "receipt_id",
+          "received_at",
+          "decoded_bytes",
+          "sha256"
+        ],
+        "title": "ReceiptResponse",
+        "type": "object"
+      },
+      "ReceiptSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "decoded_bytes": {
+            "maximum": 1048576,
+            "minimum": 0,
+            "title": "Decoded Bytes",
+            "type": "integer"
+          },
+          "marker_match": {
+            "title": "Marker Match",
+            "type": "boolean"
+          },
+          "receipt_id": {
+            "format": "uuid",
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "receipt_id",
+          "task_id",
+          "received_at",
+          "decoded_bytes",
+          "sha256",
+          "marker_match"
+        ],
+        "title": "ReceiptSummary",
+        "type": "object"
+      },
+      "ReceiptsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "marker_received": {
+            "title": "Marker Received",
+            "type": "boolean"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/ReceiptSummary"
+            },
+            "title": "Receipts",
+            "type": "array"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "run_id",
+          "receipts",
+          "marker_received"
+        ],
+        "title": "ReceiptsResponse",
+        "type": "object"
+      },
+      "ReceiverHealthResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "status",
+          "version"
+        ],
+        "title": "ReceiverHealthResponse",
+        "type": "object"
+      },
+      "ReceiverReceiptJournalRecord": {
+        "additionalProperties": false,
+        "description": "Receiver-owned journal schema; it is not stored in the ACLAIS database.",
+        "properties": {
+          "canonical_body_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Canonical Body Sha256",
+            "type": "string"
+          },
+          "decoded_bytes": {
+            "maximum": 1048576,
+            "minimum": 0,
+            "title": "Decoded Bytes",
+            "type": "integer"
+          },
+          "marker_match": {
+            "title": "Marker Match",
+            "type": "boolean"
+          },
+          "payload_relative_path": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Payload Relative Path",
+            "type": "string"
+          },
+          "payload_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Payload Sha256",
+            "type": "string"
+          },
+          "receipt_id": {
+            "format": "uuid",
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "staging_relative_path": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Staging Relative Path",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ReceiptJournalState"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "request_id",
+          "task_id",
+          "canonical_body_sha256",
+          "receipt_id",
+          "staging_relative_path",
+          "payload_relative_path",
+          "payload_sha256",
+          "decoded_bytes",
+          "marker_match",
+          "state",
+          "received_at"
+        ],
+        "title": "ReceiverReceiptJournalRecord",
+        "type": "object"
+      },
+      "RevocationCause": {
+        "enum": [
+          "POLICY_DENIED",
+          "CANCELLED",
+          "WORKER_TIMEOUT",
+          "CONTROLLER_SHUTDOWN"
+        ],
+        "title": "RevocationCause",
+        "type": "string"
+      },
+      "TaskDetailResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContractSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "incident_summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Incident"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "task": {
+            "$ref": "#/components/schemas/TaskRecord"
+          }
+        },
+        "required": [
+          "schema_version",
+          "task",
+          "contract_summary",
+          "output_metadata",
+          "incident_summary"
+        ],
+        "title": "TaskDetailResponse",
+        "type": "object"
+      },
+      "TaskListQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "default": 20,
+            "maximum": 50,
+            "minimum": 1,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "TaskListQuery",
+        "type": "object"
+      },
+      "TaskListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskSummary"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tasks"
+        ],
+        "title": "TaskListResponse",
+        "type": "object"
+      },
+      "TaskRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_id": {
+            "format": "uuid",
+            "title": "Contract Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "launch_source_claim": {
+            "const": "document_tools",
+            "title": "Launch Source Claim",
+            "type": "string"
+          },
+          "observed_origin": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Observed Origin"
+          },
+          "observed_referer": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Observed Referer"
+          },
+          "revocation_cause": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevocationCause"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "selected_document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Selected Document Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "terminal_cause": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TerminalCause"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "tool_id": {
+            "enum": [
+              "report_formatter",
+              "invoice_analyzer"
+            ],
+            "title": "Tool Id",
+            "type": "string"
+          },
+          "worker_pid": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Worker Pid"
+          },
+          "worker_sid": {
+            "anyOf": [
+              {
+                "maxLength": 184,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Worker Sid"
+          }
+        },
+        "required": [
+          "schema_version",
+          "task_id",
+          "run_id",
+          "tool_id",
+          "selected_document_id",
+          "contract_id",
+          "status",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "launch_source_claim",
+          "incident_id"
+        ],
+        "title": "TaskRecord",
+        "type": "object"
+      },
+      "TaskStatus": {
+        "enum": [
+          "CREATED",
+          "PREPARING",
+          "RUNNING",
+          "REVOKING",
+          "VERIFYING",
+          "COMPLETED",
+          "BLOCKED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "title": "TaskStatus",
+        "type": "string"
+      },
+      "TaskSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "selected_document_id": {
+            "enum": [
+              "doc-report",
+              "doc-notes",
+              "doc-invoice",
+              "doc-private"
+            ],
+            "title": "Selected Document Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "tool_id": {
+            "enum": [
+              "report_formatter",
+              "invoice_analyzer"
+            ],
+            "title": "Tool Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "tool_id",
+          "selected_document_id",
+          "status",
+          "created_at",
+          "finished_at",
+          "incident_id"
+        ],
+        "title": "TaskSummary",
+        "type": "object"
+      },
+      "TerminalCause": {
+        "enum": [
+          "POLICY_DENIED",
+          "CANCELLED",
+          "WORKER_TIMEOUT",
+          "CONTROLLER_SHUTDOWN",
+          "WORKER_EXIT_SUCCESS",
+          "WORKER_EXIT_FAILURE",
+          "PREPARATION_FAILED",
+          "VERIFICATION_FAILED",
+          "RECOVERY_INTERRUPTED"
+        ],
+        "title": "TerminalCause",
+        "type": "string"
+      }
+    },
+    "securitySchemes": {
+      "CsrfToken": {
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "type": "apiKey"
+      },
+      "OwnerSession": {
+        "in": "cookie",
+        "name": "aclais_owner_session",
+        "type": "apiKey"
+      },
+      "ReceiverAdmin": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "ReceiverIngest": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "WorkerCredential": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Versioned ACLAIS and receiver wire contracts are generated from strict backend models. Only the A1 health route is currently implemented; later routes are contract definitions.",
+    "title": "ACLAIS Local API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/admin/runs": {
+      "post": {
+        "operationId": "createReceiverRun",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy task, conflicting request, or duplicate run"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body exceeds the documented limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Strict request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "ReceiverAdmin": []
+          }
+        ],
+        "summary": "Create an empty receiver run",
+        "tags": [
+          "receiver-admin"
+        ]
+      }
+    },
+    "/admin/runs/{run_id}/receipts": {
+      "get": {
+        "operationId": "getReceiverReceipts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Identifier not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "ReceiverAdmin": []
+          }
+        ],
+        "summary": "Read committed receipt summaries",
+        "tags": [
+          "receiver-admin"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "run_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/api/broker/operations": {
+      "post": {
+        "operationId": "brokerOperation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrokerOperationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrokerOperationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy task, conflicting request, or duplicate run"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body exceeds the documented limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Strict request validation failed"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Repeated invalid requests are temporarily limited"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Protection unavailable"
+          }
+        },
+        "security": [
+          {
+            "WorkerCredential": []
+          }
+        ],
+        "summary": "Submit a strict worker operation",
+        "tags": [
+          "broker"
+        ]
+      }
+    },
+    "/api/documents": {
+      "get": {
+        "operationId": "listDocuments",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "List registered document metadata",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "getApiHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "summary": "Read local service health",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/outputs/{output_id}": {
+      "get": {
+        "operationId": "getOutput",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Inert attachment with nosniff; media type follows the committed output kind.",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Content-Type-Options": {
+                "schema": {
+                  "const": "nosniff",
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Identifier not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy task, conflicting request, or duplicate run"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Download inert, committed task output",
+        "tags": [
+          "owner"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "output_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/api/owner/bootstrap/exchange": {
+      "post": {
+        "operationId": "exchangeOwnerBootstrap",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerBootstrapExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body exceeds the documented limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Strict request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [],
+        "summary": "Exchange the one-time owner bootstrap secret",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/owner/session": {
+      "get": {
+        "operationId": "getOwnerSession",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Read current owner session status",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/owner/session/logout": {
+      "post": {
+        "operationId": "logoutOwnerSession",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerLogoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "CsrfToken": [],
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Revoke the current owner session",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/tasks": {
+      "get": {
+        "operationId": "listTasks",
+        "parameters": [
+          {
+            "description": "Maximum rows; 1 through 50",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "List recent tasks",
+        "tags": [
+          "owner"
+        ]
+      },
+      "post": {
+        "operationId": "createTask",
+        "parameters": [
+          {
+            "description": "Short-lived server-signed context from the approval GET",
+            "in": "header",
+            "name": "X-Aclais-Approval-Context",
+            "required": true,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskRecord"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy task, conflicting request, or duplicate run"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body exceeds the documented limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Strict request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Protection unavailable"
+          }
+        },
+        "security": [
+          {
+            "CsrfToken": [],
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Create an allowlisted task request",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/tasks/{task_id}": {
+      "get": {
+        "operationId": "getTask",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Identifier not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Read task, contract, output and incident metadata",
+        "tags": [
+          "owner"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/api/tasks/{task_id}/cancel": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "cancelTask",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Well-formed operation denied by policy"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Identifier not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy task, conflicting request, or duplicate run"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "CsrfToken": [],
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Request task cancellation",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/api/tasks/{task_id}/events": {
+      "get": {
+        "operationId": "getTaskEvents",
+        "parameters": [
+          {
+            "description": "Return events with greater sequence numbers",
+            "in": "query",
+            "name": "after_seq",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 999999999,
+              "minimum": 0,
+              "title": "After Seq",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Identifier not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Read ordered task events",
+        "tags": [
+          "owner"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/api/tasks/{task_id}/evidence": {
+      "get": {
+        "operationId": "getTaskEvidence",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Identifier not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Read verification report or pending state",
+        "tags": [
+          "owner"
+        ]
+      },
+      "parameters": [
+        {
+          "in": "path",
+          "name": "task_id",
+          "required": true,
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/approve": {
+      "get": {
+        "operationId": "getApprovalPage",
+        "parameters": [
+          {
+            "description": "Tool selected by the fixed approval allowlist",
+            "in": "query",
+            "name": "tool_id",
+            "required": true,
+            "schema": {
+              "enum": [
+                "report_formatter",
+                "invoice_analyzer"
+              ],
+              "title": "Tool Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Fixed launch source claim",
+            "in": "query",
+            "name": "launch_source_claim",
+            "required": true,
+            "schema": {
+              "const": "document_tools",
+              "title": "Launch Source Claim",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Trusted approval page"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "OwnerSession": []
+          }
+        ],
+        "summary": "Render the side-effect-free owner approval page",
+        "tags": [
+          "owner"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "getReceiverHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiverHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "summary": "Read receiver process health",
+        "tags": [
+          "receiver"
+        ]
+      }
+    },
+    "/ingest": {
+      "post": {
+        "operationId": "ingestReceipt",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid host or query"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication failed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Busy task, conflicting request, or duplicate run"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request body exceeds the documented limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Strict request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal persistence or recovery failure"
+          }
+        },
+        "security": [
+          {
+            "ReceiverIngest": []
+          }
+        ],
+        "summary": "Durably accept or replay a run receipt",
+        "tags": [
+          "receiver"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "health"
+    },
+    {
+      "name": "owner"
+    },
+    {
+      "name": "broker"
+    },
+    {
+      "name": "receiver"
+    },
+    {
+      "name": "receiver-admin"
+    }
+  ]
+}

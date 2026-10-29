@@ -1,0 +1,395 @@
+{
+    "schema_version":  2,
+    "checkpoint":  "A2",
+    "passed":  true,
+    "elevated":  false,
+    "source_revision":  "01678f64c70fc23970e67b8352dfc0439e389669",
+    "tested_probe_sha256":  "f5eee4d5b08c11d96a036bb3cff38331da0aa93636c310621ba82a09e4d3c544",
+    "tested_harness_sha256":  "6fdc24b0fc7b7ae3a8748858591653fa716d97f7c7a5eff6dcd6377b2417cbf9",
+    "worker_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006",
+    "worker_is_administrator":  false,
+    "check_count":  75,
+    "fixture_count":  14,
+    "code_file_count":  571,
+    "fixture_integrity_passed":  true,
+    "owner_checks_passed":  true,
+    "credential_value_recorded":  false,
+    "raw_inventory_committed":  false,
+    "checks":  [
+                   {
+                       "name":  "worker_identity",
+                       "actual":  "verified_worker_sid",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "probe_command_line_contains_no_credential",
+                       "actual":  "no_credential_pattern",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "worker_environment_has_no_credential_variables",
+                       "actual":  "none_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_read",
+                       "actual":  "readable",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_overwrite_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_rename_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_replace_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "temporary_output_create_write_delete",
+                       "actual":  "operation_succeeded",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "confidential_original_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "permitted_original_read_denied:project-report.md",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "permitted_original_read_denied:meeting-notes.md",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "permitted_original_read_denied:invoice.csv",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_overwrite_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "original_replace_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "originals_parent_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "store_parent_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "work_parent_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_evidence_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_readable",
+                       "actual":  "operation_succeeded",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "protected_application_code_rename_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_application_code_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_application_code_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_frontend_bundle_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_frontend_bundle_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_backend__venv_Lib_site-packages_fastapi___init___py_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_backend__venv_Lib_site-packages_fastapi___init___py_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_scripts_manage_ps1_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "aclais_scripts_manage_ps1_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "scripts_aclais_ps1_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "scripts_aclais_ps1_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "shared_openapi_json_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "shared_openapi_json_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_evidence_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_root_delete_access_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_git_metadata_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_git_metadata_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_ancestor_1_delete_access_denied",
+                       "actual":  "sharing_violation",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_ancestor_2_delete_access_denied",
+                       "actual":  "sharing_violation",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_evidence_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "repository_evidence_create_child_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_sentinel_read_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_sentinel_write_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_child_delete_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_child_rename_denied",
+                       "actual":  "path_hidden_or_not_found",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "owner_credential_unavailable_to_worker",
+                       "actual":  "credential_not_found_in_worker_vault",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "originals_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "evidence_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "selected_input_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "application_code_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "store_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "work_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "temporary_output_dacl_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "originals_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "trusted_state_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "evidence_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "application_code_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   },
+                   {
+                       "name":  "lab_root_owner_change_denied",
+                       "actual":  "access_denied",
+                       "passed":  true
+                   }
+               ]
+}
