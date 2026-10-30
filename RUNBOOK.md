@@ -1,5 +1,49 @@
 # ACLAIS local development runbook
 
+## Everyday startup on the provisioned demonstration machine
+
+Use three ordinary, non-administrator PowerShell terminals. Leave each service in the foreground. Receiver initialization and A2 provisioning are not routine startup steps. Do not run a second copy of a service that is already running.
+
+Terminal 1 starts the existing receiver:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
+Remove-Item Env:VIRTUAL_ENV -ErrorAction SilentlyContinue
+& 'D:\Workspace\IDL\ACLAIS-1\scripts\start.ps1' -Service Receiver
+```
+
+Terminal 2 starts the protected ACLAIS controller; the operator command explicitly selects the protected runtime without an environment toggle:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
+Remove-Item Env:VIRTUAL_ENV -ErrorAction SilentlyContinue
+& 'D:\Workspace\IDL\ACLAIS-1\scripts\aclais.ps1' -Action start
+```
+
+Wait until the terminal reports `Application startup complete` before opening Document Tools. ACLAIS checks the protected Windows tree before opening its listener; this can take several minutes on the demonstration machine. If the command exits with an error, resolve that error rather than repeatedly starting copies. A standalone doctor checks prerequisites but does not establish that publication recovery or API startup succeeded.
+
+Terminal 3 starts Document Tools:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force
+Remove-Item Env:VIRTUAL_ENV -ErrorAction SilentlyContinue
+& 'D:\Workspace\IDL\ACLAIS-1\scripts\start.ps1' -Service DocumentTools
+```
+
+From another terminal, check actual responses and open the pages:
+
+```powershell
+curl.exe --noproxy "*" --fail -g 'http://[::1]:8767/health'
+curl.exe --noproxy "*" --fail --max-time 180 'http://127.0.0.1:8765/api/health'
+curl.exe --noproxy "*" --fail 'http://localhost:8766/availability.json'
+Start-Process 'http://127.0.0.1:8765/owner'
+Start-Process 'http://localhost:8766'
+```
+
+Both booleans in the availability response must be true before the corresponding actions are enabled. Refresh Document Tools if it was opened before ACLAIS became ready. Use the browser profile that holds the owner session; new owner bootstrap opens locally only when no unexpired owner session exists. Choose Format a report, explicitly approve it in ACLAIS, inspect the useful result and attributed evidence, then repeat with Extract invoice details. Stop the three services with Ctrl+C in their own terminals.
+
+An inconsistent saved publication can block controller startup even when the doctor reports its prerequisites ready. Do not delete the database, bypass the publication journal or reset an inconsistency flag. Recovery must retain the failed state, prove a consistent backup preserves every task/event/credential/session, and verify the exact output paths, hashes and byte counts. The reviewed 2026-10-30 restoration is recorded in `evidence/startup-recovery-2026-10-30.md`; its raw database snapshots and file inventory stay owner-protected outside Git.
+
 ## Protected G1 operator commands
 
 From any directory, use `& '<repository-root>\scripts\aclais.ps1' -Action doctor|start|stop|reset|teardown` with exactly one action. These commands delegate to `aclais/scripts/manage.ps1`; they use the sentinel-owned `C:\ACLAIS-Lab` and ordinary owner session. `start` stays in the foreground, opens the one-time owner bootstrap locally, and stops with Ctrl+C. `stop` verifies the recorded owner PID, creation time and instance before requesting shutdown and waiting for observed process exit. It never kills a port owner or unrelated process. A duplicate controller or occupied port fails.
