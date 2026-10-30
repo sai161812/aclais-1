@@ -14,6 +14,8 @@ from aclais.launcher.windows import RuntimeLayout, _NativeApi
 from aclais.persistence.models import CreateTaskRequest, HealthCheck, HealthResponse
 from aclais.tool_registry import FixedToolRegistry, WorkerUnavailable
 
+HEALTH_DISPLAY_CACHE_TTL_SECONDS = 120.0
+
 
 class ReadinessError(RuntimeError):
     """A mandatory local boundary check failed; no launch is authorized."""
@@ -62,7 +64,11 @@ class Readiness:
 
     def check(self, *, fresh: bool = False) -> tuple[HealthCheck, ...]:
         with self._lock:
-            if not fresh and self._checks and time.monotonic() - self._checked_at < 5:
+            if (
+                not fresh
+                and self._checks
+                and time.monotonic() - self._checked_at < HEALTH_DISPLAY_CACHE_TTL_SECONDS
+            ):
                 return self._checks
             checks: list[HealthCheck] = []
             try:
@@ -137,24 +143,31 @@ class Readiness:
                 ),
             )
         core_ready = bool(checks) and all(item.status == "pass" for item in checks)
-        try:
-            FixedToolRegistry(
-                self.layout.root, root_id=getattr(self.layout, "root_id", None)
-            ).resolve_installed_entrypoint(
-                CreateTaskRequest(
-                    schema_version=1,
-                    tool_id="report_formatter",
-                    selected_document_id="doc-report",
-                    launch_source_claim="document_tools",
+        registry = FixedToolRegistry(
+            self.layout.root, root_id=getattr(self.layout, "root_id", None)
+        )
+
+        def installed(tool_id: str, document_id: str) -> bool:
+            try:
+                registry.resolve_installed_entrypoint(
+                    CreateTaskRequest(
+                        schema_version=1,
+                        tool_id=tool_id,
+                        selected_document_id=document_id,
+                        launch_source_claim="document_tools",
+                    )
                 )
-            )
-            installed = True
-        except (WorkerUnavailable, OSError):
-            installed = False
-        ready = core_ready and installed
+                return True
+            except (WorkerUnavailable, OSError):
+                return False
+
+        formatter_installed = installed("report_formatter", "doc-report")
+        invoice_installed = installed("invoice_analyzer", "doc-invoice")
+        ready = core_ready and formatter_installed
         summary = (
-            "Report Formatter is installed; Invoice Analyzer remains unavailable "
-            "in this checkpoint."
+            "Report Formatter and Invoice Analyzer are installed."
+            if ready and invoice_installed
+            else "Report Formatter is installed; Invoice Analyzer is unavailable."
             if ready
             else "Core checks passed; production workers are pending G3 installation."
             if core_ready
@@ -175,6 +188,24 @@ class Readiness:
                     id="g1_protection",
                     status="pass" if ready else "unknown" if core_ready else "fail",
                     summary=summary,
+                ),
+                HealthCheck(
+                    id="tool_report_formatter",
+                    status="pass" if formatter_installed else "unknown",
+                    summary=(
+                        "The fixed Report Formatter worker is installed."
+                        if formatter_installed
+                        else "The fixed Report Formatter worker is not installed."
+                    ),
+                ),
+                HealthCheck(
+                    id="tool_invoice_analyzer",
+                    status="pass" if invoice_installed else "unknown",
+                    summary=(
+                        "The fixed Invoice Analyzer worker is installed."
+                        if invoice_installed
+                        else "The fixed Invoice Analyzer worker is not installed."
+                    ),
                 ),
             ),
         )

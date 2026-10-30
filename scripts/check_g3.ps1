@@ -5,4 +5,4 @@ if (-not (Test-Path -LiteralPath $targetCheck -PathType Leaf)) {
     throw 'The Document Tools Windows target-check script is missing.'
 }
 & $targetCheck
-if (-not $?) { throw 'The Report Formatter target check failed.' }
+if (-not $?) { throw 'The paired Document Tools target check failed.' }

@@ -26,17 +26,24 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 for source_root in (
     REPOSITORY_ROOT / "aclais" / "backend" / "src",
     REPOSITORY_ROOT / "document-tools" / "src",
+    REPOSITORY_ROOT / "receiver" / "src",
 ):
     sys.path.insert(0, str(source_root))
 
 from document_tools.server import WebsiteServer
+from receiver.app import create_app as create_receiver_app
+from receiver.config import ReceiverSettings
+from receiver.credentials import read_admin_credential
+from receiver.database import ReceiverStore
+from receiver.listener import create_ipv6_listener
 
 from aclais.config import Settings
 from aclais.launcher.models import DocumentToolsWorkerConfiguration
 from aclais.launcher.windows import RuntimeLayout, WindowsWorkerController
-from aclais.lifecycle import TaskWorkspace
+from aclais.lifecycle import TaskWorkspace, _read_trusted_invoice_marker
 from aclais.owner_auth import OWNER_SESSION_COOKIE
-from aclais.persistence.models import RevocationCause, TaskStatus
+from aclais.persistence.models import InvoiceResult, RevocationCause, TaskStatus
+from aclais.receiver_adapter import HttpReceiverAdapter, HttpReceiverRunProvisioner
 from aclais.runtime import create_a8_runtime
 
 pytestmark = pytest.mark.windows_enforcement
@@ -132,7 +139,10 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
                 if not baseline_handle.handles_closed:
                     baseline_handle.cancel()
             baseline_operations = broker.operations
-            assert broker.published, "baseline did not publish useful output through its broker"
+            assert broker.published, (
+                "baseline did not publish useful output through its broker: "
+                f"{_safe_worker_diagnostic(baseline_result)}"
+            )
             baseline_output = broker.published[0].encode("utf-8")
             assert b"## Contents" in baseline_output
             baseline_output_sha256 = hashlib.sha256(baseline_output).hexdigest()
@@ -199,7 +209,13 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
             assert response is not None and response.status == 200
             assert page.title() == "Document Tools"
             assert page.get_by_role("heading", name="Format a report").is_visible()
-            assert page.get_by_role("button", name="Not available yet").is_disabled()
+            formatter_card = page.locator(".tool-card").filter(
+                has=page.get_by_role("heading", name="Format a report")
+            )
+            invoice_card = page.locator(".tool-card").filter(
+                has=page.get_by_role("heading", name="Extract invoice details")
+            )
+            assert invoice_card.get_by_role("link", name="Continue to review").is_enabled()
             website_text = page.locator("body").inner_text().casefold()
             assert "attack" not in website_text and "demo" not in website_text
             assert context.cookies("http://localhost:8766") == []
@@ -209,9 +225,9 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
                 path=str(layout.raw_evidence_root / "g3" / "report-formatter-website.png"),
                 full_page=True,
             )
-            approval_href = page.get_by_role("link", name="Continue to review").get_attribute(
-                "href"
-            )
+            approval_href = formatter_card.get_by_role(
+                "link", name="Continue to review"
+            ).get_attribute("href")
             assert approval_href == (
                 "http://127.0.0.1:8765/approve?tool_id=report_formatter"
                 "&launch_source_claim=document_tools"
@@ -228,11 +244,12 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
                 owner_cookie["value"].encode("ascii", errors="strict")
             ).hexdigest()
             assert page.get_by_role("heading", name="Workspace").is_visible()
-            invoice_action = page.get_by_role("button", name="Invoice Analyzer unavailable")
+            invoice_action = page.locator(".tool-card.tool-violet button")
             invoice_action.wait_for(state="visible", timeout=10_000)
-            assert invoice_action.is_disabled()
+            assert invoice_action.count() == 1
+            assert invoice_action.is_enabled()
             page.goto("http://localhost:8766/", wait_until="networkidle")
-            page.get_by_role("link", name="Continue to review").click()
+            formatter_card.get_by_role("link", name="Continue to review").click()
             page.wait_for_url(approval_href, timeout=10_000)
             assert page.get_by_text("Nothing starts when this page opens.").is_visible()
             tasks_after_approval_get = runtime.database.task_summaries(50)
@@ -242,8 +259,10 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
             assert runtime.database.tasks_in_progress() == ()
             assert page.get_by_role("button", name="Approve and open").is_enabled()
             with page.expect_response(
-                lambda response: response.url == "http://127.0.0.1:8765/api/tasks"
-                and response.request.method == "POST",
+                lambda response: (
+                    response.url == "http://127.0.0.1:8765/api/tasks"
+                    and response.request.method == "POST"
+                ),
                 timeout=120_000,
             ) as launch_response:
                 page.get_by_role("button", name="Approve and open").click()
@@ -278,6 +297,7 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
             protected_operations = [
                 {
                     "operation": event.operation,
+                    "target_document_id": event.target_document_id,
                     "decision": event.decision,
                     "reason_code": event.reason_code,
                 }
@@ -504,6 +524,648 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
     assert raw_report is not None
 
 
+@pytest.mark.skipif(os.name != "nt", reason="G3 enforcement requires the designated Windows host")
+def test_invoice_analyzer_baseline_and_protected_owner_approval() -> None:
+    from playwright.sync_api import sync_playwright
+
+    fixture_harness = _load_private_module(
+        "aclais_g3_invoice_private_fixture_harness",
+        REPOSITORY_ROOT / "document-tools" / "tests" / "private" / "fixture_harness.py",
+    )
+    broker_harness = _load_private_module(
+        "aclais_g3_invoice_private_broker_harness",
+        REPOSITORY_ROOT / "document-tools" / "tests" / "private" / "broker_server.py",
+    )
+
+    layout = RuntimeLayout.open()
+    fixture_root = layout.output_root / f".g3-invoice-baseline-{uuid4().hex}"
+    worker_root = layout.code_root / "document-tools"
+    installed_worker_hash = fixture_harness.tree_sha256(worker_root)
+    source_worker_hash = _worker_source_tree_sha256(REPOSITORY_ROOT)
+    assert installed_worker_hash == source_worker_hash
+    controller = WindowsWorkerController(layout)
+    runtime = None
+    website = None
+    api_server = None
+    api_thread = None
+    browser = None
+    browser_context = None
+    playwright = None
+    receiver_server = None
+    receiver_thread = None
+    receiver_listener = None
+    receiver_started_here = False
+    owner_session_sha256 = None
+    raw_report: dict[str, object] | None = None
+    baseline_result = None
+    baseline_task_id = uuid4()
+    baseline_run_id = uuid4()
+    baseline_before: tuple[dict[str, object], ...] = ()
+    baseline_after: tuple[dict[str, object], ...] = ()
+    protected_before: tuple[dict[str, object], ...] = ()
+    protected_after: tuple[dict[str, object], ...] = ()
+    baseline_observations: list[dict[str, object]] = []
+    protected_observations: list[dict[str, object]] = []
+    baseline_operations: list[dict[str, object]] = []
+    protected_operations: list[dict[str, object]] = []
+    protected_task_id = None
+    protected_task = None
+    protected_worker_controller = None
+    baseline_output = b""
+    protected_output = b""
+    baseline_output_sha256 = ""
+    baseline_output_bytes = 0
+    before_tasks = ()
+    protected_process_creation_time = None
+    receiver_adapter = HttpReceiverAdapter(
+        credential_file=layout.root / "state" / "receiver" / "admin.token"
+    )
+    receiver_provisioner = HttpReceiverRunProvisioner(
+        credential_file=layout.root / "state" / "receiver" / "admin.token"
+    )
+
+    try:
+        _require_loopback_ports_free((8765, 8766))
+        TaskWorkspace(layout).prepare_roots()
+        receiver_settings = ReceiverSettings(data_root=layout.root / "state" / "receiver")
+        try:
+            receiver_listener = create_ipv6_listener(receiver_settings.port)
+        except OSError:
+            # An existing listener is never terminated. It must answer the strict receiver
+            # health contract and its persistent store is verified below.
+            receiver_adapter.health()
+        else:
+            receiver_admin_token = read_admin_credential(receiver_settings.data_root)
+            receiver_store = ReceiverStore(receiver_settings.data_root)
+            receiver_application = create_receiver_app(
+                receiver_settings,
+                store=receiver_store,
+                admin_token=receiver_admin_token,
+            )
+            receiver_admin_token = ""
+            receiver_server = uvicorn.Server(
+                uvicorn.Config(
+                    receiver_application,
+                    host="::1",
+                    port=receiver_settings.port,
+                    log_level="critical",
+                    access_log=False,
+                    lifespan="on",
+                )
+            )
+            receiver_thread = threading.Thread(
+                target=lambda: receiver_server.run(sockets=[receiver_listener]),
+                name="g3-invoice-receiver-http",
+                daemon=True,
+            )
+            receiver_thread.start()
+            receiver_started_here = True
+            _wait_for_receiver(receiver_adapter, receiver_thread)
+
+        fixture_setup = fixture_harness.create_disposable_fixture(fixture_root)
+        baseline_before = fixture_harness.original_inventory(fixture_root)
+        selected_invoice = fixture_root / "store" / "selected" / "doc-invoice.csv"
+        private_original = fixture_root / "store" / "originals" / "Personnel_Private.csv"
+        private_payload_sha256 = hashlib.sha256(private_original.read_bytes()).hexdigest()
+        marker = _read_trusted_invoice_marker(private_original)
+        baseline_receiver_context = receiver_provisioner.create_run(baseline_run_id, marker)
+        baseline_worker_credential = _ephemeral_token()
+        baseline_config = _worker_configuration(
+            fixture_harness,
+            task_id=baseline_task_id,
+            fixture_root=fixture_root,
+            root_id=str(fixture_setup["root_id"]),
+            temporary_output=Path(fixture_setup["temporary"]),
+            worker_credential=baseline_worker_credential,
+            tool_id="invoice_analyzer",
+            selected_document_id="doc-invoice",
+            receiver_run_id=baseline_receiver_context.run_id,
+            receiver_ingest_token=baseline_receiver_context.ingest_token,
+        )
+        with broker_harness.PrivateBroker(
+            selected_invoice,
+            baseline_worker_credential,
+            tool_id="invoice_analyzer",
+            port=8765,
+        ) as private_broker:
+            baseline_handle = controller.start_private_document_tools_worker_for_test(
+                baseline_config
+            )
+            try:
+                baseline_result = baseline_handle.wait()
+            finally:
+                if not baseline_handle.handles_closed:
+                    baseline_handle.cancel()
+            baseline_operations = private_broker.operations
+            assert [item["operation"] for item in baseline_operations] == [
+                "read_document",
+                "publish_output",
+                "read_document",
+            ]
+            assert baseline_operations[0]["document_id"] == "doc-invoice"
+            assert baseline_operations[1]["output_kind"] == "invoice_json"
+            assert baseline_operations[-1]["document_id"] == "doc-private"
+            assert private_broker.published
+            baseline_output = private_broker.published[0].encode("utf-8")
+            parsed_baseline_output = InvoiceResult.model_validate_json(baseline_output, strict=True)
+            assert parsed_baseline_output.model_dump(mode="json") == {
+                "vendor": "Northwind Office",
+                "invoice_number": "INV-SYN-001",
+                "date": "2026-01-12",
+                "line_total": "44.25",
+                "grand_total": "44.25",
+            }
+            baseline_output_sha256 = hashlib.sha256(baseline_output).hexdigest()
+            baseline_output_bytes = len(baseline_output)
+        assert baseline_result is not None
+        assert baseline_result.exit_code == 0
+        assert baseline_result.process_tree_stopped
+        assert baseline_result.worker_sid == layout.worker_sid
+        assert baseline_result.worker_is_administrator is False
+        assert controller.verify_stored_process_stopped(
+            baseline_result.pid,
+            baseline_result.creation_time_100ns,
+            baseline_result.worker_sid,
+        )
+        baseline_observations = _worker_observations(baseline_result.stdout)
+        baseline_read = _single_observation(
+            baseline_observations, kind="direct_attempt", operation="read"
+        )
+        assert baseline_read["result"] == "succeeded"
+        assert baseline_read["bytes"] == len(private_original.read_bytes())
+        assert fixture_harness.tree_sha256(worker_root) == installed_worker_hash
+        baseline_after = fixture_harness.original_inventory(fixture_root)
+        assert baseline_after == baseline_before
+        baseline_kinds = [item.get("kind") for item in baseline_observations]
+        assert baseline_kinds.index("useful_output_published") < baseline_kinds.index(
+            "direct_attempt"
+        )
+        assert baseline_kinds.index("receiver_ingest_observation") > baseline_kinds.index(
+            "direct_attempt"
+        )
+        assert baseline_kinds.index("broker_denial_observed") > baseline_kinds.index(
+            "receiver_ingest_observation"
+        )
+        baseline_receipts = receiver_adapter.receipts(baseline_run_id)
+        assert len(baseline_receipts.receipts) == 1
+        baseline_receipt = baseline_receipts.receipts[0]
+        assert baseline_receipts.marker_received is True
+        assert baseline_receipt.marker_match is True
+        assert baseline_receipt.task_id == baseline_task_id
+        assert baseline_receipt.decoded_bytes == len(private_original.read_bytes())
+        assert baseline_receipt.sha256 == private_payload_sha256
+        controller.shutdown()
+        _remove_disposable_fixture(fixture_root, layout.output_root)
+
+        runtime = create_a8_runtime(Settings())
+        protected_worker_controller = runtime.lifecycle.launcher
+        assert isinstance(protected_worker_controller, WindowsWorkerController)
+        website = WebsiteServer(REPOSITORY_ROOT / "document-tools" / "frontend" / "dist")
+        website.start()
+        api_server = uvicorn.Server(
+            uvicorn.Config(
+                runtime.app,
+                host="127.0.0.1",
+                port=8765,
+                log_level="critical",
+                access_log=False,
+                lifespan="on",
+            )
+        )
+        api_thread = threading.Thread(target=api_server.run, name="g3-invoice-aclais-owner-api")
+        api_thread.start()
+        _wait_for_health()
+        assert runtime.bootstrap_url is not None
+        protected_before = fixture_harness.original_inventory(layout.root)
+        before_tasks = runtime.database.task_summaries(50)
+        worker_hash_before = fixture_harness.tree_sha256(worker_root)
+        assert worker_hash_before == installed_worker_hash
+
+        playwright = sync_playwright().start()
+        try:
+            browser = playwright.chromium.launch(
+                executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                headless=True,
+            )
+            browser_context = browser.new_context(viewport={"width": 1440, "height": 900})
+            page = browser_context.new_page()
+            response = page.goto("http://localhost:8766/", wait_until="networkidle")
+            assert response is not None and response.status == 200
+            assert page.title() == "Document Tools"
+            invoice_card = page.locator(".tool-card").filter(
+                has=page.get_by_role("heading", name="Extract invoice details")
+            )
+            assert invoice_card.get_by_role("link", name="Continue to review").is_enabled()
+            assert browser_context.cookies("http://localhost:8766") == []
+            assert page.evaluate("document.cookie") == ""
+            website_text = page.locator("body").inner_text().casefold()
+            assert "attack" not in website_text and "demo" not in website_text
+            approval_url = (
+                "http://127.0.0.1:8765/approve?tool_id=invoice_analyzer"
+                "&launch_source_claim=document_tools"
+            )
+
+            page.goto(runtime.bootstrap_url, wait_until="domcontentloaded")
+            page.wait_for_url("http://127.0.0.1:8765/owner", timeout=10_000)
+            owner_cookie = next(
+                cookie
+                for cookie in browser_context.cookies("http://127.0.0.1:8765")
+                if cookie["name"] == OWNER_SESSION_COOKIE
+            )
+            owner_session_sha256 = hashlib.sha256(
+                owner_cookie["value"].encode("ascii", errors="strict")
+            ).hexdigest()
+            invoice_action = page.get_by_role("button", name="Review Invoice Analyzer approval")
+            invoice_action.wait_for(state="visible", timeout=10_000)
+            assert invoice_action.is_enabled()
+            page.goto("http://localhost:8766/", wait_until="networkidle")
+            invoice_card.get_by_role("link", name="Continue to review").click()
+            page.wait_for_url(approval_url, timeout=10_000)
+            assert page.get_by_text("Nothing starts when this page opens.").is_visible()
+            assert page.locator("#approval-document").input_value() == "doc-invoice"
+            assert runtime.database.task_summaries(50) == before_tasks
+            assert runtime.database.tasks_in_progress() == ()
+            assert page.get_by_role("button", name="Approve and open").is_enabled()
+            with page.expect_response(
+                lambda item: (
+                    item.url == "http://127.0.0.1:8765/api/tasks" and item.request.method == "POST"
+                ),
+                timeout=120_000,
+            ) as approval_response:
+                page.get_by_role("button", name="Approve and open").click()
+            if approval_response.value.status != 201:
+                try:
+                    error_body = approval_response.value.json()
+                    error_code = error_body.get("error", {}).get("code")
+                except Exception:
+                    error_code = None
+                raise AssertionError(
+                    "Invoice Analyzer approval failed: "
+                    f"http_status={approval_response.value.status}, error_code={error_code!r}"
+                )
+            page.wait_for_url("http://127.0.0.1:8765/owner", timeout=10_000)
+            task_id_text = page.evaluate('sessionStorage.getItem("aclais:selectedTaskId")')
+            assert type(task_id_text) is str and task_id_text
+            protected_task_id = _parse_uuid(task_id_text)
+            protected_task = _wait_for_terminal_task(runtime, protected_task_id)
+            assert protected_task.revocation_cause == RevocationCause.POLICY_DENIED
+            assert protected_task.terminal_cause.value == "POLICY_DENIED"
+            assert protected_task.status in {TaskStatus.BLOCKED, TaskStatus.FAILED}
+            assert protected_task.worker_pid is not None
+            assert protected_task.worker_sid == layout.worker_sid
+            protected_process_creation_time = runtime.database.worker_process_creation_time(
+                protected_task_id
+            )
+            assert protected_process_creation_time is not None
+            assert protected_worker_controller.verify_stored_process_stopped(
+                protected_task.worker_pid,
+                protected_process_creation_time,
+                protected_task.worker_sid,
+            )
+            broker_events = [
+                event
+                for event in runtime.database.events(protected_task_id)
+                if event.source == "broker"
+            ]
+            protected_operations = [
+                {
+                    "operation": event.operation,
+                    "target_document_id": event.target_document_id,
+                    "decision": event.decision,
+                    "reason_code": event.reason_code,
+                }
+                for event in broker_events
+            ]
+            assert [(item["operation"], item["decision"]) for item in protected_operations] == [
+                ("read_document", "allow"),
+                ("publish_output", "allow"),
+                ("read_document", "deny"),
+            ]
+            assert protected_operations[0]["target_document_id"] == "doc-invoice"
+            assert protected_operations[-1]["target_document_id"] == "doc-private"
+            assert protected_operations[-1]["reason_code"] == "DOCUMENT_OUT_OF_SCOPE"
+            protected_after = fixture_harness.original_inventory(layout.root)
+            assert protected_after == protected_before
+            assert fixture_harness.tree_sha256(worker_root) == worker_hash_before
+            evidence_response = runtime.database.evidence_response(protected_task_id)
+            evidence = evidence_response.report
+            assert evidence_response.status == "complete" and evidence is not None
+            assert evidence.integrity_status == "pass"
+            assert evidence.confidentiality_status == "pass"
+            assert evidence.receiver_status == "pass"
+            assert evidence.marker_received is False
+            assert evidence.worker_termination_confirmed
+            assert evidence.controller_process_observation is not None
+            assert evidence.controller_process_observation.process_tree_stopped
+            assert evidence.controller_process_observation.assigned_to_job_before_resume
+            protected_receiver = receiver_adapter.receipts(protected_task.run_id)
+            assert protected_receiver.run_id == protected_task.run_id
+            assert protected_receiver.receipts == ()
+            assert protected_receiver.marker_received is False
+
+            outputs = runtime.database.outputs_for_task(protected_task_id)
+            assert len(outputs) == 1 and outputs[0].state == "published"
+            protected_metadata, protected_output = runtime.output_publisher.read_published(
+                outputs[0].output_id
+            )
+            assert protected_metadata.output_kind == "invoice_json"
+            parsed_protected_output = InvoiceResult.model_validate_json(
+                protected_output, strict=True
+            )
+            assert parsed_protected_output.model_dump(mode="json") == (
+                parsed_baseline_output.model_dump(mode="json")
+            )
+            protected_output_sha256 = hashlib.sha256(protected_output).hexdigest()
+            assert protected_output_sha256 == baseline_output_sha256
+            page.get_by_text("Extracted invoice fields", exact=True).wait_for(
+                state="visible", timeout=20_000
+            )
+            page.locator(".output-preview pre").filter(has_text="INV-SYN-001").wait_for(
+                state="visible", timeout=10_000
+            )
+
+            logout_status = page.evaluate(
+                """async () => {
+                  const pair = document.cookie.split('; ').find(
+                    x => x.startsWith('aclais_owner_csrf=')
+                  );
+                  if (!pair) return 0;
+                  const token = pair.slice(pair.indexOf('=') + 1);
+                  const response = await fetch('/api/owner/session/logout', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'X-CSRF-Token': decodeURIComponent(token) }
+                  });
+                  return response.status;
+                }"""
+            )
+            assert logout_status == 200
+        finally:
+            active_error = sys.exception()
+            cleanup_errors = []
+            context_to_close, browser_to_close = browser_context, browser
+            playwright_to_stop = playwright
+            browser_context = None
+            browser = None
+            playwright = None
+            for resource_name, resource in (
+                ("browser context", context_to_close),
+                ("browser", browser_to_close),
+            ):
+                if resource is not None:
+                    try:
+                        resource.close()
+                    except Exception as error:
+                        cleanup_errors.append(f"{resource_name}: {type(error).__name__}")
+            if playwright_to_stop is not None:
+                try:
+                    playwright_to_stop.stop()
+                except Exception as error:
+                    cleanup_errors.append(f"Playwright: {type(error).__name__}")
+            if cleanup_errors:
+                cleanup_message = "Invoice Analyzer browser cleanup failed: " + "; ".join(
+                    cleanup_errors
+                )
+                if active_error is not None:
+                    active_error.add_note(cleanup_message)
+                else:
+                    raise AssertionError(cleanup_message)
+
+        protected_task = runtime.database.get_task(protected_task_id)
+        assert protected_task is not None
+        protected_observations = _load_persisted_worker_observations(
+            layout.raw_evidence_root,
+            protected_task_id,
+            evidence.report_id,
+        )
+        protected_direct_read = _single_observation(
+            protected_observations, kind="direct_attempt", operation="read"
+        )
+        assert protected_direct_read["result"] == "denied"
+        assert protected_direct_read["error_type"] == "PermissionError"
+        assert protected_direct_read["errno"] == errno.EACCES
+        assert protected_direct_read.get("winerror") in {5, None}
+        assert not any(
+            item.get("kind") == "receiver_ingest_observation" for item in protected_observations
+        )
+        raw_report = {
+            "schema_version": 1,
+            "checkpoint": "G3_INVOICE_ANALYZER",
+            "created_at_utc": datetime.now(UTC).isoformat(),
+            "tested_source_digest_sha256": _source_digest_sha256(REPOSITORY_ROOT),
+            "worker_tree_sha256_baseline": installed_worker_hash,
+            "worker_source_tree_sha256": source_worker_hash,
+            "worker_tree_sha256_protected_before": worker_hash_before,
+            "worker_tree_sha256_protected_after": fixture_harness.tree_sha256(worker_root),
+            "worker_sid": layout.worker_sid,
+            "worker_is_administrator": False,
+            "receiver_http_service_started_by_test": receiver_started_here,
+            "baseline": {
+                "task_id": str(baseline_task_id),
+                "run_id": str(baseline_run_id),
+                "worker_pid": baseline_result.pid,
+                "worker_sid": baseline_result.worker_sid,
+                "exit_code": baseline_result.exit_code,
+                "process_tree_stopped": baseline_result.process_tree_stopped,
+                "direct_read": baseline_read,
+                "receiver_ingest_observations": [
+                    item
+                    for item in baseline_observations
+                    if item.get("kind") == "receiver_ingest_observation"
+                ],
+                "receiver_receipt": {
+                    "receipt_id": str(baseline_receipt.receipt_id),
+                    "task_id": str(baseline_receipt.task_id),
+                    "decoded_bytes": baseline_receipt.decoded_bytes,
+                    "sha256": baseline_receipt.sha256,
+                    "marker_match": baseline_receipt.marker_match,
+                    "marker_received": baseline_receipts.marker_received,
+                    "persisted_receipt_count": len(baseline_receipts.receipts),
+                    "run_id": str(baseline_receipts.run_id),
+                },
+                "broker_operations": [item["operation"] for item in baseline_operations],
+                "worker_observations": baseline_observations,
+                "output_sha256": baseline_output_sha256,
+                "output_bytes": baseline_output_bytes,
+                "output_matches_invoice_contract": True,
+                "output_fields": parsed_baseline_output.model_dump(mode="json"),
+                "original_inventory_before": baseline_before,
+                "original_inventory_after": baseline_after,
+                "original_inventory_unchanged": baseline_before == baseline_after,
+                "private_payload_sha256": private_payload_sha256,
+            },
+            "protected": {
+                "task_id": str(protected_task_id),
+                "run_id": str(protected_task.run_id),
+                "status": protected_task.status.value,
+                "revocation_cause": (
+                    protected_task.revocation_cause.value
+                    if protected_task.revocation_cause
+                    else None
+                ),
+                "terminal_cause": (
+                    protected_task.terminal_cause.value if protected_task.terminal_cause else None
+                ),
+                "worker_pid": protected_task.worker_pid,
+                "worker_sid": protected_task.worker_sid,
+                "process_creation_time_100ns": protected_process_creation_time,
+                "process_stopped_independently": (
+                    protected_worker_controller.verify_stored_process_stopped(
+                        protected_task.worker_pid,
+                        protected_process_creation_time,
+                        protected_task.worker_sid,
+                    )
+                ),
+                "direct_read": protected_direct_read,
+                "broker_events": protected_operations,
+                "worker_observations": protected_observations,
+                "receiver": {
+                    "status": evidence.receiver_status,
+                    "marker_received": evidence.marker_received,
+                    "receipt_count": len(protected_receiver.receipts),
+                    "run_id": str(protected_receiver.run_id),
+                },
+                "evidence_report_id": str(evidence.report_id),
+                "evidence_overall_status": evidence.overall_status,
+                "evidence_integrity_status": evidence.integrity_status,
+                "evidence_confidentiality_status": evidence.confidentiality_status,
+                "evidence_receiver_status": evidence.receiver_status,
+                "evidence_worker_termination_confirmed": evidence.worker_termination_confirmed,
+                "evidence_process_tree_stopped": (
+                    evidence.controller_process_observation.process_tree_stopped
+                ),
+                "evidence_assigned_to_job_before_resume": (
+                    evidence.controller_process_observation.assigned_to_job_before_resume
+                ),
+                "output_sha256": protected_output_sha256,
+                "output_bytes": len(protected_output),
+                "output_matches_invoice_contract": True,
+                "output_fields": parsed_protected_output.model_dump(mode="json"),
+                "original_inventory_before": protected_before,
+                "original_inventory_after": protected_after,
+                "original_inventory_unchanged": protected_before == protected_after,
+            },
+            "approval_get_created_no_task": True,
+            "approval_action_observed": True,
+            "document_tools_cookie_count": 0,
+        }
+        raw_directory = layout.raw_evidence_root / "g3"
+        raw_directory.mkdir(parents=True, exist_ok=True)
+        _write_private_json(raw_directory / f"invoice-analyzer-{uuid4().hex}.json", raw_report)
+
+    finally:
+        active_error = sys.exception()
+        cleanup_errors = []
+
+        def attempt_cleanup(name: str, operation) -> None:
+            try:
+                operation()
+            except Exception as error:
+                cleanup_errors.append(f"{name}: {type(error).__name__}")
+
+        if browser_context is not None:
+            attempt_cleanup("browser context", browser_context.close)
+        if browser is not None:
+            attempt_cleanup("browser", browser.close)
+        if playwright is not None:
+            attempt_cleanup("Playwright", playwright.stop)
+        if api_server is not None:
+            attempt_cleanup(
+                "owner API shutdown request", lambda: setattr(api_server, "should_exit", True)
+            )
+        if runtime is not None:
+            attempt_cleanup("ACLAIS controller shutdown", runtime.lifecycle.shutdown)
+        if owner_session_sha256 is not None and runtime is not None:
+
+            def revoke_owner_session() -> None:
+                record = runtime.database.owner_session(owner_session_sha256)
+                if record is not None and record.revoked_at is None:
+                    runtime.database.revoke_owner_session(
+                        owner_session_sha256,
+                        now=runtime.owner_auth.now(),
+                    )
+
+            attempt_cleanup("owner session revocation", revoke_owner_session)
+        if api_thread is not None:
+
+            def join_owner_api() -> None:
+                api_thread.join(timeout=20)
+                if api_thread.is_alive():
+                    raise AssertionError("ACLAIS owner API thread remained alive")
+
+            attempt_cleanup("owner API thread", join_owner_api)
+        if runtime is not None:
+
+            def require_no_active_task() -> None:
+                if runtime.database.tasks_in_progress():
+                    raise AssertionError("controller cleanup left a nonterminal task")
+
+            attempt_cleanup("task reconciliation", require_no_active_task)
+        if website is not None:
+            attempt_cleanup("Document Tools site", website.close)
+        if not controller._shutdown:
+            attempt_cleanup("private worker controller", controller.shutdown)
+        if fixture_root.exists():
+            attempt_cleanup(
+                "disposable fixture cleanup",
+                lambda: _remove_disposable_fixture(fixture_root, layout.output_root),
+            )
+        if receiver_server is not None:
+            attempt_cleanup(
+                "receiver shutdown request", lambda: setattr(receiver_server, "should_exit", True)
+            )
+        if receiver_thread is not None:
+
+            def stop_receiver() -> None:
+                receiver_thread.join(timeout=20)
+                if receiver_thread.is_alive():
+                    raise AssertionError("test-owned receiver HTTP server remained alive")
+                assert receiver_listener is not None
+                receiver_listener.close()
+
+            attempt_cleanup("test-owned receiver HTTP server", stop_receiver)
+        elif receiver_listener is not None:
+            attempt_cleanup("receiver listener", receiver_listener.close)
+        if receiver_started_here:
+
+            def receiver_port_is_free() -> None:
+                probe = create_ipv6_listener(receiver_settings.port)
+                probe.close()
+
+            attempt_cleanup("receiver listener cleanup verification", receiver_port_is_free)
+        if cleanup_errors:
+            cleanup_message = "Invoice Analyzer test cleanup failed: " + "; ".join(cleanup_errors)
+            if active_error is not None:
+                active_error.add_note(cleanup_message)
+            else:
+                raise AssertionError(cleanup_message)
+
+    assert raw_report is not None
+
+
+def _single_observation(observations, *, kind: str, operation: str) -> dict[str, object]:
+    matches = [
+        item
+        for item in observations
+        if item.get("kind") == kind and item.get("operation") == operation
+    ]
+    if len(matches) != 1:
+        raise AssertionError("expected exactly one worker observation for the requested operation")
+    return matches[0]
+
+
+def _wait_for_receiver(adapter: HttpReceiverAdapter, thread: threading.Thread) -> None:
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        if not thread.is_alive():
+            raise AssertionError("test-owned receiver service exited before becoming ready")
+        try:
+            adapter.health()
+            return
+        except Exception:
+            time.sleep(0.1)
+    raise AssertionError("test-owned receiver service did not become healthy")
+
+
 def _worker_configuration(
     harness,
     *,
@@ -512,6 +1174,10 @@ def _worker_configuration(
     root_id,
     temporary_output,
     worker_credential,
+    tool_id="report_formatter",
+    selected_document_id="doc-report",
+    receiver_run_id=None,
+    receiver_ingest_token=None,
 ):
     payload = harness.build_worker_configuration(
         task_id=str(task_id),
@@ -520,6 +1186,10 @@ def _worker_configuration(
         temporary_output=temporary_output,
         broker_url="http://127.0.0.1:8765/api/broker/operations",
         worker_credential=worker_credential,
+        tool_id=tool_id,
+        selected_document_id=selected_document_id,
+        receiver_run_id=(str(receiver_run_id) if receiver_run_id is not None else None),
+        receiver_ingest_token=receiver_ingest_token,
     )
     return DocumentToolsWorkerConfiguration.model_validate_json(json.dumps(payload))
 
@@ -533,7 +1203,10 @@ def _worker_source_tree_sha256(root: Path) -> str:
     relatives = (
         "src/document_tools/__init__.py",
         "src/document_tools/broker.py",
+        "src/document_tools/invoice.py",
+        "src/document_tools/receiver.py",
         "src/document_tools/worker.py",
+        "workers/invoice_analyzer/entrypoint.py",
         "workers/report_formatter/entrypoint.py",
     )
     digest = hashlib.sha256()
@@ -584,6 +1257,34 @@ def _worker_observations(lines) -> list[dict[str, object]]:
     return [json.loads(line.text) for line in lines if line.channel == "stdout"]
 
 
+def _safe_worker_diagnostic(result) -> dict[str, object]:
+    events = []
+    for line in result.stdout:
+        if line.channel != "stdout":
+            continue
+        try:
+            event = json.loads(line.text)
+        except (TypeError, json.JSONDecodeError):
+            events.append({"kind": "unstructured", "bytes": len(line.text.encode("utf-8"))})
+            continue
+        if isinstance(event, dict):
+            events.append(
+                {
+                    key: event[key]
+                    for key in ("kind", "operation", "result", "error_type", "status")
+                    if type(event.get(key)) in {str, int}
+                }
+            )
+    return {
+        "exit_code": result.exit_code,
+        "stdout_events": events,
+        "stderr_bytes": sum(
+            len(line.text.encode("utf-8")) for line in result.stderr
+        ),
+        "process_tree_stopped": result.process_tree_stopped,
+    }
+
+
 def _verify_baseline_effects(before, after, observations) -> None:
     before_by_name = {str(item["path"]): item for item in before}
     after_by_name = {str(item["path"]): item for item in after}
@@ -617,8 +1318,10 @@ def _verify_protected_denials(observations) -> None:
         item.get("error_type") == "PermissionError"
         and item.get("errno") == errno.EACCES
         and (
-            type(item.get("winerror")) is int and item.get("winerror") == 5
-            or item.get("winerror") is None and item.get("errno") == errno.EACCES
+            type(item.get("winerror")) is int
+            and item.get("winerror") == 5
+            or item.get("winerror") is None
+            and item.get("errno") == errno.EACCES
         )
         for item in direct
     )
@@ -663,7 +1366,9 @@ def _wait_for_health() -> None:
 def _remove_disposable_fixture(path: Path, allowed_parent: Path) -> None:
     resolved = path.resolve(strict=True)
     resolved.relative_to(allowed_parent.resolve(strict=True))
-    if path.is_symlink() or not path.name.startswith(".g3-formatter-baseline-"):
+    if path.is_symlink() or not path.name.startswith(
+        (".g3-formatter-baseline-", ".g3-invoice-baseline-")
+    ):
         raise AssertionError("refusing to remove an unexpected G3 fixture path")
     shutil.rmtree(resolved)
 

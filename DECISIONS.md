@@ -229,12 +229,12 @@ After verified G1 PASS, implement G2 as a separate FastAPI process and SQLite da
 
 Bound one decoded payload to 1 MiB, one request to 2 MiB, and one run to 10 MiB. Store raw receipt bytes in UUID-named `.bin` files through the independent journal/stage/flush/no-replace/finalize recovery flow; GET returns validated metadata, never payload. Quota exhaustion uses the shared `429 RATE_LIMITED` response. The local CLI exposes metadata only and offers no online reset. Raw payloads and credentials are excluded from Git and CI artifacts.
 
-Connect ACLAIS through its read-only HTTP adapter, with strict JSON/model validation and distinct healthy-empty, positive receipt, unknown run, authentication failure, protocol failure, and unavailable outcomes. A positive marker is independent confidentiality evidence, not an ACLAIS policy decision or a claim of blocking. Production run creation and ingest-token delivery to G3 workers remain G4 integration work.
+Keep receipt inspection as a read-only ACLAIS adapter with strict JSON/model validation and distinct healthy-empty, positive receipt, unknown run, authentication failure, protocol failure, and unavailable outcomes. After the Report Formatter gate, G3 Invoice Analyzer provisions a run through a separate controller-only provisioner using the trusted task run ID and owner-read canary marker. The receiver admin credential remains in the controller; only the run ID and run-bound ingest token enter protected worker configuration. A positive marker is independent confidentiality evidence, not an ACLAIS policy decision or a claim of blocking. G4 remains responsible for cross-component recovery and safe receiver archive/reset quiescence.
 
 
 ## D-052 - Defer receiver archival until task association is trusted
 
-The receiver specification describes an offline receipt archive/reset that must prove no associated ACLAIS task is active before deleting any history. G2 has no trusted run-to-task association because production run creation and worker-token delivery are G4 handoff work. Do not introduce a partial reset guard, ask the operator to assert quiescence, import ACLAIS private persistence into `receiver/`, or delete receiver history. G2 therefore exposes no reset route or CLI action and preserves all records. Implement the offline archive/reset only after G4 defines a trusted association and quiescence check; then archive before deletion and fail closed on unavailable proof.
+The receiver specification describes an offline receipt archive/reset that must prove no associated ACLAIS task is active before deleting any history. G3 now creates production receiver runs bound to the trusted ACLAIS task run ID, but that scoped task path alone is not an archive/reset safety proof across crashes, old runs, and recovery. Do not introduce a partial reset guard, ask the operator to assert quiescence, import ACLAIS private persistence into `receiver/`, or delete receiver history. G2 therefore exposes no reset route or CLI action and preserves all records. Implement the offline archive/reset only after G4 defines and verifies a trusted association and quiescence check; then archive before deletion and fail closed on unavailable proof.
 
 
 ## D-053 - Keep unresolved receiver publications unknown and protect SQLite sidecars
@@ -281,3 +281,23 @@ Validate complete fixed before/after inventories inside the owner-side sanitizer
 ## D-060 - Pin portable CI to the Python 3.12.10-compatible runner
 
 The first hosted push and pull-request runs on `ubuntu-latest` resolved to Ubuntu 26.04, where `actions/setup-python` could not find the repository's exact Python 3.12.10 pin; all Python jobs failed before dependency installation, while frontend-only checks passed. Pin all portable jobs to `ubuntu-24.04` so the workflow retains the existing exact Python patch and lockfile environment. The mocked portable boundary-timeout test supplies a synthetic `SystemRoot`; it verifies command construction and timeout bounds without invoking PowerShell or claiming Windows enforcement. Keep the hosted workflow read-only, bounded, and separate from Windows enforcement; do not broaden its permissions or treat the failed runner setup as a code-test result.
+
+
+## D-061 - Publish installed tool availability without crossing the owner boundary
+
+The Document Tools origin cannot receive the ACLAIS owner cookie or call owner-only routes. Its enabled links must still track the fixed registrations installed by the controller. The website server therefore makes one fixed, unauthenticated loopback `GET /api/health` request with an exact Host header, validates the bounded strict health envelope, and returns only per-tool installed booleans plus protection availability at its same-origin `/availability.json`. Browser fetch omits credentials; invalid, oversized, unavailable, or malformed upstream state disables both actions. The public status response contains no owner data, task data, cookies, credentials, paths, or diagnostic summaries. The approval link remains a side-effect-free top-level navigation to ACLAIS.
+
+
+## D-062 - Bind Invoice Analyzer receiver evidence to its approved task
+
+After G3-1 Report Formatter PASS, G3-2 enables the fixed Invoice Analyzer registration. ACLAIS creates its receiver run after approval and trusted fixture preflight, uses the trusted task run ID and canary read from owner-protected originals, and retains the receiver admin token. Protected worker configuration receives only that run ID and its one-use run-bound ingest token. The same installed worker code runs in the private permissive baseline and protected workspace. The baseline sends exact direct-read bytes to the actual receiver HTTP API before its final forbidden broker request; the protected private read must be denied and the receiver response must remain healthy-empty. Receiver outcomes never modify ACLAIS policy decisions, and no receiver result is fabricated when unavailable.
+
+
+## D-063 - Keep the seeded invoice input aligned with the strict output contract
+
+The protected ACLAIS invoice fixture and the private permissive baseline use the same supported CSV schema: vendor, invoice number, ISO date, quantity, and unit price. ACLAIS owner reset regenerates the protected fixture from its tracked template, appends the protected run canary, journals and archives the previous fixture set, and updates the fixture manifest. The controller extracts the canary from that exact inventory-verified original; the disposable baseline continues to use its generated synthetic marker. Do not infer absent fields or fabricate invoice values from metadata.
+
+
+## D-064 - Bound the expensive health display cache without caching admission
+
+The target demonstration machine's complete ACLAIS readiness health call took about 55 seconds, while the Document Tools same-origin availability check has a bounded 1.5-second loopback timeout. The prior five-second cache therefore caused a normal return to Document Tools to hide an installed formatter after the cache expired. Cache only the verified core check tuple for up to 120 seconds for display responsiveness; recompute fixed worker installation status on each health response. `require_core()` continues to force a fresh boundary check before any approved worker launch. The cached display is not enforcement evidence and cannot authorize an operation.

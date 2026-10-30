@@ -8,7 +8,7 @@ import os
 import re
 import stat
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 from uuid import UUID
@@ -42,7 +42,9 @@ class WorkerConfig:
     fixture_files: tuple[str, ...]
     temporary_output: Path
     broker_url: str
-    worker_credential: str
+    worker_credential: str = field(repr=False)
+    receiver_run_id: str | None = None
+    receiver_ingest_token: str | None = field(default=None, repr=False)
 
 
 def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -74,12 +76,20 @@ def parse_config(raw: bytes) -> WorkerConfig:
         "deadline_seconds",
         "broker_url",
         "worker_credential",
+        "receiver_run_id",
+        "receiver_ingest_token",
     }:
         raise WorkerConfigurationError("task configuration fields are invalid")
     if type(value["schema_version"]) is not int or value["schema_version"] != 1:
         raise WorkerConfigurationError("unsupported task configuration version")
-    if value["tool_id"] != "report_formatter" or value["selected_document_id"] != "doc-report":
-        raise WorkerConfigurationError("task is not the registered Report Formatter action")
+    tool_id = _strict_string(value["tool_id"], 1, 32)
+    selected_document_id = _strict_string(value["selected_document_id"], 1, 32)
+    tool_pair = (tool_id, selected_document_id)
+    if tool_pair not in {
+        ("report_formatter", "doc-report"),
+        ("invoice_analyzer", "doc-invoice"),
+    }:
+        raise WorkerConfigurationError("tool and selected document are not registered together")
     try:
         task_id = str(UUID(_strict_string(value["task_id"], 36, 36)))
         root_id = str(UUID(_strict_string(value["scope_manifest"]["root_id"], 36, 36)))
@@ -119,16 +129,40 @@ def parse_config(raw: bytes) -> WorkerConfig:
     credential = _strict_string(value["worker_credential"], 32, 512)
     if any(ord(char) < 0x21 or ord(char) > 0x7E for char in credential):
         raise WorkerConfigurationError("worker credential is malformed")
+    receiver_run_id: str | None = None
+    receiver_token: str | None = None
+    raw_receiver_run_id = value["receiver_run_id"]
+    raw_receiver_token = value["receiver_ingest_token"]
+    if (raw_receiver_run_id is None) != (raw_receiver_token is None):
+        raise WorkerConfigurationError("receiver run and credential must be supplied together")
+    if raw_receiver_run_id is not None:
+        if tool_pair != ("invoice_analyzer", "doc-invoice"):
+            raise WorkerConfigurationError(
+                "receiver credentials are only valid for Invoice Analyzer"
+            )
+        try:
+            receiver_run_id = str(UUID(_strict_string(raw_receiver_run_id, 36, 36)))
+        except (TypeError, ValueError) as exc:
+            raise WorkerConfigurationError("receiver run identifier is invalid") from exc
+        receiver_token = _strict_string(raw_receiver_token, 32, 512)
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", receiver_token):
+            raise WorkerConfigurationError("receiver ingest credential is malformed")
+    if tool_pair == ("invoice_analyzer", "doc-invoice") and receiver_run_id is None:
+        raise WorkerConfigurationError(
+            "Invoice Analyzer requires its run-bound receiver credential"
+        )
     return WorkerConfig(
         task_id=task_id,
-        tool_id="report_formatter",
-        selected_document_id="doc-report",
+        tool_id=tool_id,
+        selected_document_id=selected_document_id,
         fixture_root=fixture_root,
         root_id=root_id,
         fixture_files=tuple(files),
         temporary_output=temporary_output,
         broker_url=broker_url,
         worker_credential=credential,
+        receiver_run_id=receiver_run_id,
+        receiver_ingest_token=receiver_token,
     )
 
 

@@ -126,8 +126,8 @@ class BrokerClient:
             UUID(task_id)
         except ValueError as exc:
             raise BrokerProtocolError("worker task identifier was invalid") from exc
-        if document_id != "doc-report":
-            raise BrokerProtocolError("formatter can read only its selected report")
+        if document_id not in {"doc-report", "doc-invoice", "doc-private"}:
+            raise BrokerProtocolError("document identifier is outside the fixed registry")
         value = self._call(
             {
                 "schema_version": 1,
@@ -153,16 +153,20 @@ class BrokerClient:
             raise BrokerProtocolError("selected input exceeded the broker read limit")
         return content
 
-    def publish_output(self, text: str) -> dict[str, str]:
+    def publish_output(
+        self, text: str, *, output_kind: str = "formatted_markdown"
+    ) -> dict[str, str]:
+        if output_kind not in {"formatted_markdown", "invoice_json"}:
+            raise BrokerProtocolError("output kind is outside the fixed contract")
         encoded = text.encode("utf-8", errors="strict")
         if len(encoded) > 1_048_576:
-            raise BrokerProtocolError("formatted output exceeds the broker limit")
+            raise BrokerProtocolError("published output exceeds the broker limit")
         value = self._call(
             {
                 "schema_version": 1,
                 "request_id": str(uuid4()),
                 "operation": "publish_output",
-                "output_kind": "formatted_markdown",
+                "output_kind": output_kind,
                 "output_text": text,
             }
         )

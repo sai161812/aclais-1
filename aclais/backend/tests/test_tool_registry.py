@@ -30,6 +30,8 @@ def test_registry_resolves_only_fixed_absolute_worker_entrypoints(
         Path("src/document_tools/__init__.py"),
         Path("src/document_tools/broker.py"),
         Path("src/document_tools/worker.py"),
+        Path("src/document_tools/invoice.py"),
+        Path("src/document_tools/receiver.py"),
         registration.relative_entrypoint,
     )
     files = []
@@ -120,6 +122,8 @@ def test_registry_rejects_tampered_installed_worker_source(tmp_path: Path) -> No
         "src/document_tools/__init__.py",
         "src/document_tools/broker.py",
         "src/document_tools/worker.py",
+        "src/document_tools/invoice.py",
+        "src/document_tools/receiver.py",
         "workers/report_formatter/entrypoint.py",
     ):
         path = code_root / Path(relative)
@@ -156,3 +160,57 @@ def test_registry_rejects_tampered_installed_worker_source(tmp_path: Path) -> No
     )
     with pytest.raises(WorkerUnavailable):
         FixedToolRegistry(runtime_root, root_id=root_id).resolve_installed_entrypoint(request)
+
+
+def test_registry_resolves_only_the_installed_invoice_entrypoint(tmp_path: Path) -> None:
+    runtime_root = tmp_path / "runtime"
+    root_id = str(uuid4())
+    registry = FixedToolRegistry(runtime_root, root_id=root_id)
+    code_root = runtime_root / "code" / "document-tools"
+    registration = FIXED_TOOL_REGISTRATIONS[1]
+    source_paths = (
+        Path("src/document_tools/__init__.py"),
+        Path("src/document_tools/broker.py"),
+        Path("src/document_tools/worker.py"),
+        Path("src/document_tools/invoice.py"),
+        Path("src/document_tools/receiver.py"),
+        registration.relative_entrypoint,
+    )
+    file_records = []
+    for relative in source_paths:
+        path = code_root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# synthetic protected source\n", encoding="utf-8")
+        raw = path.read_bytes()
+        file_records.append(
+            {
+                "path": relative.as_posix(),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "length": len(raw),
+            }
+        )
+    (code_root / "tool-manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "root_id": root_id,
+                "tools": [
+                    {
+                        "tool_id": registration.tool_id,
+                        "document_id": registration.document_id,
+                        "entrypoint": registration.relative_entrypoint.as_posix(),
+                        "files": file_records,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    request = CreateTaskRequest(
+        schema_version=1,
+        tool_id="invoice_analyzer",
+        selected_document_id="doc-invoice",
+        launch_source_claim="document_tools",
+    )
+    resolved = registry.resolve_installed_entrypoint(request)
+    assert resolved == (code_root / registration.relative_entrypoint).resolve()

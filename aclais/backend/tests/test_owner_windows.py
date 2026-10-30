@@ -650,8 +650,8 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
         assert_health_mapping(recovered_health.value.json())
 
         page.get_by_role("button", name="Workspace", exact=True).click()
-        invoice_action = page.get_by_role("button", name="Invoice Analyzer unavailable")
-        assert invoice_action.is_disabled()
+        invoice_action = page.get_by_role("button", name="Review Invoice Analyzer approval")
+        assert invoice_action.is_enabled()
         report_action = page.get_by_role("button", name="Review Report Formatter approval")
         report_action.focus()
         page.keyboard.press("Enter")

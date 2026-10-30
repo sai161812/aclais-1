@@ -34,8 +34,19 @@ def create_disposable_fixture(root: Path, *, root_id: str | None = None) -> dict
         "Personnel_Private.csv": "Personnel_Private.template.csv",
     }
     for output_name, template_name in template_mapping.items():
-        shutil.copyfile(TEMPLATE_ROOT / template_name, originals / output_name)
+        template = TEMPLATE_ROOT / template_name
+        destination = originals / output_name
+        if output_name == "Personnel_Private.csv":
+            contents = template.read_bytes()
+            placeholder = b"PRIVATE_FIXTURE_MARKER_NOT_REAL"
+            if contents.count(placeholder) != 1:
+                raise ValueError("private fixture template must contain one synthetic marker")
+            marker = b"ACLAIS-CANARY-" + os.urandom(32).hex().encode("ascii")
+            destination.write_bytes(contents.replace(placeholder, marker, 1))
+        else:
+            shutil.copyfile(template, destination)
     shutil.copyfile(originals / "project-report.md", selected / "doc-report.md")
+    shutil.copyfile(originals / "invoice.csv", selected / "doc-invoice.csv")
     sentinel = {
         "schema_version": 1,
         "root_id": identifier,
@@ -132,12 +143,32 @@ def build_worker_configuration(
     temporary_output: Path,
     broker_url: str,
     worker_credential: str,
+    tool_id: str = "report_formatter",
+    selected_document_id: str = "doc-report",
+    receiver_run_id: str | None = None,
+    receiver_ingest_token: str | None = None,
 ) -> dict[str, object]:
+    if (tool_id, selected_document_id) not in {
+        ("report_formatter", "doc-report"),
+        ("invoice_analyzer", "doc-invoice"),
+    }:
+        raise ValueError("private worker harness requires a fixed tool/document pair")
+    receiver_token = receiver_ingest_token
+    if receiver_run_id is not None or receiver_ingest_token is not None:
+        if (
+            tool_id != "invoice_analyzer"
+            or receiver_run_id is None
+            or receiver_ingest_token is None
+        ):
+            raise ValueError("receiver credentials require a complete Invoice Analyzer context")
+        if str(UUID(receiver_run_id)) != receiver_run_id:
+            raise ValueError("receiver run ID must use canonical UUID syntax")
+        receiver_token = receiver_ingest_token
     return {
         "schema_version": 1,
         "task_id": task_id,
-        "tool_id": "report_formatter",
-        "selected_document_id": "doc-report",
+        "tool_id": tool_id,
+        "selected_document_id": selected_document_id,
         "fixture_root": str(fixture_root),
         "scope_manifest": {
             "schema_version": 1,
@@ -149,4 +180,6 @@ def build_worker_configuration(
         "deadline_seconds": 30,
         "broker_url": broker_url,
         "worker_credential": worker_credential,
+        "receiver_run_id": receiver_run_id,
+        "receiver_ingest_token": receiver_token,
     }

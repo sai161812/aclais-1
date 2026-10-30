@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import math
 import os
+import re
 import secrets
 import stat
 import threading
@@ -44,7 +46,7 @@ from aclais.persistence.models import (
     TerminalCause,
 )
 from aclais.publication import MAX_OUTPUT_BYTES, OutputPublisher
-from aclais.receiver_adapter import ReceiverAdapter
+from aclais.receiver_adapter import ReceiverAdapter, ReceiverRunProvisioner, WorkerReceiverContext
 from aclais.tool_registry import FixedToolRegistry, WorkerUnavailable
 
 
@@ -52,12 +54,60 @@ class LifecycleError(RuntimeError):
     """Lifecycle failed closed; no success or verified-containment claim is implied."""
 
 
-_REPORT_FORMATTER_FIXTURE_PATHS = (
+_DOCUMENT_TOOLS_FIXTURE_PATHS = (
     "store/originals/Personnel_Private.csv",
     "store/originals/invoice.csv",
     "store/originals/meeting-notes.md",
     "store/originals/project-report.md",
 )
+
+
+def _read_trusted_invoice_marker(path: Path) -> str:
+    """Read the marker from a controller-verified private fixture."""
+
+    metadata = path.lstat()
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or getattr(metadata, "st_file_attributes", 0) & 0x0400
+        or metadata.st_size > 1_048_576
+    ):
+        raise LifecycleError("trusted synthetic marker fixture is unavailable")
+    try:
+        with path.open("r", encoding="utf-8-sig", errors="strict", newline="") as stream:
+            reader = csv.reader(stream, strict=True)
+            rows = [row for row in reader if row]
+            if not rows or tuple(rows[0]) != (
+                "fixture_label",
+                "record_id",
+                "display_name",
+                "private_marker",
+            ):
+                raise LifecycleError("trusted synthetic marker fixture has invalid headers")
+    except (OSError, UnicodeError, csv.Error) as exc:
+        raise LifecycleError("trusted synthetic marker fixture could not be read") from exc
+
+    data_rows = rows[1:]
+    if len(data_rows) == 1 and len(data_rows[0]) == 4:
+        marker = data_rows[0][3]
+    elif (
+        len(data_rows) == 2
+        and len(data_rows[0]) == 4
+        and len(data_rows[1]) == 2
+        and data_rows[1][0] == "# seeded-run"
+    ):
+        marker = data_rows[1][1]
+        if re.fullmatch(r"ACLAIS-CANARY-[0-9a-f]{64}", marker) is None:
+            raise LifecycleError("trusted synthetic marker value is invalid")
+    else:
+        raise LifecycleError("trusted synthetic marker fixture has invalid rows")
+    if (
+        not isinstance(marker, str)
+        or not 16 <= len(marker) <= 128
+        or any(ord(char) < 0x20 or ord(char) > 0x7E for char in marker)
+    ):
+        raise LifecycleError("trusted synthetic marker value is invalid")
+    return marker
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +246,7 @@ class LifecycleCoordinator:
         workspace: TaskWorkspace | Any | None = None,
         verifier: FixtureVerifier | None = None,
         receiver_adapter: ReceiverAdapter | None = None,
+        receiver_provisioner: ReceiverRunProvisioner | None = None,
         task_locks: TaskLockRegistry | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         wall_clock: Callable[[], datetime] = utc_now,
@@ -211,6 +262,7 @@ class LifecycleCoordinator:
         self.workspace = workspace or TaskWorkspace(layout)
         self.verifier = verifier
         self.receiver_adapter = receiver_adapter
+        self.receiver_provisioner = receiver_provisioner
         prepare_roots = getattr(self.workspace, "prepare_roots", None)
         if prepare_roots is not None:
             prepare_roots()
@@ -488,7 +540,10 @@ class LifecycleCoordinator:
     ) -> UUID:
         """Start the one installed production worker through the owner approval route."""
 
-        if request.tool_id != "report_formatter" or request.selected_document_id != "doc-report":
+        if (request.tool_id, request.selected_document_id) not in {
+            ("report_formatter", "doc-report"),
+            ("invoice_analyzer", "doc-invoice"),
+        }:
             raise LifecycleError("production worker registration is unavailable")
         if self.tool_registry is None:
             raise LifecycleError("fixed production worker registry is unavailable")
@@ -522,7 +577,7 @@ class LifecycleCoordinator:
                     TaskStatus.PREPARING,
                     now=self._wall_clock(),
                     event_kind="task_preparation_started",
-                    event_message="Controller prepared the registered Report Formatter action.",
+                    event_message="Controller prepared the registered Document Tools action.",
                 )
                 paths: TaskWorkspacePaths | None = None
                 context: _ActiveTask | None = None
@@ -536,11 +591,28 @@ class LifecycleCoordinator:
                             "pre-launch fixture inventory differs from A2 manifest"
                         )
                     expected_paths = {path for path, _digest in self.layout.fixture_hashes}
-                    if not set(_REPORT_FORMATTER_FIXTURE_PATHS).issubset(expected_paths):
-                        raise LifecycleError("trusted formatter fixture manifest is incomplete")
+                    if not set(_DOCUMENT_TOOLS_FIXTURE_PATHS).issubset(expected_paths):
+                        raise LifecycleError(
+                            "trusted Document Tools fixture manifest is incomplete"
+                        )
                     contract = self.database.get_contract(task.task_id)
                     if contract is None:
                         raise LifecycleError("task action contract was not persisted")
+                    receiver_context: WorkerReceiverContext | None = None
+                    if request.tool_id == "invoice_analyzer":
+                        if self.receiver_provisioner is None:
+                            raise LifecycleError("trusted receiver run provisioning is unavailable")
+                        marker = _read_trusted_invoice_marker(
+                            self.layout.root / "store" / "originals" / "Personnel_Private.csv"
+                        )
+                        receiver_context = self.receiver_provisioner.create_run(task.run_id, marker)
+                        if (
+                            receiver_context.run_id != task.run_id
+                            or not 32 <= len(receiver_context.ingest_token) <= 512
+                        ):
+                            raise LifecycleError(
+                                "receiver returned an invalid run-bound credential"
+                            )
                     token = self._token_factory()
                     if not isinstance(token, str) or not 32 <= len(token) <= 512:
                         raise LifecycleError("credential generator returned an invalid token")
@@ -568,19 +640,23 @@ class LifecycleCoordinator:
 
                     config = DocumentToolsWorkerConfiguration(
                         task_id=task.task_id,
-                        tool_id="report_formatter",
-                        selected_document_id="doc-report",
+                        tool_id=request.tool_id,
+                        selected_document_id=request.selected_document_id,
                         fixture_root=str(self.layout.root),
                         scope_manifest=WorkerScopeManifest(
                             schema_version=1,
                             root_id=UUID(self.layout.root_id),
                             root_path=str(self.layout.root),
-                            fixture_files=_REPORT_FORMATTER_FIXTURE_PATHS,
+                            fixture_files=_DOCUMENT_TOOLS_FIXTURE_PATHS,
                         ),
                         temporary_output=str(paths.temporary_directory),
                         deadline_seconds=deadline_seconds,
                         broker_url="http://127.0.0.1:8765/api/broker/operations",
                         worker_credential=token,
+                        receiver_run_id=(receiver_context.run_id if receiver_context else None),
+                        receiver_ingest_token=(
+                            receiver_context.ingest_token if receiver_context else None
+                        ),
                     )
                     handle = self.launcher.start_registered_worker(
                         config,

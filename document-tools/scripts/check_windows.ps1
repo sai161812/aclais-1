@@ -30,7 +30,7 @@ if (-not $?) { throw 'The protected A3 source inventory could not be refreshed.'
 if (-not $?) { throw 'The actual worker access probe failed.' }
 
 & (Join-Path $PSScriptRoot 'install_worker.ps1') | Out-Null
-if (-not $?) { throw 'The fixed Report Formatter installation failed.' }
+if (-not $?) { throw 'The fixed Document Tools worker installation failed.' }
 
 & uv --directory (Join-Path $repoRoot 'document-tools') sync --locked
 if ($LASTEXITCODE -ne 0) { throw 'The Document Tools environment is not locked and complete.' }
@@ -44,17 +44,24 @@ if ($LASTEXITCODE -ne 0) { throw 'The actual ACLAIS approval workspace did not b
 & uv --directory $backend run --locked --group windows-enforcement pytest `
     -c (Join-Path $backend 'pyproject.toml') (Join-Path $repoRoot 'tests\test_g3_report_formatter_windows.py') `
     -m windows_enforcement -v --tb=short --junitxml=$reportPath
-if ($LASTEXITCODE -ne 0) { throw 'The G3 target-machine paired Report Formatter check failed.' }
+if ($LASTEXITCODE -ne 0) { throw 'The G3 paired target-machine worker checks failed.' }
 $result = ([xml](Get-Content -LiteralPath $reportPath -Raw)).testsuites.testsuite
-if ([int]$result.tests -ne 1 -or [int]$result.skipped -ne 0 -or
+if ([int]$result.tests -ne 2 -or [int]$result.skipped -ne 0 -or
     [int]$result.failures -ne 0 -or [int]$result.errors -ne 0) {
-    throw 'The G3 target-machine test was skipped or did not pass.'
+    throw 'One or more mandatory G3 target-machine worker checks were skipped or failed.'
 }
 
-$raw = Get-ChildItem -LiteralPath 'C:\ACLAIS-Lab\evidence\raw\g3' -Filter 'report-formatter-*.json' -File |
+$rawFormatter = Get-ChildItem -LiteralPath 'C:\ACLAIS-Lab\evidence\raw\g3' -Filter 'report-formatter-*.json' -File |
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-if ($null -eq $raw) { throw 'The target check did not write its raw owner-protected evidence.' }
+if ($null -eq $rawFormatter) { throw 'The Report Formatter check did not write protected raw evidence.' }
 & uv --directory $backend run --locked python (Join-Path $repoRoot 'document-tools\scripts\sanitize_g3_report_formatter.py') `
-    --raw $raw.FullName
+    --raw $rawFormatter.FullName
 if ($LASTEXITCODE -ne 0) { throw 'The sanitized G3 report rejected the raw target evidence.' }
-Write-Host 'The Report Formatter paired target-machine check passed. Invoice Analyzer remains pending.'
+
+$rawInvoice = Get-ChildItem -LiteralPath 'C:\ACLAIS-Lab\evidence\raw\g3' -Filter 'invoice-analyzer-*.json' -File |
+    Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+if ($null -eq $rawInvoice) { throw 'The Invoice Analyzer check did not write protected raw evidence.' }
+& uv --directory $backend run --locked python (Join-Path $repoRoot 'document-tools\scripts\sanitize_g3_invoice_analyzer.py') `
+    --raw $rawInvoice.FullName
+if ($LASTEXITCODE -ne 0) { throw 'The sanitized G3 Invoice Analyzer evidence was rejected.' }
+Write-Host 'The paired Report Formatter and Invoice Analyzer target-machine checks passed. G4 remains pending.'

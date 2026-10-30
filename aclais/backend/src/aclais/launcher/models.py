@@ -125,20 +125,24 @@ class WorkerScopeManifest(BaseModel):
 
 
 class DocumentToolsWorkerConfiguration(BaseModel):
-    """Strict owner-written configuration for the fixed production formatter."""
+    """Strict owner-written configuration for one fixed Document Tools worker."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
     schema_version: Literal[1] = 1
     task_id: UUID
-    tool_id: Literal["report_formatter"]
-    selected_document_id: Literal["doc-report"]
+    tool_id: Literal["report_formatter", "invoice_analyzer"]
+    selected_document_id: Literal["doc-report", "doc-invoice"]
     fixture_root: str = Field(min_length=1, max_length=1024)
     scope_manifest: WorkerScopeManifest
     temporary_output: str = Field(min_length=1, max_length=1024)
     deadline_seconds: int = Field(ge=1, le=30)
     broker_url: str = Field(min_length=1, max_length=256, repr=False)
     worker_credential: str = Field(min_length=32, max_length=512, repr=False)
+    receiver_run_id: UUID | None = None
+    receiver_ingest_token: str | None = Field(
+        default=None, min_length=32, max_length=512, repr=False
+    )
 
     @field_validator("fixture_root", "temporary_output")
     @classmethod
@@ -169,6 +173,23 @@ class DocumentToolsWorkerConfiguration(BaseModel):
             raise ValueError("temporary output must be under the fixture root") from exc
         if self.scope_manifest.root_path != self.fixture_root:
             raise ValueError("scope manifest root does not match the fixture root")
+        expected_document = {
+            "report_formatter": "doc-report",
+            "invoice_analyzer": "doc-invoice",
+        }[self.tool_id]
+        if self.selected_document_id != expected_document:
+            raise ValueError("fixed worker and selected document do not match")
+        if (self.receiver_run_id is None) != (self.receiver_ingest_token is None):
+            raise ValueError("receiver run and credential must be supplied together")
+        if self.receiver_run_id is not None and self.tool_id != "invoice_analyzer":
+            raise ValueError("receiver ingest credentials are restricted to Invoice Analyzer")
+        if self.tool_id == "invoice_analyzer" and self.receiver_run_id is None:
+            raise ValueError("Invoice Analyzer requires a task-bound receiver run")
+        if self.receiver_ingest_token is not None and any(
+            not (char.isascii() and (char.isalnum() or char in "-_"))
+            for char in self.receiver_ingest_token
+        ):
+            raise ValueError("receiver ingest credential is malformed")
         return self
 
 

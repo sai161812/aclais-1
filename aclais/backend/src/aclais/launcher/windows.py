@@ -1025,7 +1025,7 @@ class WindowsWorkerController:
             config_path = self.layout.selected_root / f"{prefix}{config.task_id.hex}.json"
             try:
                 with config_path.open("xb") as stream:
-                    payload = config.model_dump_json(exclude_none=True).encode("utf-8")
+                    payload = _serialize_task_configuration(config)
                     stream.write(payload)
                     stream.flush()
                     os.fsync(stream.fileno())
@@ -1068,13 +1068,13 @@ class WindowsWorkerController:
         expected_sha256: str,
         before_resume: Callable[[int, int, str], None] | None = None,
     ) -> WorkerHandle:
-        """Start only the installed formatter under the verified A2 worker identity."""
+        """Start only a fixed installed Document Tools worker under the A2 identity."""
 
         expected_entrypoint = (
             self.layout.code_root
             / "document-tools"
             / "workers"
-            / "report_formatter"
+            / ("report_formatter" if config.tool_id == "report_formatter" else "invoice_analyzer")
             / "entrypoint.py"
         )
         if (
@@ -1106,7 +1106,7 @@ class WindowsWorkerController:
             self.layout.code_root
             / "document-tools"
             / "workers"
-            / "report_formatter"
+            / ("report_formatter" if config.tool_id == "report_formatter" else "invoice_analyzer")
             / "entrypoint.py"
         )
         try:
@@ -1798,6 +1798,15 @@ def _captured_lines(
         lines.append(CapturedLine(channel=channel, text=safe_text))
         retained_bytes += len(safe_bytes) + 1
     return lines, truncated_line
+
+
+def _serialize_task_configuration(
+    config: A3ProbeConfiguration | DocumentToolsWorkerConfiguration,
+) -> bytes:
+    # Document Tools has strict optional receiver fields which must be explicit nulls;
+    # retain the A3 probe's original omission behavior for its independent parser.
+    exclude_none = not isinstance(config, DocumentToolsWorkerConfiguration)
+    return config.model_dump_json(exclude_none=exclude_none).encode("utf-8")
 
 
 __all__ = [

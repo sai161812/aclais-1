@@ -1390,7 +1390,9 @@
               "database_integrity",
               "owned_installation",
               "no_active_worker",
-              "controller_lifecycle"
+              "controller_lifecycle",
+              "tool_report_formatter",
+              "tool_invoice_analyzer"
             ],
             "title": "Id",
             "type": "string"

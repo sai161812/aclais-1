@@ -30,7 +30,10 @@ $sourceFiles = @(
     'src\document_tools\__init__.py',
     'src\document_tools\broker.py',
     'src\document_tools\worker.py',
-    'workers\report_formatter\entrypoint.py'
+    'src\document_tools\invoice.py',
+    'src\document_tools\receiver.py',
+    'workers\report_formatter\entrypoint.py',
+    'workers\invoice_analyzer\entrypoint.py'
 )
 $staging = Join-Path (Join-Path $labRoot 'code') ('.document-tools-staging-' + [guid]::NewGuid().ToString('N'))
 $backup = Join-Path (Join-Path $labRoot 'state') ('.document-tools-backup-' + [guid]::NewGuid().ToString('N'))
@@ -67,16 +70,35 @@ try {
             length = (Get-Item -LiteralPath $target).Length
         })
     }
-    $toolRecord = @{
-        tool_id = 'report_formatter'
-        document_id = 'doc-report'
-        entrypoint = 'workers/report_formatter/entrypoint.py'
-        files = @($records)
-    }
+    $sharedPaths = @(
+        'src/document_tools/__init__.py',
+        'src/document_tools/broker.py',
+        'src/document_tools/worker.py',
+        'src/document_tools/invoice.py',
+        'src/document_tools/receiver.py'
+    )
+    $toolRecords = @(
+        @{
+            tool_id = 'report_formatter'
+            document_id = 'doc-report'
+            entrypoint = 'workers/report_formatter/entrypoint.py'
+            files = @($records | Where-Object {
+                $_.path -in ($sharedPaths + 'workers/report_formatter/entrypoint.py')
+            })
+        },
+        @{
+            tool_id = 'invoice_analyzer'
+            document_id = 'doc-invoice'
+            entrypoint = 'workers/invoice_analyzer/entrypoint.py'
+            files = @($records | Where-Object {
+                $_.path -in ($sharedPaths + 'workers/invoice_analyzer/entrypoint.py')
+            })
+        }
+    )
     $toolManifest = @{
         schema_version = 1
         root_id = [string]$manifest.root_id
-        tools = @($toolRecord)
+        tools = $toolRecords
     }
     [IO.File]::WriteAllText(
         (Join-Path $staging 'tool-manifest.json'),
@@ -118,10 +140,11 @@ finally {
 }
 
 Write-Output ([ordered]@{
-    checkpoint = 'G3 Report Formatter installation'
+    checkpoint = 'G3 Document Tools fixed worker installation'
     passed = $true
     root_id = [string]$manifest.root_id
     worker_sid = [string]$manifest.worker_sid
     installed_source_files = $records.Count
+    installed_tool_count = $toolRecords.Count
     secrets_recorded = $false
 } | ConvertTo-Json -Depth 4 -Compress)

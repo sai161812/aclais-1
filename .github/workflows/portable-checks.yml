@@ -156,11 +156,15 @@ jobs:
 
       - name: Document Tools lint
         working-directory: document-tools
-        run: uv run --locked ruff check src workers tests
+        run: uv run --locked ruff check src workers tests ../tests/test_g3_invoice_fixture_contract.py
 
       - name: Portable worker and website tests
         working-directory: document-tools
         run: uv run --locked pytest -m portable
+
+      - name: Cross-component protected and disposable invoice schema
+        working-directory: document-tools
+        run: uv run --locked python -m pytest -q ../tests/test_g3_invoice_fixture_contract.py
 
       - name: Install locked frontend dependencies
         working-directory: document-tools/frontend

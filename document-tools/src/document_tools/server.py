@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import http.client
+import json
 import mimetypes
 import socket
 import threading
@@ -12,6 +14,107 @@ from urllib.parse import unquote, urlsplit
 
 EXPECTED_HOST = "localhost:8766"
 LISTENERS = ((socket.AF_INET, "127.0.0.1"), (socket.AF_INET6, "::1"))
+_ACLAIS_HOST = "127.0.0.1"
+_ACLAIS_PORT = 8765
+_ACLAIS_HOST_HEADER = "127.0.0.1:8765"
+_MAX_HEALTH_BYTES = 65_536
+_HEALTH_CHECK_IDS = {
+    "application_api",
+    "g1_protection",
+    "owner_and_worker_identity",
+    "effective_runtime_permissions",
+    "checkout_dependencies_and_commands",
+    "code_and_fixture_integrity",
+    "credential_retrieval",
+    "job_configuration",
+    "launch_preflight",
+    "database_integrity",
+    "owned_installation",
+    "no_active_worker",
+    "controller_lifecycle",
+    "tool_report_formatter",
+    "tool_invoice_analyzer",
+}
+
+
+def _parse_public_health(raw: bytes) -> dict[str, object] | None:
+    try:
+        value = json.loads(raw.decode("utf-8", errors="strict"), object_pairs_hook=_unique)
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError, ValueError):
+        return None
+    if (
+        type(value) is not dict
+        or set(value) != {"schema_version", "status", "protection_ready", "checks"}
+        or type(value["schema_version"]) is not int
+        or value["schema_version"] != 1
+        or type(value["status"]) is not str
+        or value["status"] not in {"ready", "unavailable"}
+        or type(value["protection_ready"]) is not bool
+        or type(value["checks"]) is not list
+        or not 1 <= len(value["checks"]) <= 32
+        or (value["status"] == "ready") != value["protection_ready"]
+    ):
+        return None
+    checks: dict[str, str] = {}
+    for check in value["checks"]:
+        if (
+            type(check) is not dict
+            or set(check) != {"id", "status", "summary"}
+            or type(check["id"]) is not str
+            or check["id"] not in _HEALTH_CHECK_IDS
+            or check["id"] in checks
+            or type(check["status"]) is not str
+            or check["status"] not in {"pass", "fail", "unknown"}
+            or type(check["summary"]) is not str
+            or not 1 <= len(check["summary"]) <= 256
+        ):
+            return None
+        checks[check["id"]] = check["status"]
+    ready = value["status"] == "ready" and value["protection_ready"]
+    return {
+        "status": "ready" if ready else "protection_unavailable",
+        "tools": {
+            "report_formatter": ready and checks.get("tool_report_formatter") == "pass",
+            "invoice_analyzer": ready and checks.get("tool_invoice_analyzer") == "pass",
+        },
+    }
+
+
+def _unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate health response field")
+        result[key] = value
+    return result
+
+
+def _public_tool_availability() -> dict[str, object] | None:
+    connection = http.client.HTTPConnection(_ACLAIS_HOST, _ACLAIS_PORT, timeout=1.5)
+    try:
+        connection.request(
+            "GET",
+            "/api/health",
+            headers={
+                "Host": _ACLAIS_HOST_HEADER,
+                "Accept": "application/json",
+                "Connection": "close",
+            },
+        )
+        response = connection.getresponse()
+        raw = response.read(_MAX_HEALTH_BYTES + 1)
+    except (OSError, TimeoutError, http.client.HTTPException):
+        return None
+    finally:
+        connection.close()
+    if (
+        response.status != 200
+        or len(raw) > _MAX_HEALTH_BYTES
+        or response.getheader("Content-Type", "").split(";", 1)[0].lower()
+        != "application/json"
+    ):
+        return None
+    return _parse_public_health(raw)
 
 
 class _Server(ThreadingHTTPServer):
@@ -51,6 +154,25 @@ def handler_for(root: Path) -> type[BaseHTTPRequestHandler]:
             if parsed.scheme or parsed.netloc or parsed.query or parsed.fragment:
                 self.send_error(400, "Request target is invalid")
                 return
+            if parsed.path == "/availability.json":
+                availability = _public_tool_availability()
+                if availability is None:
+                    self.send_error(503, "ACLAIS tool availability is unavailable")
+                    return
+                data = json.dumps(
+                    {"schema_version": 1, **availability},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("ascii")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                if send_body:
+                    self.wfile.write(data)
+                return
             try:
                 relative = unquote(parsed.path).lstrip("/") or "index.html"
                 candidate = (root / relative).resolve(strict=True)
@@ -72,7 +194,7 @@ def handler_for(root: Path) -> type[BaseHTTPRequestHandler]:
                 "Content-Security-Policy",
                 (
                     "default-src 'self'; style-src 'self'; img-src 'self' data:; "
-                    "script-src 'self'; connect-src 'none'; base-uri 'none'; "
+                    "script-src 'self'; connect-src 'self'; base-uri 'none'; "
                     "frame-ancestors 'none'; form-action 'none'"
                 ),
             )

@@ -1,7 +1,7 @@
 [project]
 name = "aclais-document-tools"
 version = "0.1.0"
-description = "Local Document Tools website and fixed Report Formatter worker"
+description = "Local Document Tools website and fixed document workers"
 requires-python = ">=3.12,<3.13"
 dependencies = []
 

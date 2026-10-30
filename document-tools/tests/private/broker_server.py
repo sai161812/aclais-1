@@ -12,9 +12,17 @@ from uuid import UUID, uuid4
 
 
 class PrivateBroker:
-    def __init__(self, selected_input: Path, expected_token: str, *, port: int = 0) -> None:
+    def __init__(
+        self,
+        selected_input: Path,
+        expected_token: str,
+        *,
+        tool_id: str = "report_formatter",
+        port: int = 0,
+    ) -> None:
         self.selected_input = selected_input
         self.expected_token = expected_token
+        self.tool_id = tool_id
         self.operations: list[dict[str, Any]] = []
         self.published: list[str] = []
         owner = self
@@ -52,17 +60,21 @@ class PrivateBroker:
                     return
                 owner.operations.append(value)
                 operation = value["operation"]
-                if operation == "read_document" and value.get("document_id") == "doc-report":
+                selected_id = "doc-report" if owner.tool_id == "report_formatter" else "doc-invoice"
+                expected_output = (
+                    "formatted_markdown" if owner.tool_id == "report_formatter" else "invoice_json"
+                )
+                if operation == "read_document" and value.get("document_id") == selected_id:
                     response = {
                         "schema_version": 1,
                         "decision": "allow",
-                        "document_id": "doc-report",
+                        "document_id": selected_id,
                         "content_text": owner.selected_input.read_text(encoding="utf-8"),
                     }
                     status = 200
                 elif (
                     operation == "publish_output"
-                    and value.get("output_kind") == "formatted_markdown"
+                    and value.get("output_kind") == expected_output
                 ):
                     text = value.get("output_text")
                     if type(text) is not str:
@@ -76,6 +88,16 @@ class PrivateBroker:
                         "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
                     }
                     status = 201
+                elif operation == "read_document" and value.get("document_id") == "doc-private":
+                    response = {
+                        "schema_version": 1,
+                        "error": {
+                            "code": "POLICY_DENIED",
+                            "message": "Unselected document reads are denied.",
+                            "request_id": value["request_id"],
+                        },
+                    }
+                    status = 403
                 elif (
                     operation == "replace_original"
                     and value.get("document_id") == "doc-report"

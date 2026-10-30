@@ -17,6 +17,19 @@ class WorkerUnavailable(RuntimeError):
     """A fixed worker entrypoint is not installed or cannot be safely resolved."""
 
 
+_COMMON_WORKER_FILES = {
+    "src/document_tools/__init__.py",
+    "src/document_tools/broker.py",
+    "src/document_tools/worker.py",
+    "src/document_tools/invoice.py",
+    "src/document_tools/receiver.py",
+}
+_ALLOWED_WORKER_FILES = _COMMON_WORKER_FILES | {
+    "workers/report_formatter/entrypoint.py",
+    "workers/invoice_analyzer/entrypoint.py",
+}
+
+
 @dataclass(frozen=True, slots=True)
 class ToolRegistration:
     tool_id: str
@@ -165,14 +178,7 @@ class FixedToolRegistry:
                 or ":" in path
                 or path.startswith("/")
                 or any(part in {"", ".", ".."} for part in path.split("/"))
-                or path
-                not in {
-                    *(
-                        f"src/document_tools/{name}"
-                        for name in ("__init__.py", "broker.py", "worker.py")
-                    ),
-                    "workers/report_formatter/entrypoint.py",
-                }
+                or path not in _ALLOWED_WORKER_FILES
                 or path in file_paths
                 or not isinstance(item["sha256"], str)
                 or not re.fullmatch(r"[0-9a-f]{64}", item["sha256"])
@@ -181,12 +187,7 @@ class FixedToolRegistry:
             ):
                 raise WorkerUnavailable("worker source path or digest is invalid")
             file_paths.add(path)
-        expected_files = {
-            "src/document_tools/__init__.py",
-            "src/document_tools/broker.py",
-            "src/document_tools/worker.py",
-            "workers/report_formatter/entrypoint.py",
-        }
+        expected_files = _COMMON_WORKER_FILES | {registration.relative_entrypoint.as_posix()}
         if record["entrypoint"] not in file_paths or file_paths != expected_files:
             raise WorkerUnavailable("worker source inventory is incomplete")
         return record

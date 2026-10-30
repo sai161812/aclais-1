@@ -516,7 +516,7 @@ function Dashboard() {
                   </div>
                   <div className="tool-grid">
                     <ToolCard title="Report Formatter" detail="Create a clean, structured version of a selected report." documentLabel={documents.find((item) => item.id === "doc-report")?.display_name ?? "Registered input unavailable"} tone="blue" registrationLabel="FIXED TOOL" buttonLabel="Review and approve" onClick={() => startApproval("report_formatter")} disabled={!connected || !documents.some((item) => item.id === "doc-report")} />
-                    <ToolCard title="Invoice Analyzer" detail="This utility will be available after the Report Formatter checkpoint is verified." documentLabel={documents.find((item) => item.id === "doc-invoice")?.display_name ?? "Registered input unavailable"} tone="violet" registrationLabel="NOT INSTALLED" buttonLabel="Unavailable" onClick={() => undefined} disabled />
+                    <ToolCard title="Invoice Analyzer" detail="Extract validated invoice fields and totals from the selected invoice." documentLabel={documents.find((item) => item.id === "doc-invoice")?.display_name ?? "Registered input unavailable"} tone="violet" registrationLabel={health?.checks.some((check) => check.id === "tool_invoice_analyzer" && check.status === "pass") ? "FIXED TOOL" : "NOT INSTALLED"} buttonLabel={health?.checks.some((check) => check.id === "tool_invoice_analyzer" && check.status === "pass") ? "Review and approve" : "Unavailable"} onClick={() => startApproval("invoice_analyzer")} disabled={!connected || !documents.some((item) => item.id === "doc-invoice") || !health?.checks.some((check) => check.id === "tool_invoice_analyzer" && check.status === "pass")} />
                   </div>
                 </section>
 
@@ -796,7 +796,7 @@ function ApprovalPage({ config }: { config: ApprovalConfig | null }) {
 
   useEffect(() => { headingRef.current?.focus(); }, []);
   const title = config ? taskName(config.tool_id) : "Approval unavailable";
-  const registeredDocument = documents[0];
+  const registeredDocument = documents.find((item) => item.id === selectedDocument);
 
   return <div className="approval-frame">
     <header className="approval-topbar"><a className="brand" href="/owner"><BrandMark /><span>ACLAIS</span></a><div className="approval-context-label"><span className="context-dot" />OWNER APPROVAL</div></header>

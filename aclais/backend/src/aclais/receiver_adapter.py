@@ -1,9 +1,11 @@
-"""Typed ACLAIS boundary for the not-yet-implemented local receiver."""
+"""Typed ACLAIS boundaries for owner-side receiver reads and run provisioning."""
 
 from __future__ import annotations
 
 import http.client
+import json
 import stat
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Protocol
 from urllib.parse import urlsplit
@@ -12,11 +14,17 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from aclais.persistence.models import (
+    CreateRunRequest,
+    CreateRunResponse,
     ErrorResponse,
     ReceiptsResponse,
     ReceiverHealthResponse,
 )
 from aclais.strict_json import decode_strict_json
+
+_RECEIVER_ADMIN_HOST = "::1"
+_RECEIVER_ADMIN_PORT = 8767
+_RECEIVER_ADMIN_HOST_HEADER = "[::1]:8767"
 
 
 class ReceiverAdapterError(RuntimeError):
@@ -45,6 +53,103 @@ class ReceiverAdapter(Protocol):
     def health(self) -> ReceiverHealthResponse: ...
 
     def receipts(self, run_id: UUID) -> ReceiptsResponse: ...
+
+
+@dataclass(frozen=True, slots=True)
+class WorkerReceiverContext:
+    """One receiver run and its short-lived worker-only credential."""
+
+    run_id: UUID
+    ingest_token: str = field(repr=False)
+
+
+class ReceiverRunProvisioner(Protocol):
+    """Controller-only authority to create a run for one approved Invoice Analyzer task."""
+
+    def create_run(self, run_id: UUID, canary_marker: str) -> WorkerReceiverContext: ...
+
+
+class HttpReceiverRunProvisioner:
+    """Create one fixed IPv6 loopback receiver run; never return the admin credential."""
+
+    def __init__(
+        self,
+        *,
+        credential_file: Path | None = None,
+        admin_token: str | None = None,
+        timeout_seconds: float = 3.0,
+    ) -> None:
+        if (credential_file is None) == (admin_token is None):
+            raise ValueError("provide exactly one receiver administrator credential source")
+        if credential_file is not None and not credential_file.is_absolute():
+            raise ValueError("receiver credential file must use an absolute path")
+        if admin_token is not None and not _valid_admin_token(admin_token):
+            raise ValueError("receiver administrative credential is invalid")
+        if not 0 < timeout_seconds <= 10:
+            raise ValueError("receiver provisioning timeout must be bounded")
+        self._credential_file = credential_file
+        self._admin_token = admin_token
+        self._timeout = timeout_seconds
+
+    def __repr__(self) -> str:
+        return "HttpReceiverRunProvisioner(host='::1', port=8767, admin_credential='redacted')"
+
+    def create_run(self, run_id: UUID, canary_marker: str) -> WorkerReceiverContext:
+        request_model = CreateRunRequest(
+            schema_version=1,
+            run_id=run_id,
+            canary_marker=canary_marker,
+        )
+        body = json.dumps(
+            request_model.model_dump(mode="json"),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("ascii")
+        token = self._read_admin_token()
+        connection = http.client.HTTPConnection(
+            _RECEIVER_ADMIN_HOST, _RECEIVER_ADMIN_PORT, timeout=self._timeout
+        )
+        try:
+            connection.request(
+                "POST",
+                "/admin/runs",
+                body=body,
+                headers={
+                    "Host": _RECEIVER_ADMIN_HOST_HEADER,
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Connection": "close",
+                },
+            )
+            response = connection.getresponse()
+            payload = response.read(65_537)
+        except (OSError, TimeoutError, http.client.HTTPException) as exc:
+            raise ReceiverUnavailable("receiver_run_creation_unavailable") from exc
+        finally:
+            connection.close()
+        if (
+            response.status != 201
+            or len(payload) > 65_536
+            or response.getheader("Content-Type", "").split(";", 1)[0].lower() != "application/json"
+        ):
+            raise ReceiverUnavailable("receiver_run_creation_rejected")
+        try:
+            decode_strict_json(payload)
+            created = CreateRunResponse.model_validate_json(payload, strict=True)
+        except (ValueError, TypeError) as exc:
+            raise ReceiverProtocolFailure("receiver_run_response_invalid") from exc
+        if created.run_id != run_id or not _valid_admin_token(created.ingest_token):
+            raise ReceiverProtocolFailure("receiver_run_identity_invalid")
+        return WorkerReceiverContext(run_id=created.run_id, ingest_token=created.ingest_token)
+
+    def _read_admin_token(self) -> str:
+        if self._admin_token is not None:
+            return self._admin_token
+        credential_file = self._credential_file
+        assert credential_file is not None
+        return _read_admin_credential_file(credential_file)
 
 
 class HttpReceiverAdapter:
@@ -108,21 +213,7 @@ class HttpReceiverAdapter:
             return self._token
         path = self._credential_file
         assert path is not None
-        try:
-            metadata = path.lstat()
-            reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
-            if (
-                not stat.S_ISREG(metadata.st_mode)
-                or stat.S_ISLNK(metadata.st_mode)
-                or getattr(metadata, "st_file_attributes", 0) & reparse
-            ):
-                raise OSError("credential file is not a regular protected file")
-            token = path.read_bytes().decode("ascii", errors="strict")
-        except (OSError, UnicodeError) as exc:
-            raise ReceiverAuthenticationFailed("receiver_admin_credential_unavailable") from exc
-        if not _valid_admin_token(token):
-            raise ReceiverAuthenticationFailed("receiver_admin_credential_unavailable")
-        return token
+        return _read_admin_credential_file(path)
 
     def _request(
         self,
@@ -155,11 +246,7 @@ class HttpReceiverAdapter:
                 raise ReceiverProtocolFailure("receiver_error_response_invalid") from exc
             if response.status == 401 and error.error.code == "AUTH_INVALID":
                 raise ReceiverAuthenticationFailed("receiver_admin_authentication_failed")
-            if (
-                unknown_run_is_typed
-                and response.status == 404
-                and error.error.code == "NOT_FOUND"
-            ):
+            if unknown_run_is_typed and response.status == 404 and error.error.code == "NOT_FOUND":
                 raise ReceiverUnknownRun("receiver_unknown_run")
             if response.status >= 500:
                 raise ReceiverUnavailable("receiver_service_unavailable")
@@ -183,6 +270,24 @@ def _valid_admin_token(token: str) -> bool:
         and token.isascii()
         and all(char.isalnum() or char in "-_" for char in token)
     )
+
+
+def _read_admin_credential_file(path: Path) -> str:
+    try:
+        metadata = path.lstat()
+        reparse = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or stat.S_ISLNK(metadata.st_mode)
+            or getattr(metadata, "st_file_attributes", 0) & reparse
+        ):
+            raise OSError("credential file is not a regular protected file")
+        token = path.read_bytes().decode("ascii", errors="strict")
+    except (OSError, UnicodeError) as exc:
+        raise ReceiverAuthenticationFailed("receiver_admin_credential_unavailable") from exc
+    if not _valid_admin_token(token):
+        raise ReceiverAuthenticationFailed("receiver_admin_credential_unavailable")
+    return token
 
 
 class ReceiverAssessment(BaseModel):

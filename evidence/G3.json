@@ -1,0 +1,12 @@
+{
+  "checkpoint": "G3_DOCUMENT_TOOLS",
+  "g3_complete": true,
+  "g4_status": "PENDING_G4",
+  "invoice_analyzer_status": "PASS",
+  "report_formatter_status": "PASS",
+  "report_status": "PASS",
+  "sanitized_at_utc": "2026-10-30T01:37:16.071069+00:00",
+  "schema_version": 1,
+  "tested_source_digest_sha256": "2cee982f536beca1f8113b3ab3e8598ab85a355dbbfb57dd5b0b79d10aea35a9",
+  "tested_source_file_count": 183
+}

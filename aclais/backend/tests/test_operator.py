@@ -14,9 +14,56 @@ import pytest
 from aclais import operator
 from aclais.persistence.database import Database
 from aclais.persistence.models import CreateTaskRequest, HealthCheck
-from aclais.readiness import Readiness, ReadinessError, boundary_check
+from aclais.readiness import (
+    HEALTH_DISPLAY_CACHE_TTL_SECONDS,
+    Readiness,
+    ReadinessError,
+    boundary_check,
+)
 
 pytestmark = pytest.mark.portable
+
+
+def test_health_display_cache_does_not_cache_launch_preflight(monkeypatch, tmp_path):
+    now = [100.0]
+    calls = []
+    checks = (
+        HealthCheck(id="owned_installation", status="pass", summary="Synthetic boundary check."),
+    )
+
+    class FakeWindowsApi:
+        def read_credential(self):
+            return bytearray(b"synthetic-owner-credential")
+
+        def create_job(self):
+            return object()
+
+        def configure_kill_on_close(self, _job):
+            return None
+
+        def verify_kill_on_close(self, _job):
+            return True
+
+        def close_handle(self, _job):
+            return None
+
+    def run_boundary_check():
+        calls.append(None)
+        return checks
+
+    monkeypatch.setattr("aclais.readiness.time.monotonic", lambda: now[0])
+    monkeypatch.setattr("aclais.readiness.boundary_check", run_boundary_check)
+    monkeypatch.setattr("aclais.readiness._NativeApi", FakeWindowsApi)
+    readiness = Readiness(SimpleNamespace(root=tmp_path))
+
+    first_check = readiness.check()
+    assert first_check[0] == checks[0]
+    now[0] += HEALTH_DISPLAY_CACHE_TTL_SECONDS - 1
+    assert readiness.check() == first_check
+    assert len(calls) == 1
+
+    readiness.require_core()
+    assert len(calls) == 2
 
 
 def test_bootstrap_browser_failure_never_logs_exception_or_secret(monkeypatch, caplog):
@@ -30,9 +77,7 @@ def test_bootstrap_browser_failure_never_logs_exception_or_secret(monkeypatch, c
     assert "RuntimeError" not in caplog.text
 
 
-@pytest.mark.parametrize(
-    ("require_idle", "expected_timeout"), ((False, 60), (True, 90))
-)
+@pytest.mark.parametrize(("require_idle", "expected_timeout"), ((False, 60), (True, 90)))
 def test_boundary_audit_retains_its_measured_bounded_timeout(
     monkeypatch, require_idle: bool, expected_timeout: int
 ):
@@ -55,9 +100,7 @@ def test_boundary_audit_retains_its_measured_bounded_timeout(
 
     monkeypatch.setattr(subprocess, "run", run)
     assert boundary_check(require_idle=require_idle) == (
-        HealthCheck(
-            id="owner_and_worker_identity", status="pass", summary="Test fixture."
-        ),
+        HealthCheck(id="owner_and_worker_identity", status="pass", summary="Test fixture."),
     )
     assert observed["timeout"] == expected_timeout
     assert observed["capture_output"] is True
@@ -73,6 +116,8 @@ def test_failed_controller_never_advertises_ready_even_with_installed_workers(
         "src/document_tools/__init__.py",
         "src/document_tools/broker.py",
         "src/document_tools/worker.py",
+        "src/document_tools/invoice.py",
+        "src/document_tools/receiver.py",
         "workers/report_formatter/entrypoint.py",
     ):
         entry = code_root / relative
@@ -86,6 +131,25 @@ def test_failed_controller_never_advertises_ready_even_with_installed_workers(
                 "length": len(content),
             }
         )
+    invoice_entrypoint = code_root / "workers/invoice_analyzer/entrypoint.py"
+    invoice_entrypoint.parent.mkdir(parents=True, exist_ok=True)
+    invoice_entrypoint.write_text("# readiness fixture only; never executed\n")
+    invoice_content = invoice_entrypoint.read_bytes()
+    common_paths = {
+        "src/document_tools/__init__.py",
+        "src/document_tools/broker.py",
+        "src/document_tools/worker.py",
+        "src/document_tools/invoice.py",
+        "src/document_tools/receiver.py",
+    }
+    invoice_files = [
+        *[item for item in files if item["path"] in common_paths],
+        {
+            "path": "workers/invoice_analyzer/entrypoint.py",
+            "sha256": hashlib.sha256(invoice_content).hexdigest(),
+            "length": len(invoice_content),
+        },
+    ]
     (code_root / "tool-manifest.json").write_text(
         json.dumps(
             {
@@ -97,7 +161,13 @@ def test_failed_controller_never_advertises_ready_even_with_installed_workers(
                         "document_id": "doc-report",
                         "entrypoint": "workers/report_formatter/entrypoint.py",
                         "files": files,
-                    }
+                    },
+                    {
+                        "tool_id": "invoice_analyzer",
+                        "document_id": "doc-invoice",
+                        "entrypoint": "workers/invoice_analyzer/entrypoint.py",
+                        "files": invoice_files,
+                    },
                 ],
             }
         ),

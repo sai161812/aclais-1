@@ -16,7 +16,7 @@ from aclais.owner_auth import OwnerAuth
 from aclais.persistence.database import Database
 from aclais.publication import OutputPublisher
 from aclais.readiness import Readiness
-from aclais.receiver_adapter import HttpReceiverAdapter
+from aclais.receiver_adapter import HttpReceiverAdapter, HttpReceiverRunProvisioner
 from aclais.tool_registry import FixedToolRegistry
 
 
@@ -112,6 +112,9 @@ def create_a8_runtime(settings: Settings | None = None) -> A8Runtime:
         verifier=verifier,
         preflight=readiness.require_core,
         receiver_adapter=HttpReceiverAdapter(
+            credential_file=layout.root / "state" / "receiver" / "admin.token"
+        ),
+        receiver_provisioner=HttpReceiverRunProvisioner(
             credential_file=layout.root / "state" / "receiver" / "admin.token"
         ),
         tool_registry=tool_registry,

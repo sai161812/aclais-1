@@ -1,6 +1,7 @@
 """Portable shape and Windows argv quoting checks for A3 launcher configuration."""
 
 import ctypes
+import json
 from uuid import uuid4
 
 import pytest
@@ -12,7 +13,7 @@ from aclais.launcher.models import (
     WorkerScopeManifest,
     windows_command_line,
 )
-from aclais.launcher.windows import _CredentialSecret
+from aclais.launcher.windows import _CredentialSecret, _serialize_task_configuration
 
 
 @pytest.mark.portable
@@ -88,6 +89,48 @@ def test_document_tools_worker_configuration_requires_a_scoped_worker_credential
     with pytest.raises(ValidationError):
         DocumentToolsWorkerConfiguration.model_validate(
             {**config.model_dump(), "worker_credential": "too-short"}
+        )
+    serialized = json.loads(_serialize_task_configuration(config))
+    assert serialized["receiver_run_id"] is None
+    assert serialized["receiver_ingest_token"] is None
+
+
+@pytest.mark.portable
+def test_invoice_worker_configuration_requires_its_fixed_pair_and_receiver_context() -> None:
+    root = r"C:\ACLAIS-Lab"
+    common = {
+        "schema_version": 1,
+        "task_id": uuid4(),
+        "fixture_root": root,
+        "scope_manifest": WorkerScopeManifest(
+            schema_version=1,
+            root_id=uuid4(),
+            root_path=root,
+            fixture_files=(
+                "store/originals/Personnel_Private.csv",
+                "store/originals/invoice.csv",
+                "store/originals/meeting-notes.md",
+                "store/originals/project-report.md",
+            ),
+        ),
+        "temporary_output": root + r"\work\task-output",
+        "deadline_seconds": 30,
+        "broker_url": "http://127.0.0.1:8765/api/broker/operations",
+        "worker_credential": "synthetic-worker-token-" + "x" * 24,
+        "tool_id": "invoice_analyzer",
+        "selected_document_id": "doc-invoice",
+        "receiver_run_id": uuid4(),
+        "receiver_ingest_token": "synthetic-receiver-token-" + "x" * 24,
+    }
+    valid = DocumentToolsWorkerConfiguration.model_validate(common, strict=True)
+    assert valid.tool_id == "invoice_analyzer"
+    with pytest.raises(ValidationError):
+        DocumentToolsWorkerConfiguration.model_validate(
+            {**common, "selected_document_id": "doc-report"}, strict=True
+        )
+    with pytest.raises(ValidationError):
+        DocumentToolsWorkerConfiguration.model_validate(
+            {**common, "receiver_ingest_token": None}, strict=True
         )
 
 

@@ -192,11 +192,21 @@ class OwnerLogoutResponse(StrictModel):
 
 class HealthCheck(StrictModel):
     id: Literal[
-        "application_api", "g1_protection", "owner_and_worker_identity",
-        "effective_runtime_permissions", "checkout_dependencies_and_commands",
-        "code_and_fixture_integrity", "credential_retrieval", "job_configuration",
-        "launch_preflight", "database_integrity", "owned_installation", "no_active_worker",
+        "application_api",
+        "g1_protection",
+        "owner_and_worker_identity",
+        "effective_runtime_permissions",
+        "checkout_dependencies_and_commands",
+        "code_and_fixture_integrity",
+        "credential_retrieval",
+        "job_configuration",
+        "launch_preflight",
+        "database_integrity",
+        "owned_installation",
+        "no_active_worker",
         "controller_lifecycle",
+        "tool_report_formatter",
+        "tool_invoice_analyzer",
     ]
     status: Literal["pass", "fail", "unknown"]
     summary: ShortText
