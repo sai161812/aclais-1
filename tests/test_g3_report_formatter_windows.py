@@ -17,6 +17,7 @@ import threading
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -42,7 +43,9 @@ from aclais.launcher.models import DocumentToolsWorkerConfiguration
 from aclais.launcher.windows import RuntimeLayout, WindowsWorkerController
 from aclais.lifecycle import TaskWorkspace, _read_trusted_invoice_marker
 from aclais.owner_auth import OWNER_SESSION_COOKIE
+from aclais.persistence.database import Database
 from aclais.persistence.models import InvoiceResult, RevocationCause, TaskStatus
+from aclais.publication import OutputPublisher as PrivateOutputPublisher
 from aclais.receiver_adapter import HttpReceiverAdapter, HttpReceiverRunProvisioner
 from aclais.runtime import create_a8_runtime
 
@@ -57,6 +60,56 @@ def _load_private_module(name: str, path: Path):
     sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _create_private_a8_runtime(layout: RuntimeLayout):
+    """Give each private target rehearsal a clean DB without touching owner sessions."""
+
+    test_id = uuid4().hex
+    database_path = layout.root / "state" / f".g3-private-controller-{test_id}.sqlite3"
+    output_root = layout.root / "state" / f".g3-private-output-{test_id}"
+    database = Database(database_path)
+    output_root.mkdir()
+    try:
+        with (
+            patch("aclais.runtime.Database", return_value=database),
+            patch(
+                "aclais.runtime.OutputPublisher",
+                side_effect=lambda current_db, _production_root: PrivateOutputPublisher(
+                    current_db, output_root
+                ),
+            ),
+        ):
+            runtime = create_a8_runtime(Settings())
+    except BaseException:
+        _remove_private_controller_database(layout, database_path)
+        _remove_private_output_root(layout, output_root)
+        raise
+    return runtime, database_path, output_root
+
+
+def _remove_private_controller_database(layout: RuntimeLayout, database_path: Path) -> None:
+    if database_path.parent != layout.root / "state" or not database_path.name.startswith(
+        ".g3-private-controller-"
+    ):
+        raise AssertionError("refusing to remove a database outside the private G3 test scope")
+    for suffix in ("", "-wal", "-shm"):
+        candidate = Path(f"{database_path}{suffix}")
+        if candidate.is_symlink():
+            raise AssertionError("private G3 test database sidecars cannot be symbolic links")
+        candidate.unlink(missing_ok=True)
+
+
+def _remove_private_output_root(layout: RuntimeLayout, output_root: Path) -> None:
+    if output_root.parent != layout.root / "state" or not output_root.name.startswith(
+        ".g3-private-output-"
+    ):
+        raise AssertionError("refusing to remove output outside the private G3 test scope")
+    if not output_root.exists():
+        return
+    if output_root.is_symlink() or any(path.is_symlink() for path in output_root.rglob("*")):
+        raise AssertionError("private G3 output cannot contain symbolic links")
+    shutil.rmtree(output_root)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="G3 enforcement requires the designated Windows host")
@@ -80,6 +133,8 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
     assert worker_tree_sha256 == worker_source_tree_sha256
     controller = WindowsWorkerController(layout)
     runtime = None
+    runtime_database_path = None
+    runtime_output_root = None
     website = None
     uvicorn_server = None
     server_thread = None
@@ -172,7 +227,7 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
         controller.shutdown()
         _remove_disposable_fixture(fixture_root, layout.output_root)
 
-        runtime = create_a8_runtime(Settings())
+        runtime, runtime_database_path, runtime_output_root = _create_private_a8_runtime(layout)
         protected_worker_controller = runtime.lifecycle.launcher
         assert isinstance(protected_worker_controller, WindowsWorkerController)
         website = WebsiteServer(REPOSITORY_ROOT / "document-tools" / "frontend" / "dist")
@@ -505,6 +560,16 @@ def test_report_formatter_baseline_and_protected_owner_approval() -> None:
 
         if runtime is not None:
             attempt_cleanup("terminal task reconciliation", require_no_active_task)
+        if runtime_output_root is not None:
+            attempt_cleanup(
+                "private output root cleanup",
+                lambda: _remove_private_output_root(layout, runtime_output_root),
+            )
+        if runtime_database_path is not None:
+            attempt_cleanup(
+                "private controller database cleanup",
+                lambda: _remove_private_controller_database(layout, runtime_database_path),
+            )
         if website is not None:
             attempt_cleanup("Document Tools site", website.close)
         if not controller._shutdown:
@@ -545,6 +610,8 @@ def test_invoice_analyzer_baseline_and_protected_owner_approval() -> None:
     assert installed_worker_hash == source_worker_hash
     controller = WindowsWorkerController(layout)
     runtime = None
+    runtime_database_path = None
+    runtime_output_root = None
     website = None
     api_server = None
     api_thread = None
@@ -717,7 +784,7 @@ def test_invoice_analyzer_baseline_and_protected_owner_approval() -> None:
         controller.shutdown()
         _remove_disposable_fixture(fixture_root, layout.output_root)
 
-        runtime = create_a8_runtime(Settings())
+        runtime, runtime_database_path, runtime_output_root = _create_private_a8_runtime(layout)
         protected_worker_controller = runtime.lifecycle.launcher
         assert isinstance(protected_worker_controller, WindowsWorkerController)
         website = WebsiteServer(REPOSITORY_ROOT / "document-tools" / "frontend" / "dist")
@@ -1100,6 +1167,16 @@ def test_invoice_analyzer_baseline_and_protected_owner_approval() -> None:
                     raise AssertionError("controller cleanup left a nonterminal task")
 
             attempt_cleanup("task reconciliation", require_no_active_task)
+        if runtime_output_root is not None:
+            attempt_cleanup(
+                "private output root cleanup",
+                lambda: _remove_private_output_root(layout, runtime_output_root),
+            )
+        if runtime_database_path is not None:
+            attempt_cleanup(
+                "private controller database cleanup",
+                lambda: _remove_private_controller_database(layout, runtime_database_path),
+            )
         if website is not None:
             attempt_cleanup("Document Tools site", website.close)
         if not controller._shutdown:

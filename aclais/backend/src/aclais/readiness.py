@@ -42,7 +42,10 @@ def boundary_check(
         command.append("-RequireIdle")
     if allow_retiring:
         command.append("-AllowRetiring")
-    timeout_seconds = 90 if require_idle else 60
+    # The demonstration Windows host needs roughly 100 seconds to verify the
+    # protected runtime tree; keep this bounded without turning a slow audit
+    # into a false readiness failure.
+    timeout_seconds = 180 if require_idle else 150
     result = subprocess.run(
         command, capture_output=True, timeout=timeout_seconds, env=environment, check=False
     )
@@ -131,7 +134,9 @@ class Readiness:
         if any(item.status != "pass" for item in self.check(fresh=True)):
             raise ReadinessError("mandatory local preflight failed")
 
-    def health(self, *, controller_accepting: bool = True) -> HealthResponse:
+    def health(
+        self, *, controller_accepting: bool = True, application_api_responding: bool = True
+    ) -> HealthResponse:
         checks = self.check()
         if not controller_accepting:
             checks = (
@@ -180,8 +185,12 @@ class Readiness:
             checks=(
                 HealthCheck(
                     id="application_api",
-                    status="pass",
-                    summary="The local API process is responding.",
+                    status="pass" if application_api_responding else "unknown",
+                    summary=(
+                        "The local API process is responding."
+                        if application_api_responding
+                        else "The standalone doctor did not observe an API request."
+                    ),
                 ),
                 *checks,
                 HealthCheck(

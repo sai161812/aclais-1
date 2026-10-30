@@ -2,7 +2,7 @@
 
 **Invoice Analyzer paired target slice: PASS.**
 
-Tested source digest: `2cee982f536beca1f8113b3ab3e8598ab85a355dbbfb57dd5b0b79d10aea35a9` (183 implementation inputs).
+Tested source digest: `91afd6e7252ed6f7ecc400b91e43283eb2063091193ff120422f93d1d6279971` (183 implementation inputs).
 Installed worker tree SHA-256: `db5c91aefe5358d21d14e02ba730537b134f87e52616631c95327884d7c9f3e9`. Both runs used the same verified non-administrator worker identity; SID SHA-256: `195cbf12b84af79103301ea4d0de0689dd7500efffdd56517a29807682f62bd3`.
 
 ## Permissive private baseline

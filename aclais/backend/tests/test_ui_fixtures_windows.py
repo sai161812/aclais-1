@@ -64,7 +64,11 @@ def test_isolated_verified_and_containment_failure_ui_contract_fixtures(tmp_path
     )
     root = Path(__file__).resolve().parents[3]
     dist = root / "aclais/frontend/dist"
-    shots = root / "evidence/g1-visuals"
+    shots = Path(
+        os.environ.get(
+            "ACLAIS_UI_SCREENSHOT_DIR", str(root / "evidence/g1-visuals")
+        )
+    )
     shots.mkdir(exist_ok=True, parents=True)
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(

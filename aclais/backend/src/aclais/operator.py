@@ -399,7 +399,7 @@ def main() -> None:
         elif args.action == "stop":
             stop_controller()
         elif args.action == "doctor":
-            health = Readiness(RuntimeLayout.open()).health()
+            health = Readiness(RuntimeLayout.open()).health(application_api_responding=False)
             print(health.model_dump_json())
             if any(check.status == "fail" for check in health.checks):
                 raise ReadinessError("doctor failed")

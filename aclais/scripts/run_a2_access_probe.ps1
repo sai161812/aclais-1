@@ -321,7 +321,7 @@ try {
     $probeId = [guid]::NewGuid().ToString('N')
     $selectedRecord = @($manifest.fixtures | Where-Object { $_.path -eq 'store/selected/Selected_Input.csv' }) | Select-Object -First 1
     if (-not $selectedRecord) { throw 'Selected input hash is missing from the protected installation manifest.' }
-    $arguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -LabRoot "{1}" -ExpectedWorkerSid "{2}" -ExpectedSelectedHash "{3}" -RepositoryRoot "{4}" -ProbeId "{5}"' -f `
+    $arguments = '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -LabRoot "{1}" -ExpectedWorkerSid "{2}" -ExpectedSelectedHash "{3}" -RepositoryRoot "{4}" -ProbeId "{5}"' -f `
         $probePath, $labRoot, $manifest.worker_sid, $selectedRecord.sha256, $repoRoot, $probeId
     if ($arguments -match '(?i)(password|secret|credentialblob)') {
         throw 'Probe command arguments contain a forbidden credential-like string.'
@@ -354,6 +354,12 @@ try {
     $aclRecoveryPending = $false
 
     $probeText = [IO.File]::ReadAllText($stdoutPath, [Text.Encoding]::UTF8).Trim()
+    $probeText = [regex]::Replace(
+        $probeText,
+        '^Windows PowerShell\r?\nCopyright \(C\) Microsoft Corporation\. All rights reserved\.\r?\n?',
+        '',
+        [System.Text.RegularExpressions.RegexOptions]::CultureInvariant
+    ).Trim()
     $stderrLength = if (Test-Path -LiteralPath $stderrPath) { (Get-Item -LiteralPath $stderrPath).Length } else { 0 }
     Remove-Item -LiteralPath $stdoutPath,$stderrPath -Force -ErrorAction SilentlyContinue
     if ([string]::IsNullOrWhiteSpace($probeText)) { throw 'The actual worker probe produced no structured result.' }

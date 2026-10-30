@@ -3,10 +3,9 @@
     "checkpoint":  "A2",
     "passed":  true,
     "elevated":  false,
-    "source_revision":  "6097897529ea1e9d13acb2d590531db4196a6b6a",
+    "source_revision":  "a9fafba9b5312f69776744d8d8a9060e05f1ff3b",
     "tested_probe_sha256":  "f5eee4d5b08c11d96a036bb3cff38331da0aa93636c310621ba82a09e4d3c544",
-    "tested_harness_sha256":  "dbb91c86915e8b14c23aa6579e5db144ec608e14a4d56b5cb5453c4cf70f388c",
-    "worker_sid":  "S-1-5-21-2514999450-3486617813-2191310599-1006",
+    "tested_harness_sha256":  "d1ae8e8f4ff71574fbd1d289a5ccd78b5680cb10ad1e4c408997df92582cd0e2",
     "worker_is_administrator":  false,
     "check_count":  75,
     "fixture_count":  14,
@@ -391,5 +390,7 @@
                        "actual":  "access_denied",
                        "passed":  true
                    }
-               ]
+               ],
+    "worker_identity":  "AclaisWorker",
+    "worker_identity_verified":  true
 }

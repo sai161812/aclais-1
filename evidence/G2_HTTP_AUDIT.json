@@ -68,13 +68,13 @@
     "sha256_and_byte_count": "pass"
   },
   "metadata": {
-    "base_revision": "8e7a2ab8e1742893889416477cb9940ef50e03ad",
+    "base_revision": "a9fafba9b5312f69776744d8d8a9060e05f1ff3b",
     "platform": "Windows demonstration machine / NTFS",
     "raw_payloads_or_credentials_in_report": false,
     "schema_version": 1,
-    "source_digest_sha256": "215323914978054ede04fdd520480a83fc618d6d25fb485e003635ea3b3859da",
+    "source_digest_sha256": "d411e7918d171196b6b6dc222df9b86223d080229a1855e24ad1cb686fdcdd01",
     "source_input_count": 37,
-    "tested_at_utc": "2026-10-29T16:49:10+00:00"
+    "tested_at_utc": "2026-10-30T02:15:16+00:00"
   },
   "nonmatching_payload": {
     "http": "pass",

@@ -77,7 +77,7 @@ def test_bootstrap_browser_failure_never_logs_exception_or_secret(monkeypatch, c
     assert "RuntimeError" not in caplog.text
 
 
-@pytest.mark.parametrize(("require_idle", "expected_timeout"), ((False, 60), (True, 90)))
+@pytest.mark.parametrize(("require_idle", "expected_timeout"), ((False, 150), (True, 180)))
 def test_boundary_audit_retains_its_measured_bounded_timeout(
     monkeypatch, require_idle: bool, expected_timeout: int
 ):
@@ -182,6 +182,10 @@ def test_failed_controller_never_advertises_ready_even_with_installed_workers(
         ),
     )
     assert readiness.health().protection_ready
+    standalone_health = readiness.health(application_api_responding=False)
+    assert next(c for c in standalone_health.checks if c.id == "application_api").status == (
+        "unknown"
+    )
     health = readiness.health(controller_accepting=False)
     assert not health.protection_ready
     assert health.status == "unavailable"

@@ -215,7 +215,9 @@ def test_g1_owned_start_duplicate_refusal_reset_stop_and_process_identity(tmp_pa
             )
             assert protection_check["status"] in {"unknown", "pass"}
             if protection_check["status"] == "pass":
-                assert "Report Formatter is installed" in protection_check["summary"]
+                assert protection_check["summary"] == (
+                    "Report Formatter and Invoice Analyzer are installed."
+                )
             else:
                 assert "Core checks passed" in protection_check["summary"]
             duplicate = subprocess.run(
