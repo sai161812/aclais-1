@@ -441,7 +441,12 @@ def test_a9_connected_dashboard_refresh_keyboard_and_visual_evidence() -> None:
 
     browser: Any | None = None
     playwright = sync_playwright().start()
-    screenshot_root = Path(__file__).resolve().parents[3] / "evidence" / "g1-visuals"
+    screenshot_root = Path(
+        os.environ.get(
+            "ACLAIS_UI_SCREENSHOT_DIR",
+            str(Path(__file__).resolve().parents[3] / "evidence" / "g1-visuals"),
+        )
+    )
     screenshot_root.mkdir(parents=True, exist_ok=True)
 
     def capture(page, screen: str) -> None:

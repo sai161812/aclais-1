@@ -18,10 +18,14 @@
   --green: #137a54;
   --amber: #996300;
   --red: #bd3248;
-  --surface: rgb(255 255 255 / 84%);
-  --surface-solid: #fff;
-  --shadow: 0 12px 40px rgb(26 42 72 / 8%);
-  --shadow-sm: 0 5px 18px rgb(26 42 72 / 5%);
+  --surface: rgb(255 255 255 / 46%);
+  --surface-solid: rgb(255 255 255 / 76%);
+  --surface-soft: rgb(255 255 255 / 30%);
+  --glass-edge: rgb(255 255 255 / 78%);
+  --glass-hairline: rgb(103 126 163 / 17%);
+  --glass-shadow: 0 16px 42px rgb(38 55 87 / 7%);
+  --shadow: var(--glass-shadow);
+  --shadow-sm: 0 7px 22px rgb(38 55 87 / 5%);
 }
 
 * { box-sizing: border-box; }
@@ -462,4 +466,264 @@ h1, h2, h3, p { margin-top: 0; }
 
 @supports not ((backdrop-filter: blur(2px))) {
   .rail, .topbar, .health-card, .document-list, .tool-card, .recent-list, .side-card, .activity-panel, .approval-card { background: #fff; }
+}
+
+/* ACLAIS glass system: translucent planes reveal the cool ambient field below. */
+.app-frame,
+.approval-frame {
+  background-color: #f3f5f9;
+  background-image:
+    radial-gradient(ellipse at 14% 9%, rgb(191 215 255 / 55%), transparent 37%),
+    radial-gradient(ellipse at 83% 29%, rgb(193 232 233 / 43%), transparent 34%),
+    radial-gradient(ellipse at 62% 100%, rgb(224 231 250 / 62%), transparent 43%),
+    linear-gradient(135deg, #f3f5f9 0%, #edf2f8 52%, #f4f6fa 100%);
+  background-attachment: fixed;
+}
+
+.rail,
+.topbar,
+.approval-topbar,
+.health-card,
+.document-list,
+.tool-card,
+.recent-list,
+.side-card,
+.activity-panel,
+.approval-card {
+  border-color: var(--glass-edge);
+  background-color: var(--surface);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgb(255 255 255 / 64%);
+  -webkit-backdrop-filter: blur(24px) saturate(138%);
+  backdrop-filter: blur(24px) saturate(138%);
+}
+
+.rail,
+.topbar,
+.approval-topbar {
+  background-color: rgb(248 250 253 / 39%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 72%);
+}
+
+.nav-item:hover,
+.nav-item.active,
+.task-row:hover,
+.task-row.selected {
+  background-color: rgb(255 255 255 / 36%);
+}
+
+.nav-item.active {
+  border-color: rgb(168 193 240 / 48%);
+  background-image: linear-gradient(110deg, rgb(222 235 255 / 56%), rgb(250 252 255 / 34%));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%);
+}
+
+.connection-pill,
+.icon-button,
+.secondary-button,
+.document-icon,
+.tool-icon,
+.task-tool-glyph,
+.task-list,
+.loading-panel,
+.empty-panel,
+.output-empty,
+.output-preview,
+.timeline-empty,
+.evidence-check,
+.source-chip {
+  background-color: rgb(255 255 255 / 34%);
+  -webkit-backdrop-filter: blur(14px) saturate(132%);
+  backdrop-filter: blur(14px) saturate(132%);
+}
+
+.document-card + .document-card,
+.task-row + .task-row,
+.task-meta-grid,
+.output-foot,
+.drawer-section,
+.disclosure-button,
+.advanced-evidence {
+  border-color: var(--glass-hairline);
+}
+
+.tool-card::before,
+.tool-violet::before {
+  content: none;
+}
+
+.tool-card:hover {
+  box-shadow: 0 12px 30px rgb(38 55 87 / 9%), inset 0 1px 0 rgb(255 255 255 / 72%);
+}
+
+.document-icon,
+.tool-icon,
+.task-tool-glyph,
+.side-empty-icon,
+.empty-panel-icon,
+.output-empty-icon {
+  border-color: rgb(255 255 255 / 76%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 82%);
+}
+
+.document-list .status-badge,
+.health-tag,
+.event-source,
+.source-chip,
+.evidence-check {
+  -webkit-backdrop-filter: blur(12px) saturate(128%);
+  backdrop-filter: blur(12px) saturate(128%);
+}
+
+.status-badge,
+.event-source,
+.source-chip,
+.source-broker,
+.source-controller,
+.source-worker_reported,
+.source-verifier,
+.source-receiver {
+  background-color: rgb(255 255 255 / 38%);
+}
+
+.badge-good,
+.health-ready .health-tag,
+.source-verifier {
+  background-color: rgb(225 244 233 / 52%);
+}
+
+.badge-warn,
+.pending-notice,
+.verification-pending,
+.incident-banner,
+.incident-callout {
+  background-color: rgb(255 249 232 / 55%);
+}
+
+.badge-bad,
+.unavailable-notice,
+.disconnected-notice,
+.incident-banner.danger,
+.incident-callout.is-danger {
+  background-color: rgb(255 237 240 / 60%);
+}
+
+.state-notice,
+.incident-callout,
+.incident-banner,
+.verification-pending {
+  -webkit-backdrop-filter: blur(18px) saturate(128%);
+  backdrop-filter: blur(18px) saturate(128%);
+}
+
+.output-preview {
+  border-color: rgb(255 255 255 / 78%);
+  background-color: rgb(249 251 254 / 48%);
+}
+
+.output-preview pre {
+  color: #34435c;
+}
+
+.drawer-backdrop {
+  background: rgb(24 35 55 / 24%);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.incident-drawer {
+  border-color: rgb(255 255 255 / 84%);
+  background: rgb(247 249 253 / 82%);
+  box-shadow: -18px 0 48px rgb(25 37 58 / 13%), inset 1px 0 0 rgb(255 255 255 / 72%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  backdrop-filter: blur(30px) saturate(140%);
+}
+
+@supports not ((backdrop-filter: blur(2px))) {
+  .rail,
+  .topbar,
+  .approval-topbar,
+  .health-card,
+  .document-list,
+  .tool-card,
+  .recent-list,
+  .side-card,
+  .activity-panel,
+  .approval-card,
+  .incident-drawer {
+    background-color: rgb(255 255 255 / 88%);
+  }
+}
+
+.document-name span,
+.tool-input,
+.tool-input strong,
+.task-row-copy span,
+.task-row-end > span:last-child,
+.task-meta-grid span,
+.task-meta-grid strong,
+.incident-callout span:not(.incident-callout-icon),
+.result-heading .section-kicker,
+.output-size,
+.timeline-heading,
+.event-line-top strong,
+.event-line-copy p,
+.empty-panel span:not(.empty-panel-icon),
+.muted-copy,
+.verification-pending,
+.evidence-check > div span,
+.advanced-row > span {
+  font-size: 11px;
+}
+
+.document-verified span,
+.tool-registration,
+.live-tag,
+.output-foot,
+.event-line-top time,
+.drawer-footer,
+.source-chip {
+  font-size: 10px;
+}
+
+.document-verified strong,
+.status-badge,
+.tool-card > p,
+.task-row-end > .status-badge,
+.incident-callout strong,
+.progress-heading,
+.result-heading h3,
+.event-source,
+.evidence-check > div strong {
+  font-size: 12px;
+}
+
+.output-preview pre {
+  font-size: 11px;
+}
+
+.advanced-row code {
+  font-size: 10px;
+}
+
+.activity-detail .side-card {
+  border-color: rgb(255 255 255 / 63%);
+  background-color: rgb(255 255 255 / 27%);
+  box-shadow: none;
+}
+
+.check-list {
+  gap: 0;
+}
+
+.evidence-check {
+  border: 0;
+  border-bottom: 1px solid var(--glass-hairline);
+  border-radius: 0;
+  background: transparent;
+  padding-right: 3px;
+  padding-left: 3px;
+}
+
+.health-card.compact {
+  box-shadow: none;
 }
