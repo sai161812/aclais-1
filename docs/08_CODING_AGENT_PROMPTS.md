@@ -12,13 +12,13 @@ At each gate run meaningful automated checks plus the required target-platform c
 Keep planning proportional: one short implementation plan, then code and verify. No speculative frameworks, microservices beyond the three specified processes, ML branding, enterprise auth system, or endless UI redesign. Quality is demonstrable boundaries, useful flows, credible evidence and polished interface.
 
 ## START — first prompt
-Read docs/spec/00_START_HERE.md and every referenced specification. Inspect the environment and repository. Create BUILD_STATUS.md with gates G0–G4 and a concise implementation plan. Implement Component 1 only, including its real Windows enforcement, tests and premium UI. Advance only after G1 passes; report any platform blocker without substituting simulated security.
+Read all nine specification files in their prescribed order, starting with `docs/00_START_HERE.md`, plus `AGENTS.md` and `IMPLEMENTATION_CHECKPOINTS.md`. Inspect the actual environment and repository. Complete A0 readiness/specification work and record evidence/status before A1. Then work only on the explicitly requested checkpoint, following dependencies and stop conditions; do not skip to a later A-number or production component. Component 1 still requires its real Windows enforcement, tests and premium UI before G1 PASS; report platform blockers without substituting simulated security.
 
 ## CONTINUE — next component
-Read BUILD_STATUS.md, the prior gate evidence and the next component guide. Verify the prerequisite gate is genuinely PASS. Build and test only the next component to completion. Update contracts, status and evidence together; do not begin a later component before this gate passes.
+Read BUILD_STATUS.md, DECISIONS.md, `IMPLEMENTATION_CHECKPOINTS.md`, prior checkpoint evidence, and the current component guide. Verify the exact prerequisite checkpoint/gate is genuinely PASS. Build and verify only the requested checkpoint. Update contracts, status and evidence together; do not begin a later checkpoint/component before its prerequisites pass.
 
 ## CHECK — current component
-Audit the current component against its guide and shared contracts. Run its required tests on the target platform, inspect real effects and fix failures. Report each acceptance criterion as PASS, FAIL, BLOCKED or NOT_RUN, with evidence. Do not mark mocked enforcement as verified.
+Audit the current checkpoint against its guide and shared contracts. Run its required tests on the platform assigned to each verification lane, inspect real effects and fix failures. Report each acceptance criterion as PASS, FAIL, BLOCKED or NOT_RUN, with evidence. Do not mark mocked enforcement as verified.
 
 ## WORKING — end-to-end
 Run the full G4 matrix with fresh fixtures and run IDs, including both protected/baseline pairs, benign output, direct bypasses, revocation, containment, receiver outage and restart. Verify actual files, receipts and process exit; fix failures and attach the results.
@@ -33,7 +33,7 @@ Review identity separation, NTFS parent rights, broker authorization, path handl
 Compare all specifications, generated API types, implementation, tests and UI copy. Find mismatched IDs, routes, grants, states, build order and security claims. Reconcile them without weakening requirements and list changes with supporting tests.
 
 ## RECOVER — resume safely
-Read BUILD_STATUS.md, DECISIONS.md and the latest gate report. Inspect current changes. Resume the earliest incomplete gate, preserving completed work. Reproduce the last blocker and resolve it before advancing.
+Read BUILD_STATUS.md, DECISIONS.md, `IMPLEMENTATION_CHECKPOINTS.md` and the latest checkpoint/gate report. Inspect current changes. Resume the earliest incomplete checkpoint, preserving completed work. Reproduce the last blocker and resolve it before advancing.
 
 ## FINAL AUDIT — release decision
 Independently audit G0–G4 against code and recorded evidence. Re-run any unverified security claim and the clean-start rehearsal. Deliver a release verdict, concrete remaining defects, known limitations and exact start/reset commands. Never call the build ready with mandatory checks blocked or unrun.

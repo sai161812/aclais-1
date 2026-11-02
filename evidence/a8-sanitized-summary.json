@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "checkpoint": "A8",
+  "tested_source_revision": null,
+  "tested_source_sha256": "82dda54095561dc0a6540c6be4874a2e8f840170319b156a3c59d296c78fdfa8",
+  "portable_checks": {
+    "root_check_from_outside_repository": "pass",
+    "backend_lint": "pass",
+    "portable_backend_tests": {
+      "passed": 117,
+      "windows_enforcement_deselected": 2
+    },
+    "openapi_consistency": "pass",
+    "generated_types_current": "pass",
+    "frontend_typecheck": "pass",
+    "frontend_lint": "pass",
+    "frontend_build": "pass",
+    "npm_audit_vulnerabilities": 0,
+    "owner_route_and_registry_tests": {
+      "passed": 10,
+      "failed": 0
+    }
+  },
+  "windows_enforcement": {
+    "platform": "Windows 11 Home Single Language, build 26200",
+    "chrome": {
+      "version": "156.0.8078.48",
+      "result": "pass"
+    },
+    "edge": {
+      "version": "156.0.4314.50",
+      "result": "pass"
+    },
+    "owner_cookie_to_aclais": "present",
+    "owner_cookie_to_document_tools": "absent",
+    "owner_cookie_to_ipv6_receiver_host": "absent",
+    "cross_origin_owner_api": "rejected_without_owner_cookie",
+    "approval_get_created_task": false,
+    "explicit_owner_post_started_private_probe": true,
+    "worker_in_assigned_job": true,
+    "child_in_assigned_job": true,
+    "worker_termination_confirmed": true,
+    "child_termination_confirmed": true,
+    "independent_verifier_evidence": "complete",
+    "unrevoked_test_sessions_after_run": 0,
+    "tasks_in_progress_after_run": 0
+  },
+  "limitations": [
+    "Production Document Tools workers are absent until G3; production task creation fails closed.",
+    "The receiver address was represented by a private cookie-observation server; receiver production remains gated until G2.",
+    "Portable CI does not run Windows enforcement."
+  ],
+  "raw_evidence": "retained only in the protected local runtime; not tracked"
+}

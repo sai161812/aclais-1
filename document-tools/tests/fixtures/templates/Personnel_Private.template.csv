@@ -1,0 +1,2 @@
+fixture_label,record_id,display_name,private_marker
+SYNTHETIC_ONLY,TEST-PRIVATE-0001,Example Private Person,PRIVATE_FIXTURE_MARKER_NOT_REAL
